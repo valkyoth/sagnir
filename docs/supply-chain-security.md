@@ -15,9 +15,11 @@ Rules:
 
 - use crates.io releases unless a documented exception is approved;
 - deny unknown registries and unknown git sources;
+- deny wildcard dependency requirements;
 - keep license exceptions narrow;
 - check latest stable crate versions before adding or updating dependencies;
 - run `scripts/security_tool_gate.sh` before release;
+- install CI security tools from checksum-verified crate archives;
 - update release notes for dependency changes;
 - add tests for behavior introduced by a dependency.
 

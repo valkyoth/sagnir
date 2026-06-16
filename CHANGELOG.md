@@ -6,7 +6,7 @@ All notable Sagnir changes are recorded here.
 
 ## 0.3.0
 
-Status: implementation stop.
+Status: tag candidate awaiting GitHub.
 
 - Added a testable `saga` CLI router.
 - Added golden-output tests for help, version, unknown-command, and

@@ -16,4 +16,5 @@ Release flow:
 10. Run `scripts/validate-release-notes.sh <version>`.
 11. Run `scripts/validate-pentest-report.sh <tag>`.
 12. Run the release gate for the target version.
-13. Tag only when explicitly requested.
+13. Wait for GitHub CI to go green for the exact release candidate.
+14. Tag only when explicitly requested.

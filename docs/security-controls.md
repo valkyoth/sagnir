@@ -7,20 +7,20 @@ Status: baseline control map
 | Toolchain | Rust stable `1.96.0` pinned | Active | `rust-toolchain.toml` |
 | Release arithmetic | Release profile keeps overflow checks enabled | Active | `Cargo.toml` |
 | Core runtime | Trusted library crates are `no_std` where practical | Active | crate roots |
-| Dependency policy | License, source, and advisory checks | Configured | `deny.toml` |
+| Dependency policy | License, source, wildcard, and advisory checks | Configured | `deny.toml` |
 | Security reporting | Private-first vulnerability handling | Configured | `SECURITY.md` |
 | Unsafe code | Forbidden in trusted scaffold | Active | crate roots and `scripts/validate-security-policy.sh` |
 | Hardcoded credentials | Targeted scan rejects hardcoded passphrase, password, API key, and secret key assignments | Active | `scripts/validate-security-policy.sh` |
 | Modularity | Focused crates and file-size gate | Active | `docs/modularity-policy.md` |
 | Canonical identity | Object type is part of identity metadata | Scaffolded | `sagnir-object` |
 | Local store | `.saga/` layout and WAL frame kinds | Scaffolded | `sagnir-store` |
-| Worktree safety | Control paths and traversal are rejected | Scaffolded | `sagnir-worktree` |
+| Worktree safety | Control paths, traversal, separators, and unsafe path bytes are rejected | Scaffolded | `sagnir-worktree` |
 | Policy | Aggregate policy decision type | Scaffolded | `sagnir-policy` |
 | Proof | Verification report type | Scaffolded | `sagnir-proof` |
 | Crypto agility | Signature algorithm and envelope metadata | Scaffolded | `sagnir-crypto` |
 | Algorithm admission | Unknown hash and signature algorithms fail closed at parse boundaries | Scaffolded | `sagnir-object`, `sagnir-crypto` |
 | Signature bounds | Empty and oversized signatures rejected | Scaffolded | `sagnir-crypto` |
-| Redacted crypto debug | Signature envelopes redact bytes in `Debug` output | Scaffolded | `sagnir-crypto` |
+| Redacted debug output | Signature envelopes, typed IDs, and object IDs redact sensitive bytes in `Debug` output | Scaffolded | `sagnir-core`, `sagnir-object`, `sagnir-crypto` |
 | Native encrypted realms | Encrypted `.saga/` storage, lock/unlock, recipient wrapping, crypto epochs, and leak scanning | Planned | `docs/vault-encryption.md` |
 | Private object IDs | Sealed private mode avoids public plaintext hash membership leaks | Planned | `docs/vault-encryption.md` |
 | Encrypted bundles | Recipient-targeted bundles and blind/split-trust sync modes | Planned | `docs/vault-encryption.md`, `docs/protocol.md` |
@@ -34,6 +34,7 @@ Status: baseline control map
 | Bundles | Bundle manifest and protocol metadata | Scaffolded | `sagnir-sync` |
 | Rootless container | Podman CLI image scaffold | Scaffolded | `Containerfile` |
 | Container digest pinning | Release images must pin base images by digest before publication | Planned | `docs/container-image-policy.md` |
+| CI security tools | Security tools are installed from checksum-verified crate archives | Active | `scripts/install_security_tools.sh` |
 
 ## Admission Rule
 

@@ -69,18 +69,18 @@ Sagnir is licensed under the European Union Public Licence 1.2.
 | Release notes validation | Active | Release notes must use the Sagnir release-note shape. |
 | Pentest report validation | Active | Permanent pentest reports must include status, commit, tester, date, scope, and notes. |
 | Container base pinning | Active | Rootless container build paths pin base images by digest. |
-| CI supply-chain hardening | Active | GitHub Actions checkout and security-tool install versions are pinned. |
+| CI supply-chain hardening | Active | GitHub Actions checkout is SHA-pinned and CI security tools install from checksum-verified crate archives. |
 | CodeQL | Repository setting | GitHub CodeQL default setup must be enabled in repository security settings. |
 
 ### Source-State Model
 
 | Capability | Status | Notes |
 | --- | --- | --- |
-| Core IDs and bounds | Scaffolded | Typed IDs, bounded names, case-folded `.saga` control-path rejection, and constant-time equality APIs for sensitive IDs. |
+| Core IDs and bounds | Scaffolded | Typed IDs, bounded names, case-folded `.saga` control-path rejection, redacted ID debug output, and timing-hardened equality APIs for sensitive IDs. |
 | Canonical codec | Scaffolded | Bounded scalar encoding helpers. |
 | Object identity | Scaffolded | Domain-separated object types and fail-closed hash algorithm parsing. |
 | Local store metadata | Scaffolded | `.saga/` layout and WAL frame kind scaffolds. |
-| Worktree path rules | Scaffolded | Control-path exclusion, path traversal rejection, separator policy, and symlink-boundary documentation. |
+| Worktree path rules | Scaffolded | Control-path exclusion, path traversal rejection, control-character rejection, separator policy, and symlink-boundary documentation. |
 | Policy metadata | Scaffolded | Policy results, validated obligation bitmasks, and named obligation checks. |
 | Crypto envelope metadata | Scaffolded | Algorithm admission, signature bounds, redacted debug output, and constant-time signature equality API. |
 | Bundle metadata | Scaffolded | Bundle manifest counts are bounded before future parser allocation paths. |
@@ -151,10 +151,17 @@ Run the rootless Podman smoke path:
 scripts/podman_smoke.sh
 ```
 
+Run the v0.3 release gate:
+
+```bash
+scripts/release_0_3_gate.sh
+```
+
 ## Current Release Line
 
-The repository is past `v0.2.0` and is currently working through the `v0.3.0`
-CLI router and golden-output baseline.
+The repository is past `v0.2.0`. The `v0.3.0` CLI router and golden-output
+baseline has completed local gates and two pentest passes. Tagging waits for
+GitHub to go green and for explicit maintainer instruction.
 
 Current release discipline:
 

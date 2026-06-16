@@ -13,6 +13,10 @@ stateful realm commands are added.
 The release gate also now enforces the strict 500-line Rust source limit and
 checks toolchain/tooling freshness before pentest handoff.
 
+Local implementation, finding closure, and pentest review are complete for the
+reviewed commit. Tagging waits for GitHub to go green and for explicit
+maintainer instruction.
+
 ## Verification
 
 Required local verification for this implementation stop:
@@ -25,8 +29,7 @@ scripts/checks.sh
 scripts/release_0_3_gate.sh
 ```
 
-`scripts/release_0_3_gate.sh` must fail until
-`security/pentest/v0.3.0.md` is completed with `Status: PASS`.
+`scripts/release_0_3_gate.sh` must pass before tagging.
 
 Tag stop:
 
@@ -45,6 +48,8 @@ Pentest task:
 - remove root `PENTEST.md`;
 - update `security/pentest/v0.3.0.md` with `Status: PASS`, exact commit,
   tester, date, scope, and notes before tagging.
+- wait for GitHub CI to go green before tagging;
+- tag only after explicit maintainer instruction.
 
 ## Security Notes
 
