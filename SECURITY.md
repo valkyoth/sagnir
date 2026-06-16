@@ -17,8 +17,9 @@ cargo audit
 scripts/generate-sbom.sh
 ```
 
-GitHub Actions run CI, and GitHub CodeQL default setup should be enabled in the
-repository security settings. Keep only one active CodeQL configuration.
+GitHub Actions run CI. GitHub CodeQL default setup must be enabled in the
+repository security settings, and Sagnir intentionally does not maintain a
+custom advanced CodeQL workflow. Keep only one active CodeQL configuration.
 
 ## Dependency Policy
 

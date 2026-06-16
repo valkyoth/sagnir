@@ -23,15 +23,16 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6.0.3
+        # actions/checkout v6.0.3
+        uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0
 
       - name: Install Rust toolchain
         run: rustup show
 
       - name: Install security tools
         run: |
-          cargo install --locked cargo-deny
-          cargo install --locked cargo-audit
+          cargo install --locked cargo-deny --version 0.19.9
+          cargo install --locked cargo-audit --version 0.22.2
 
       - name: Check formatting
         run: cargo fmt --all --check

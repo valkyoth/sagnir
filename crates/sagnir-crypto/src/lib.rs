@@ -2,7 +2,7 @@
 #![forbid(unsafe_code)]
 #![deny(unused_must_use)]
 
-use sagnir_core::SagnirError;
+use sagnir_core::{SagnirError, constant_time_bytes_eq};
 
 pub const SIGNATURE_BYTES_MAX: usize = 4_096;
 
@@ -14,10 +14,16 @@ pub enum SignatureAlgorithm {
     HybridClassicalPq,
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq)]
 pub struct SignatureEnvelope<'a> {
     algorithm: SignatureAlgorithm,
     bytes: &'a [u8],
+}
+
+impl PartialEq for SignatureEnvelope<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.ct_eq(other)
+    }
 }
 
 impl<'a> SignatureEnvelope<'a> {
@@ -41,6 +47,12 @@ impl<'a> SignatureEnvelope<'a> {
     #[must_use]
     pub const fn is_empty(self) -> bool {
         self.bytes.is_empty()
+    }
+
+    /// Constant-time signature byte equality for verification paths.
+    #[must_use]
+    pub fn ct_eq(&self, other: &Self) -> bool {
+        self.algorithm == other.algorithm && constant_time_bytes_eq(self.bytes, other.bytes)
     }
 }
 
@@ -86,6 +98,20 @@ mod tests {
             envelope.map(SignatureEnvelope::algorithm),
             Ok(SignatureAlgorithm::HybridClassicalPq)
         );
+    }
+
+    #[test]
+    fn signature_envelope_has_constant_time_equality_api() {
+        let left = SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &[1, 2, 3]);
+        let right = SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &[1, 2, 3]);
+        let different_algorithm = SignatureEnvelope::new(SignatureAlgorithm::MlDsa, &[1, 2, 3]);
+        let different_bytes = SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &[1, 2, 4]);
+
+        assert!(left.is_ok_and(|value| right.is_ok_and(|right| value.ct_eq(&right))));
+        assert!(
+            left.is_ok_and(|value| { different_algorithm.is_ok_and(|right| !value.ct_eq(&right)) })
+        );
+        assert!(left.is_ok_and(|value| different_bytes.is_ok_and(|right| !value.ct_eq(&right))));
     }
 
     #[test]

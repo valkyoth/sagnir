@@ -37,6 +37,7 @@ exposure.
 - WAL corruption;
 - alias rollback;
 - path traversal during worktree materialization;
+- symlink traversal outside the worktree or into `.saga/` control data;
 - `.saga/` control data accidentally tracked as source;
 - forged facts or reviews;
 - forged or replayed command events;
@@ -67,6 +68,8 @@ exposure.
 - immutable objects;
 - rebuildable indexes;
 - deterministic promotion preflight;
+- case-folded `.saga` control-path detection;
+- symlink resolution required before filesystem I/O accepts tracked candidates;
 - bounded signature envelopes;
 - crypto-agile metadata;
 - encrypted realm storage;

@@ -76,6 +76,9 @@ dependencies = [
 [[package]]
 name = "sagnir-policy"
 version = "0.1.0"
+dependencies = [
+ "sagnir-core",
+]
 
 [[package]]
 name = "sagnir-proof"
@@ -91,10 +94,16 @@ version = "0.1.0"
 [[package]]
 name = "sagnir-sync"
 version = "0.1.0"
+dependencies = [
+ "sagnir-core",
+]
 
 [[package]]
 name = "sagnir-worktree"
 version = "0.1.0"
+dependencies = [
+ "sagnir-core",
+]
 
 [[package]]
 name = "sagnir-world"

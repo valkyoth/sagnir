@@ -2,7 +2,7 @@
 #![forbid(unsafe_code)]
 #![deny(unused_must_use)]
 
-use sagnir_core::{ID_BYTES, TypedId};
+use sagnir_core::{ID_BYTES, TypedId, constant_time_bytes_eq};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 #[non_exhaustive]
@@ -23,11 +23,25 @@ pub enum ObjectType {
     Bundle,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq)]
 pub struct ObjectId {
     algorithm: HashAlgorithm,
     object_type: ObjectType,
     digest: [u8; ID_BYTES],
+}
+
+impl core::hash::Hash for ObjectId {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        core::hash::Hash::hash(&self.algorithm, state);
+        core::hash::Hash::hash(&self.object_type, state);
+        core::hash::Hash::hash(&self.digest, state);
+    }
+}
+
+impl PartialEq for ObjectId {
+    fn eq(&self, other: &Self) -> bool {
+        self.ct_eq(other)
+    }
 }
 
 pub const fn parse_hash_algorithm(raw: u16) -> Result<HashAlgorithm, sagnir_core::SagnirError> {
@@ -59,6 +73,15 @@ impl ObjectId {
     #[must_use]
     pub const fn digest(self) -> [u8; ID_BYTES] {
         self.digest
+    }
+
+    /// Constant-time digest equality for signature verification, proof
+    /// verification, and bundle acceptance checks.
+    #[must_use]
+    pub fn ct_eq(&self, other: &Self) -> bool {
+        self.algorithm == other.algorithm
+            && self.object_type == other.object_type
+            && constant_time_bytes_eq(&self.digest, &other.digest)
     }
 }
 
@@ -110,6 +133,19 @@ mod tests {
         let id = ObjectId::new(HashAlgorithm::Sha256, ObjectType::Tree, [1; ID_BYTES]);
         assert_eq!(id.object_type(), ObjectType::Tree);
         assert_eq!(id.digest(), [1; ID_BYTES]);
+    }
+
+    #[test]
+    fn object_id_has_constant_time_equality_api() {
+        let left = ObjectId::new(HashAlgorithm::Sha256, ObjectType::Tree, [1; ID_BYTES]);
+        let right = ObjectId::new(HashAlgorithm::Sha256, ObjectType::Tree, [1; ID_BYTES]);
+        let different_type = ObjectId::new(HashAlgorithm::Sha256, ObjectType::Blob, [1; ID_BYTES]);
+        let different_digest =
+            ObjectId::new(HashAlgorithm::Sha256, ObjectType::Tree, [2; ID_BYTES]);
+
+        assert!(left.ct_eq(&right));
+        assert!(!left.ct_eq(&different_type));
+        assert!(!left.ct_eq(&different_digest));
     }
 
     #[test]

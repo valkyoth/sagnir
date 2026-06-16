@@ -34,10 +34,23 @@ pub enum IdKind {
     Bundle,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq)]
 pub struct TypedId {
     kind: IdKind,
     bytes: [u8; ID_BYTES],
+}
+
+impl core::hash::Hash for TypedId {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        core::hash::Hash::hash(&self.kind, state);
+        core::hash::Hash::hash(&self.bytes, state);
+    }
+}
+
+impl PartialEq for TypedId {
+    fn eq(&self, other: &Self) -> bool {
+        self.ct_eq(other)
+    }
 }
 
 impl TypedId {
@@ -54,6 +67,12 @@ impl TypedId {
     #[must_use]
     pub const fn bytes(self) -> [u8; ID_BYTES] {
         self.bytes
+    }
+
+    /// Constant-time byte comparison for security-sensitive verification.
+    #[must_use]
+    pub fn ct_eq(&self, other: &Self) -> bool {
+        self.kind == other.kind && constant_time_bytes_eq(&self.bytes, &other.bytes)
     }
 }
 
@@ -72,6 +91,11 @@ pub struct BoundedName<'a> {
 }
 
 impl<'a> BoundedName<'a> {
+    /// Creates a bounded name from path-like ASCII-safe input.
+    ///
+    /// Platform note: `.saga` path segments are rejected with ASCII
+    /// case-folding so case-insensitive filesystems cannot alias Sagnir
+    /// control paths into source-state names.
     pub fn new(value: &'a str) -> Result<Self, SagnirError> {
         if value.is_empty() {
             return Err(SagnirError::EmptyName);
@@ -84,7 +108,7 @@ impl<'a> BoundedName<'a> {
         }
         if value
             .split('/')
-            .any(|part| part.is_empty() || part == "." || part == "..")
+            .any(|part| part.is_empty() || part == "." || part == ".." || is_saga_segment(part))
         {
             return Err(SagnirError::InvalidNameByte);
         }
@@ -100,6 +124,26 @@ impl<'a> BoundedName<'a> {
 #[must_use]
 pub const fn valid_name_byte(byte: u8) -> bool {
     matches!(byte, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-' | b'_' | b'/' | b'.')
+}
+
+#[must_use]
+pub fn constant_time_bytes_eq(left: &[u8], right: &[u8]) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+
+    let mut diff = 0_u8;
+    let mut index = 0;
+    while index < left.len() {
+        diff |= left[index] ^ right[index];
+        index += 1;
+    }
+    diff == 0
+}
+
+#[must_use]
+pub fn is_saga_segment(segment: &str) -> bool {
+    segment.eq_ignore_ascii_case(".saga")
 }
 
 #[cfg(test)]
@@ -134,9 +178,40 @@ mod tests {
     }
 
     #[test]
+    fn bounded_name_rejects_case_folded_saga_control_path() {
+        assert_eq!(
+            BoundedName::new(".Saga/config"),
+            Err(SagnirError::InvalidNameByte)
+        );
+        assert_eq!(
+            BoundedName::new("sub/.SAGA"),
+            Err(SagnirError::InvalidNameByte)
+        );
+    }
+
+    #[test]
+    fn constant_time_bytes_eq_checks_full_slice() {
+        assert!(constant_time_bytes_eq(&[1, 2, 3], &[1, 2, 3]));
+        assert!(!constant_time_bytes_eq(&[1, 2, 3], &[1, 2, 4]));
+        assert!(!constant_time_bytes_eq(&[1, 2, 3], &[1, 2]));
+    }
+
+    #[test]
     fn typed_id_keeps_kind_and_bytes() {
         let id = TypedId::new(IdKind::World, [7; ID_BYTES]);
         assert_eq!(id.kind(), IdKind::World);
         assert_eq!(id.bytes(), [7; ID_BYTES]);
+    }
+
+    #[test]
+    fn typed_id_has_constant_time_equality_api() {
+        let left = TypedId::new(IdKind::World, [7; ID_BYTES]);
+        let right = TypedId::new(IdKind::World, [7; ID_BYTES]);
+        let different_kind = TypedId::new(IdKind::Change, [7; ID_BYTES]);
+        let different_bytes = TypedId::new(IdKind::World, [8; ID_BYTES]);
+
+        assert!(left.ct_eq(&right));
+        assert!(!left.ct_eq(&different_kind));
+        assert!(!left.ct_eq(&different_bytes));
     }
 }

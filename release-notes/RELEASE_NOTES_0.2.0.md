@@ -38,3 +38,8 @@ Pentest task:
   security tool gate.
 - `scripts/release_0_2_gate.sh` refuses to pass until the v0.2.0 pentest report
   is marked `Status: PASS`.
+- First pentest findings closed before tag: case-folded `.saga` control-path
+  detection, constant-time equality APIs for sensitive identifiers, broader
+  credential scanning, pinned CI action and security-tool versions, bounded
+  bundle counts, validated obligation bitmasks, symlink policy documentation,
+  CodeQL default setup documentation, and container build-context cleanup.

@@ -1,8 +1,10 @@
 .git
 .cargo
+.cargo-deny-advisory-dbs
 target
 docs
 examples/public
+security
 *.log
 *.tmp
 tmp

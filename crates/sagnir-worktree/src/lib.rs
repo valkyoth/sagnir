@@ -9,6 +9,11 @@ pub enum PathClass {
     Invalid,
 }
 
+/// Classifies a relative path by string content only.
+///
+/// Note: this function does not resolve symlinks. Callers performing
+/// filesystem I/O must independently verify that resolved targets stay inside
+/// the worktree boundary before reading or materializing a tracked candidate.
 #[must_use]
 pub fn classify_relative_path(path: &str) -> PathClass {
     if path.is_empty() || path.starts_with('/') || path.starts_with('\\') {
@@ -31,10 +36,7 @@ pub fn classify_relative_path(path: &str) -> PathClass {
 
 #[must_use]
 pub fn is_control_path(path: &str) -> bool {
-    path == ".saga"
-        || path.starts_with(".saga/")
-        || path.contains("/.saga/")
-        || path.ends_with("/.saga")
+    path.split('/').any(sagnir_core::is_saga_segment)
 }
 
 #[cfg(test)]
@@ -56,6 +58,14 @@ mod tests {
     }
 
     #[test]
+    fn uppercase_control_path_is_not_trackable() {
+        assert_eq!(classify_relative_path(".Saga/config"), PathClass::Control);
+        assert_eq!(classify_relative_path(".SAGA/objects"), PathClass::Control);
+        assert_eq!(classify_relative_path("sub/.Saga"), PathClass::Control);
+        assert!(is_control_path(".Saga/config"));
+    }
+
+    #[test]
     fn windows_separator_control_path_is_invalid_by_policy() {
         assert_eq!(classify_relative_path(".saga\\objects"), PathClass::Invalid);
     }
@@ -63,5 +73,13 @@ mod tests {
     #[test]
     fn parent_escape_is_invalid() {
         assert_eq!(classify_relative_path("../outside"), PathClass::Invalid);
+    }
+
+    #[test]
+    fn symlink_policy_is_not_handled_by_string_classification() {
+        assert_eq!(
+            classify_relative_path("src/link"),
+            PathClass::TrackedCandidate
+        );
     }
 }

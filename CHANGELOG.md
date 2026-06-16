@@ -7,6 +7,7 @@ All notable Sagnir changes are recorded here.
 - Added the v0.2.0 release gate baseline.
 - Added reusable release-note and pentest-report validators.
 - Added v0.2.0 release notes and pentest placeholder.
+- Addressed the first v0.2.0 pentest findings.
 
 ## 0.1.0
 
