@@ -13,5 +13,7 @@ Release flow:
 7. Remove root `PENTEST.md`.
 8. Record permanent pentest result under `security/pentest/`.
 9. Update release notes.
-10. Run the release gate for the target version.
-11. Tag only when explicitly requested.
+10. Run `scripts/validate-release-notes.sh <version>`.
+11. Run `scripts/validate-pentest-report.sh <tag>`.
+12. Run the release gate for the target version.
+13. Tag only when explicitly requested.
