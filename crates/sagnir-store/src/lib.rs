@@ -29,6 +29,7 @@ pub enum WalFrameKind {
     PutWorldState,
     UpdateAlias,
     CommitTx,
+    AbortTx,
 }
 
 #[must_use]
@@ -49,5 +50,10 @@ mod tests {
     fn required_dirs_include_objects_and_wal() {
         assert!(is_required_store_dir(".saga/objects"));
         assert!(is_required_store_dir(".saga/wal"));
+    }
+
+    #[test]
+    fn wal_frame_kind_has_explicit_abort() {
+        assert_eq!(WalFrameKind::AbortTx, WalFrameKind::AbortTx);
     }
 }

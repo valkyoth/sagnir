@@ -27,6 +27,11 @@ impl ProofReport {
     pub const fn status(self) -> ProofStatus {
         self.status
     }
+
+    #[must_use]
+    pub const fn policy(self) -> PolicyResult {
+        self.policy
+    }
 }
 
 #[cfg(test)]
@@ -37,5 +42,6 @@ mod tests {
     fn proof_report_records_status() {
         let report = ProofReport::new(ProofStatus::MissingEvidence, PolicyResult::RequireProof);
         assert_eq!(report.status(), ProofStatus::MissingEvidence);
+        assert_eq!(report.policy(), PolicyResult::RequireProof);
     }
 }

@@ -10,6 +10,8 @@ Run these regularly and before releases:
 
 ```bash
 scripts/checks.sh
+scripts/security_tool_gate.sh
+scripts/validate-pentest-pass.sh v0.1.0
 cargo deny check
 cargo audit
 scripts/generate-sbom.sh

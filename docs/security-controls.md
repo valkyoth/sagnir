@@ -10,6 +10,7 @@ Status: baseline control map
 | Dependency policy | License, source, and advisory checks | Configured | `deny.toml` |
 | Security reporting | Private-first vulnerability handling | Configured | `SECURITY.md` |
 | Unsafe code | Forbidden in trusted scaffold | Active | crate roots and `scripts/validate-security-policy.sh` |
+| Hardcoded credentials | Targeted scan rejects hardcoded passphrase, password, API key, and secret key assignments | Active | `scripts/validate-security-policy.sh` |
 | Modularity | Focused crates and file-size gate | Active | `docs/modularity-policy.md` |
 | Canonical identity | Object type is part of identity metadata | Scaffolded | `sagnir-object` |
 | Local store | `.saga/` layout and WAL frame kinds | Scaffolded | `sagnir-store` |
@@ -17,7 +18,9 @@ Status: baseline control map
 | Policy | Aggregate policy decision type | Scaffolded | `sagnir-policy` |
 | Proof | Verification report type | Scaffolded | `sagnir-proof` |
 | Crypto agility | Signature algorithm and envelope metadata | Scaffolded | `sagnir-crypto` |
+| Algorithm admission | Unknown hash and signature algorithms fail closed at parse boundaries | Scaffolded | `sagnir-object`, `sagnir-crypto` |
 | Signature bounds | Empty and oversized signatures rejected | Scaffolded | `sagnir-crypto` |
+| Redacted crypto debug | Signature envelopes redact bytes in `Debug` output | Scaffolded | `sagnir-crypto` |
 | Native encrypted realms | Encrypted `.saga/` storage, lock/unlock, recipient wrapping, crypto epochs, and leak scanning | Planned | `docs/vault-encryption.md` |
 | Private object IDs | Sealed private mode avoids public plaintext hash membership leaks | Planned | `docs/vault-encryption.md` |
 | Encrypted bundles | Recipient-targeted bundles and blind/split-trust sync modes | Planned | `docs/vault-encryption.md`, `docs/protocol.md` |
@@ -25,6 +28,7 @@ Status: baseline control map
 | Blast radius | Local causal traversal for taint and quarantine | Planned | `docs/IMPLEMENTATION_PLAN.md` |
 | Bundles | Bundle manifest and protocol metadata | Scaffolded | `sagnir-sync` |
 | Rootless container | Podman CLI image scaffold | Scaffolded | `Containerfile` |
+| Container digest pinning | Release images must pin base images by digest before publication | Planned | `docs/container-image-policy.md` |
 
 ## Admission Rule
 

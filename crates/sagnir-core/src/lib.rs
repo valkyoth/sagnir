@@ -82,6 +82,12 @@ impl<'a> BoundedName<'a> {
         if !value.bytes().all(valid_name_byte) {
             return Err(SagnirError::InvalidNameByte);
         }
+        if value
+            .split('/')
+            .any(|part| part.is_empty() || part == "." || part == "..")
+        {
+            return Err(SagnirError::InvalidNameByte);
+        }
         Ok(Self { value })
     }
 
@@ -109,6 +115,22 @@ mod tests {
     #[test]
     fn bounded_name_rejects_empty() {
         assert_eq!(BoundedName::new(""), Err(SagnirError::EmptyName));
+    }
+
+    #[test]
+    fn bounded_name_rejects_path_traversal_segments() {
+        assert_eq!(
+            BoundedName::new("../outside"),
+            Err(SagnirError::InvalidNameByte)
+        );
+        assert_eq!(
+            BoundedName::new("draft/../main"),
+            Err(SagnirError::InvalidNameByte)
+        );
+        assert_eq!(
+            BoundedName::new("draft//main"),
+            Err(SagnirError::InvalidNameByte)
+        );
     }
 
     #[test]

@@ -14,7 +14,10 @@ pub fn classify_relative_path(path: &str) -> PathClass {
     if path.is_empty() || path.starts_with('/') || path.starts_with('\\') {
         return PathClass::Invalid;
     }
-    if path == ".saga" || path.starts_with(".saga/") || path.contains("/.saga/") {
+    if path.as_bytes().contains(&b'\\') {
+        return PathClass::Invalid;
+    }
+    if is_control_path(path) {
         return PathClass::Control;
     }
     if path
@@ -23,10 +26,15 @@ pub fn classify_relative_path(path: &str) -> PathClass {
     {
         return PathClass::Invalid;
     }
-    if path.as_bytes().contains(&b'\\') {
-        return PathClass::Invalid;
-    }
     PathClass::TrackedCandidate
+}
+
+#[must_use]
+pub fn is_control_path(path: &str) -> bool {
+    path == ".saga"
+        || path.starts_with(".saga/")
+        || path.contains("/.saga/")
+        || path.ends_with("/.saga")
 }
 
 #[cfg(test)]
@@ -44,6 +52,12 @@ mod tests {
     #[test]
     fn control_path_is_not_trackable() {
         assert_eq!(classify_relative_path(".saga/objects"), PathClass::Control);
+        assert_eq!(classify_relative_path("sub/.saga"), PathClass::Control);
+    }
+
+    #[test]
+    fn windows_separator_control_path_is_invalid_by_policy() {
+        assert_eq!(classify_relative_path(".saga\\objects"), PathClass::Invalid);
     }
 
     #[test]

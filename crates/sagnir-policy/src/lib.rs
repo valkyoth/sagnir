@@ -11,14 +11,33 @@ pub enum PolicyResult {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ObligationSet(u16);
+
+impl ObligationSet {
+    pub const NONE: Self = Self(0);
+    pub const REQUIRE_TEST_EVIDENCE: Self = Self(1 << 0);
+    pub const REQUIRE_REVIEW: Self = Self(1 << 1);
+
+    #[must_use]
+    pub const fn bits(self) -> u16 {
+        self.0
+    }
+
+    #[must_use]
+    pub const fn has(self, flag: Self) -> bool {
+        self.0 & flag.0 == flag.0
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PolicyDecision {
     result: PolicyResult,
-    obligations: u16,
+    obligations: ObligationSet,
 }
 
 impl PolicyDecision {
     #[must_use]
-    pub const fn new(result: PolicyResult, obligations: u16) -> Self {
+    pub const fn new(result: PolicyResult, obligations: ObligationSet) -> Self {
         Self {
             result,
             obligations,
@@ -31,7 +50,7 @@ impl PolicyDecision {
     }
 
     #[must_use]
-    pub const fn obligations(self) -> u16 {
+    pub const fn obligations(self) -> ObligationSet {
         self.obligations
     }
 }
@@ -42,8 +61,10 @@ mod tests {
 
     #[test]
     fn policy_decision_exposes_aggregate_result() {
-        let decision = PolicyDecision::new(PolicyResult::RequireProof, 2);
+        let decision =
+            PolicyDecision::new(PolicyResult::RequireProof, ObligationSet::REQUIRE_REVIEW);
         assert_eq!(decision.result(), PolicyResult::RequireProof);
-        assert_eq!(decision.obligations(), 2);
+        assert!(decision.obligations().has(ObligationSet::REQUIRE_REVIEW));
+        assert_eq!(decision.obligations().bits(), 2);
     }
 }

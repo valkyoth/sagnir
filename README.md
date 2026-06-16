@@ -51,6 +51,7 @@ scripts/checks.sh
 - [Command Design](docs/command-design.md)
 - [Vault Encryption](docs/vault-encryption.md)
 - [Security Controls](docs/security-controls.md)
+- [Container Image Policy](docs/container-image-policy.md)
 - [Threat Model](docs/threat-model.md)
 - [Toolchain Policy](docs/toolchain-policy.md)
 - [Modularity Policy](docs/modularity-policy.md)

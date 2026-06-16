@@ -16,6 +16,10 @@ Object identity must be:
 hash("sagnir.object.v1" || object_type || canonical_bytes)
 ```
 
+The initial admitted hash algorithm has a 32-byte digest. New hash algorithms
+must be admitted through explicit parser support and must not silently truncate
+or pad digest bytes to fit an existing object ID shape.
+
 Required object kinds:
 
 - blob;

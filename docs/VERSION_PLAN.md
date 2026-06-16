@@ -122,6 +122,8 @@ Deliverables:
 - release notes validator;
 - root `PENTEST.md` rejection;
 - release gate script for v0.2.0;
+- `release-notes/RELEASE_NOTES_0.2.0.md`;
+- `security/pentest/v0.2.0.md`;
 - documentation for no tag before pentest.
 
 Verification:
@@ -211,6 +213,7 @@ Deliverables:
 - flags field;
 - critical-extension rejection model;
 - parser tests for malformed headers.
+- fuzz target scaffold for object-header parsing.
 
 Verification:
 
@@ -220,6 +223,8 @@ Exit criteria:
 
 - Object readers can reject wrong type, wrong version, duplicate fields, and
   oversize body metadata before allocation.
+- New object parsers have a standard fuzz target location from the first parser
+  milestone.
 
 ### v0.7.0 - Domain-Separated Object Identity
 
@@ -232,6 +237,7 @@ Deliverables:
 - digest length checks;
 - object ID display format;
 - object ID parse tests;
+- constant-time digest comparison admission policy;
 - collision-domain tests across object kinds.
 
 Verification:
@@ -242,6 +248,8 @@ Exit criteria:
 
 - Blob, tree, state root, change, world, fact, operation, and bundle identities
   cannot be confused by equal raw digests.
+- Object ID equality used in security-sensitive verification has an admitted
+  timing-safe comparison strategy before durable storage relies on it.
 
 ### v0.8.0 - In-Memory Object Graph
 
@@ -402,7 +410,7 @@ Deliverables:
 - relative path scanner;
 - `.saga/` control path exclusion;
 - parent traversal rejection;
-- Windows separator rejection or normalization policy;
+- Windows separator rejection policy;
 - symlink policy scaffold;
 - path tests for Linux, Windows-style separators, BSD, MacOS, Android, and iOS.
 
@@ -413,6 +421,8 @@ Verification:
 Exit criteria:
 
 - Sagnir never treats `.saga/` control data as source content.
+- Windows-style separator inputs are rejected consistently before control-path
+  materialization.
 
 ### v0.16.0 - Ignore Rules
 
@@ -1487,9 +1497,9 @@ Exit criteria:
 
 - Known malicious bytes stay rejected across releases.
 
-### v0.65.0 - Fuzz And Model Test Scaffold
+### v0.65.0 - Expanded Fuzz And Model Test Scaffold
 
-Goal: prepare parser and state-machine fuzzing.
+Goal: expand fuzz and model testing beyond the parser scaffolds added earlier.
 
 Deliverables:
 
@@ -1540,6 +1550,7 @@ Deliverables:
 
 - rootless Podman build;
 - rootless Podman run;
+- release base image digest pinning;
 - CLI smoke test;
 - non-root user in image;
 - container documentation.
@@ -1551,6 +1562,7 @@ Verification:
 Exit criteria:
 
 - A user can run the CLI in rootless Podman.
+- Release images do not use mutable base image tags.
 
 ### v0.68.0 - Release Evidence
 

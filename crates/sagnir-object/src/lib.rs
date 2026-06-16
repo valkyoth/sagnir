@@ -5,9 +5,9 @@
 use sagnir_core::{ID_BYTES, TypedId};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[non_exhaustive]
 pub enum HashAlgorithm {
     Sha256,
-    Future(u16),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -28,6 +28,13 @@ pub struct ObjectId {
     algorithm: HashAlgorithm,
     object_type: ObjectType,
     digest: [u8; ID_BYTES],
+}
+
+pub const fn parse_hash_algorithm(raw: u16) -> Result<HashAlgorithm, sagnir_core::SagnirError> {
+    match raw {
+        1 => Ok(HashAlgorithm::Sha256),
+        _ => Err(sagnir_core::SagnirError::InvalidValue),
+    }
 }
 
 impl ObjectId {
@@ -116,5 +123,13 @@ mod tests {
         let object_id = ObjectId::new(HashAlgorithm::Sha256, ObjectType::Tree, [3; ID_BYTES]);
         let root = StateRootRef::new(state_id, object_id, 1);
         assert_eq!(root.format_version(), 1);
+    }
+
+    #[test]
+    fn unknown_hash_algorithm_fails_closed() {
+        assert_eq!(
+            parse_hash_algorithm(999),
+            Err(sagnir_core::SagnirError::InvalidValue)
+        );
     }
 }

@@ -22,3 +22,12 @@ If unsafe code ever becomes unavoidable:
 - release notes must call out the new unsafe boundary.
 
 No unsafe boundary is admitted in the v0.1.0 scaffold.
+
+## Sensitive Debug Policy
+
+Types that hold key material, plaintext secrets, signatures, ciphertext keys,
+recipient wrapping data, or decrypted object bytes must not derive `Debug`
+unless the derived output is proven not to expose sensitive bytes.
+
+Use manual `Debug` implementations that report lengths, algorithm identifiers,
+and redacted markers instead of byte contents.

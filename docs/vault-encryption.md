@@ -93,6 +93,10 @@ user passphrase / device key / hardware key / recipient key
 The realm master key is random. A passphrase unlocks or wraps it; the passphrase
 is not the realm master key.
 
+Key material types must have an admitted zero-on-drop policy before they are
+implemented. Until a zeroing provider is admitted, vault work may model key
+metadata but must not store real secret bytes in long-lived Rust values.
+
 ## Object Identity In Encrypted Realms
 
 Open mode:

@@ -17,8 +17,7 @@ Rules:
 - deny unknown registries and unknown git sources;
 - keep license exceptions narrow;
 - check latest stable crate versions before adding or updating dependencies;
-- run `cargo deny check`;
-- run `cargo audit`;
+- run `scripts/security_tool_gate.sh` before release;
 - update release notes for dependency changes;
 - add tests for behavior introduced by a dependency.
 
