@@ -5,7 +5,8 @@ Status: baseline
 Sagnir assumes hostile networks, malicious bundles, copied repositories,
 compromised developer devices, stolen signing keys, poisoned dependencies,
 corrupt object packs, replayed sync messages, stale remotes, malicious
-automation, and partial local disk exposure.
+automation, local plaintext leakage while unlocked, and partial local disk
+exposure.
 
 ## Protected Assets
 
@@ -19,7 +20,11 @@ automation, and partial local disk exposure.
 - evidence references;
 - local operation log;
 - sync bundles;
-- key metadata.
+- key metadata;
+- encrypted realm keys;
+- recipient slots;
+- compartment metadata;
+- encrypted bundle manifests.
 
 ## Initial Threats
 
@@ -35,6 +40,10 @@ automation, and partial local disk exposure.
 - poisoned automation output;
 - bundle replay;
 - local key disclosure through logs or debug output.
+- plaintext left in editor caches, build outputs, language-server indexes,
+  shell history, backups, or OS search indexes;
+- public object IDs leaking known plaintext membership in encrypted realms;
+- recipient removal being mistaken for retroactive access revocation.
 
 ## Design Responses
 
@@ -46,6 +55,12 @@ automation, and partial local disk exposure.
 - deterministic promotion preflight;
 - bounded signature envelopes;
 - crypto-agile metadata;
+- encrypted realm storage;
+- private keyed object IDs for sealed private mode;
+- lock/unlock materialization;
+- recipient key wrapping;
+- key epochs and rekey operations;
+- plaintext leak scanner;
 - local proof verification;
 - causal impact traversal;
 - quarantine state;

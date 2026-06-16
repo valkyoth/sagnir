@@ -6,6 +6,11 @@ Sagnir treats dependency updates, build scripts, CI edits, release scripts,
 procedural macros, and native build dependencies as executable supply-chain
 changes.
 
+Cryptographic provider changes are high-risk supply-chain changes. A provider
+for password hashing, AEAD encryption, key wrapping, hardware keys, OS keychain
+integration, or post-quantum algorithms must have explicit admission notes,
+license review, maintenance review, tests, and release-note coverage.
+
 Rules:
 
 - use crates.io releases unless a documented exception is approved;

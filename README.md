@@ -20,6 +20,9 @@ This repository currently contains:
 - Focused crates for core IDs, canonical encoding, objects, store metadata,
   worktree rules, changes, worlds, facts, policy, crypto envelopes, proofs,
   sync bundles, the `saga` CLI, and the future `sagad` daemon.
+- Planning for native encrypted realms through `saga encrypt project`,
+  `saga unlock`, `saga lock`, encrypted bundles, recipient keys, and future
+  compartment encryption.
 - `no_std` trusted library scaffolds where practical.
 - Security, modularity, release, and implementation planning docs.
 - Local check scripts for format, lint, tests, docs, security policy, and
@@ -46,6 +49,7 @@ scripts/checks.sh
 - [Version Plan](docs/VERSION_PLAN.md)
 - [Architecture](docs/architecture.md)
 - [Command Design](docs/command-design.md)
+- [Vault Encryption](docs/vault-encryption.md)
 - [Security Controls](docs/security-controls.md)
 - [Threat Model](docs/threat-model.md)
 - [Toolchain Policy](docs/toolchain-policy.md)

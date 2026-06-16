@@ -1036,9 +1036,275 @@ Exit criteria:
 
 - Sagnir can identify downstream local state that needs review or quarantine.
 
-## Phase 8: Bundles And Sync
+## Phase 8: Native Encrypted Realms
 
-### v0.45.0 - Pack File Format
+### v0.45.0 - Vault Metadata Model
+
+Goal: represent encrypted realm state without encrypting data yet.
+
+Deliverables:
+
+- vault enabled marker;
+- vault mode model;
+- crypto epoch reference;
+- protected metadata policy;
+- encrypted realm status model;
+- tests for invalid vault metadata.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+
+Exit criteria:
+
+- Sagnir can distinguish open realms from encrypted realms before touching
+  object encryption.
+
+### v0.46.0 - Encrypted Object Envelope
+
+Goal: define encrypted object bytes and authenticated metadata.
+
+Deliverables:
+
+- encrypted object magic;
+- AEAD algorithm identifier;
+- nonce field;
+- ciphertext length field;
+- authentication tag field;
+- associated-data binding for realm, object type, and crypto epoch;
+- malformed envelope tests.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-crypto`
+
+Exit criteria:
+
+- Encrypted object metadata is bounded and context-bound before decryption.
+
+### v0.47.0 - Passphrase Unlock Baseline
+
+Goal: support one local unlock method for development and tests.
+
+Deliverables:
+
+- passphrase-based key wrapping metadata;
+- memory-hard KDF admission notes;
+- key-encryption-key metadata;
+- realm-master-key wrapping model;
+- no passphrase in logs or debug output tests.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+
+Exit criteria:
+
+- A passphrase can unlock a test realm key without becoming the realm key.
+
+### v0.48.0 - Encrypt Project Command
+
+Goal: enable encrypted realm storage through `saga`.
+
+Deliverables:
+
+- `saga encrypt project`;
+- vault init transaction;
+- encryption-enabled fact placeholder;
+- existing object migration plan;
+- refusal for already encrypted realm;
+- dry-run output tests.
+
+Verification:
+
+- `cargo test -p sagnir-cli`
+- `cargo test -p sagnir-store`
+
+Exit criteria:
+
+- A user can turn a local realm into an encrypted realm through an explicit
+  command.
+
+### v0.49.0 - Unlock Command
+
+Goal: load admitted keys for a local encrypted realm.
+
+Deliverables:
+
+- `saga unlock`;
+- unlock session metadata;
+- time-to-live metadata;
+- `--no-worktree` verification mode;
+- failed unlock tests.
+
+Verification:
+
+- `cargo test -p sagnir-cli`
+- `cargo test -p sagnir-crypto`
+
+Exit criteria:
+
+- Sagnir can verify encrypted storage without always materializing plaintext.
+
+### v0.50.0 - Lock Command
+
+Goal: evict local unlock state and optionally remove materialized plaintext.
+
+Deliverables:
+
+- `saga lock`;
+- key eviction metadata;
+- `--wipe-worktree`;
+- `--keep-worktree`;
+- warning text about imperfect plaintext cleanup;
+- lock tests.
+
+Verification:
+
+- `cargo test -p sagnir-cli`
+- `cargo test -p sagnir-worktree`
+
+Exit criteria:
+
+- Sagnir clearly separates encrypted storage from plaintext worktree state.
+
+### v0.51.0 - Vault Status And Leak Scanner
+
+Goal: make encrypted realm state and plaintext leak surfaces visible.
+
+Deliverables:
+
+- `saga vault status`;
+- `saga vault scan-leaks`;
+- ignored-directory checks;
+- editor cache checks;
+- build output checks;
+- leak warning fixture tests.
+
+Verification:
+
+- `cargo test -p sagnir-cli`
+- `cargo test -p sagnir-worktree`
+
+Exit criteria:
+
+- Users get honest warnings about plaintext risks while unlocked.
+
+### v0.52.0 - Recipient Slot Model
+
+Goal: support recipient-based key wrapping metadata.
+
+Deliverables:
+
+- recipient ID;
+- recipient kind;
+- wrapped key metadata;
+- key-wrap algorithm identifier;
+- created-by actor reference;
+- recipient signature placeholder;
+- add/remove validation tests.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+
+Exit criteria:
+
+- Sagnir can describe who may unlock future encrypted realm keys.
+
+### v0.53.0 - Rekey And Crypto Epochs
+
+Goal: rotate encrypted realm keys without mutating old history in place.
+
+Deliverables:
+
+- crypto epoch transition;
+- `saga vault rekey`;
+- recipient rewrap plan;
+- old-key retention policy;
+- tests for invalid epoch transitions.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-cli`
+
+Exit criteria:
+
+- Key rotation is a signed transition model, not an in-place mutation.
+
+### v0.54.0 - Sealed Private Object IDs
+
+Goal: avoid known-plaintext membership leaks in encrypted realms.
+
+Deliverables:
+
+- private keyed object ID metadata;
+- ciphertext storage ID metadata;
+- deduplication ID policy;
+- randomized encryption requirement;
+- tests that public plaintext hashes are not exposed in sealed private mode.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-crypto`
+
+Exit criteria:
+
+- Encrypted realms can hide whether known plaintext objects are present.
+
+### v0.55.0 - Compartment Encryption Scaffold
+
+Goal: prepare path, world, and projection-level encryption boundaries.
+
+Deliverables:
+
+- compartment ID;
+- compartment key metadata;
+- `saga vault compartment create`;
+- `saga vault protect`;
+- `saga vault unprotect`;
+- partial unlock metadata;
+- compartment policy tests.
+
+Verification:
+
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-cli`
+
+Exit criteria:
+
+- Sagnir can represent different access boundaries inside one encrypted realm.
+
+### v0.56.0 - Hybrid Post-Quantum Readiness Scaffold
+
+Goal: prepare recipient wrapping and signatures for reviewed hybrid algorithms.
+
+Deliverables:
+
+- hybrid key-wrap metadata;
+- post-quantum algorithm registry placeholders;
+- algorithm admission document;
+- crypto provider review checklist;
+- tests that unknown or unadmitted algorithms fail closed.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `scripts/checks.sh`
+
+Exit criteria:
+
+- Sagnir is ready to admit hybrid classical plus post-quantum providers without
+  changing object formats.
+
+## Phase 9: Bundles And Sync
+
+### v0.57.0 - Pack File Format
 
 Goal: store multiple immutable objects in a bounded pack.
 
@@ -1060,9 +1326,10 @@ Exit criteria:
 
 - Pack readers verify bounds before trusting offsets or object counts.
 
-### v0.46.0 - Bundle Manifest
+### v0.58.0 - Bundle Manifest
 
-Goal: describe a proof-carrying offline transfer.
+Goal: describe a proof-carrying offline transfer, including encrypted transfer
+metadata.
 
 Deliverables:
 
@@ -1071,6 +1338,8 @@ Deliverables:
 - world refs;
 - fact refs;
 - policy refs;
+- encrypted bundle marker;
+- visible versus encrypted metadata policy;
 - manifest validation tests.
 
 Verification:
@@ -1081,14 +1350,16 @@ Exit criteria:
 
 - Sagnir can describe what a bundle claims before loading bundle bodies.
 
-### v0.47.0 - Bundle Create And Verify
+### v0.59.0 - Bundle Create And Verify
 
-Goal: create and verify offline bundles.
+Goal: create and verify offline bundles before import or decrypt.
 
 Deliverables:
 
 - `saga bundle create`;
 - `saga bundle verify`;
+- `saga bundle create --encrypted`;
+- recipient-targeted bundle metadata;
 - bundle signature footer placeholder;
 - missing object detection;
 - malicious bundle tests.
@@ -1100,17 +1371,19 @@ Verification:
 
 Exit criteria:
 
-- A bundle can be verified before import.
+- A bundle can be verified before import, and encrypted bundle metadata is
+  checked before decrypt.
 
-### v0.48.0 - Bundle Import
+### v0.60.0 - Bundle Import
 
-Goal: import verified bundles safely.
+Goal: import verified bundles safely, including encrypted bundles.
 
 Deliverables:
 
 - `saga bundle import`;
 - object deduplication;
 - fact deduplication;
+- decrypt-before-import policy;
 - world alias import policy;
 - quarantine-on-policy-failure behavior.
 
@@ -1123,7 +1396,7 @@ Exit criteria:
 
 - Import cannot overwrite local world aliases without explicit policy.
 
-### v0.49.0 - Sync Negotiation
+### v0.61.0 - Sync Negotiation
 
 Goal: exchange local and remote heads before transfer.
 
@@ -1133,6 +1406,7 @@ Deliverables:
 - missing object response;
 - missing fact response;
 - protocol version negotiation;
+- encrypted realm mode negotiation;
 - replay rejection metadata.
 
 Verification:
@@ -1143,7 +1417,7 @@ Exit criteria:
 
 - Sync can determine the smallest required bundle for a remote.
 
-### v0.50.0 - Sync Transfer
+### v0.62.0 - Sync Transfer
 
 Goal: transfer proof-carrying bundles to a remote endpoint.
 
@@ -1153,6 +1427,8 @@ Deliverables:
 - accepted response;
 - denied response;
 - quarantined response;
+- blind remote response;
+- split-trust remote response;
 - local sync result fact;
 - protocol tests.
 
@@ -1163,9 +1439,10 @@ Verification:
 
 Exit criteria:
 
-- Local work can sync without requiring a hosted product.
+- Local work can sync without requiring a hosted product, including encrypted
+  blind-storage workflows.
 
-### v0.51.0 - Minimal Daemon
+### v0.63.0 - Minimal Daemon
 
 Goal: provide optional local and remote daemon support.
 
@@ -1187,9 +1464,9 @@ Exit criteria:
 
 - A minimal Sagnir remote exists for sync testing.
 
-## Phase 9: Hardening And Portability
+## Phase 10: Hardening And Portability
 
-### v0.52.0 - Malicious Corpus
+### v0.64.0 - Malicious Corpus
 
 Goal: make hostile input testing part of normal development.
 
@@ -1210,7 +1487,7 @@ Exit criteria:
 
 - Known malicious bytes stay rejected across releases.
 
-### v0.53.0 - Fuzz And Model Test Scaffold
+### v0.65.0 - Fuzz And Model Test Scaffold
 
 Goal: prepare parser and state-machine fuzzing.
 
@@ -1232,7 +1509,7 @@ Exit criteria:
 
 - New parsers have a standard place to add fuzz coverage.
 
-### v0.54.0 - Cross-Platform Build Gate
+### v0.66.0 - Cross-Platform Build Gate
 
 Goal: keep Sagnir portable from day one.
 
@@ -1255,7 +1532,7 @@ Exit criteria:
 
 - Platform assumptions are explicit and tested where practical.
 
-### v0.55.0 - Rootless Podman Gate
+### v0.67.0 - Rootless Podman Gate
 
 Goal: make `saga` usable from a rootless container.
 
@@ -1275,7 +1552,7 @@ Exit criteria:
 
 - A user can run the CLI in rootless Podman.
 
-### v0.56.0 - Release Evidence
+### v0.68.0 - Release Evidence
 
 Goal: make release outputs auditable.
 
@@ -1297,7 +1574,7 @@ Exit criteria:
 
 - A release candidate produces auditable local evidence.
 
-### v0.57.0 - 1.0 Release Candidate Gate
+### v0.69.0 - 1.0 Release Candidate Gate
 
 Goal: freeze the 1.0 feature set and reject incomplete production behavior.
 
@@ -1333,8 +1610,14 @@ Deliverables:
 - operation undo;
 - local facts;
 - why and impact;
+- encrypted local realms;
+- lock and unlock;
+- vault status and leak scanning;
+- recipient metadata and rekeying;
 - bundles;
+- encrypted bundles;
 - minimal sync;
+- blind or split-trust encrypted sync mode;
 - optional daemon;
 - complete release notes;
 - completed pentest report;

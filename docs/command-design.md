@@ -19,6 +19,10 @@ saga undo
 saga log
 saga why
 saga impact
+saga encrypt
+saga unlock
+saga lock
+saga vault
 saga bundle
 saga sync
 ```
@@ -31,6 +35,7 @@ Developer model:
 - a seal makes a change revision immutable;
 - a proof says whether policy and evidence are satisfied;
 - a promotion moves proven state between worlds;
+- a vault protects encrypted realm storage and lock/unlock materialization;
 - a sync shares objects, facts, and worlds.
 
 The early scaffold supports:
@@ -38,4 +43,17 @@ The early scaffold supports:
 ```bash
 saga help
 saga version
+```
+
+Planned vault commands:
+
+```text
+saga encrypt project
+saga unlock
+saga lock
+saga vault status
+saga vault scan-leaks
+saga vault recipient add
+saga vault rekey
+saga bundle create --encrypted
 ```

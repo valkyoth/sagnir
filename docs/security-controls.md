@@ -18,6 +18,9 @@ Status: baseline control map
 | Proof | Verification report type | Scaffolded | `sagnir-proof` |
 | Crypto agility | Signature algorithm and envelope metadata | Scaffolded | `sagnir-crypto` |
 | Signature bounds | Empty and oversized signatures rejected | Scaffolded | `sagnir-crypto` |
+| Native encrypted realms | Encrypted `.saga/` storage, lock/unlock, recipient wrapping, crypto epochs, and leak scanning | Planned | `docs/vault-encryption.md` |
+| Private object IDs | Sealed private mode avoids public plaintext hash membership leaks | Planned | `docs/vault-encryption.md` |
+| Encrypted bundles | Recipient-targeted bundles and blind/split-trust sync modes | Planned | `docs/vault-encryption.md`, `docs/protocol.md` |
 | Facts | Confidence bounds and fact kinds | Scaffolded | `sagnir-fact` |
 | Blast radius | Local causal traversal for taint and quarantine | Planned | `docs/IMPLEMENTATION_PLAN.md` |
 | Bundles | Bundle manifest and protocol metadata | Scaffolded | `sagnir-sync` |

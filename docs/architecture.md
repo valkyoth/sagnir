@@ -10,6 +10,8 @@ The architectural layers are:
 - `sagnir`: main library crate.
 - focused Sagnir crates: core, codec, object, store, worktree, change, world,
   fact, policy, crypto, proof, and sync.
+- planned Sagnir vault layer: encrypted realms, lock/unlock materialization,
+  recipients, compartments, and encrypted bundles.
 - `.saga/`: local embedded store in a project worktree.
 - Sagnir protocol: proof-carrying bundle and sync protocol.
 
@@ -33,3 +35,7 @@ Every parser and verifier treats local bytes as untrusted. A copied repository,
 sync bundle, object pack, WAL frame, or policy file may be malicious.
 
 Verification happens before durable acceptance.
+
+Encrypted realms add another trust boundary: while locked, Sagnir storage is
+encrypted; while unlocked, plaintext may exist in the worktree and external
+tool caches. Sagnir must make that distinction visible.

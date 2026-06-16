@@ -20,8 +20,9 @@ policies, local operations, and sync bundles.
 
 The canonical layer must be boring, durable, testable, and auditable. Advanced
 behavior grows from world overlays, deterministic promotion preflight,
-proof-carrying bundles, causal impact traversal, cryptographic agility,
-capability-scoped automation metadata, and strict local verification.
+proof-carrying bundles, native encrypted realms, causal impact traversal,
+cryptographic agility, capability-scoped automation metadata, and strict local
+verification.
 
 ## Non-Negotiable Engineering Rules
 
@@ -55,6 +56,8 @@ capability-scoped automation metadata, and strict local verification.
 - `sagnir-crypto`: crypto-agile algorithm metadata and signature envelopes.
 - `sagnir-proof`: verification reports for objects, changes, worlds, releases.
 - `sagnir-sync`: bundles and protocol metadata.
+- `sagnir-vault`: planned encrypted realm, lock/unlock, recipient, compartment,
+  and key-epoch logic.
 - `sagnir`: main library crate using the focused crates.
 - `sagnir-cli`: package that builds the `saga` binary.
 - `sagad`: optional daemon scaffold.
@@ -201,7 +204,97 @@ Crypto rule:
 - unknown algorithms are rejected unless local policy explicitly admits them;
 - migration is a signed epoch transition, not in-place mutation.
 
-## Phase 7: Bundles, Sync, And Rootless Podman
+## Phase 7: Native Encrypted Realms
+
+Build encryption as a Sagnir primitive, not a bolt-on file filter.
+
+The user-facing model is:
+
+```text
+saga encrypt project
+saga unlock
+saga lock
+saga vault status
+```
+
+The technical model is:
+
+- encrypted `.saga/` objects, facts, worlds, indexes, operation logs, and
+  bundles;
+- lock/unlock materialization rather than permanent decrypt/re-encrypt toggles;
+- recipient-based key wrapping;
+- crypto epochs;
+- optional worktree wipe on lock;
+- explicit plaintext-leak warnings;
+- future compartment encryption for path, world, and projection boundaries.
+
+Required work:
+
+- vault metadata object;
+- encrypted object envelope;
+- recipient slot metadata;
+- key hierarchy metadata;
+- passphrase unlock baseline;
+- local key storage abstraction;
+- `saga encrypt project`;
+- `saga unlock`;
+- `saga lock`;
+- `saga vault status`;
+- `saga vault recipient list`;
+- `saga vault rekey`;
+- `saga vault scan-leaks` scaffold.
+
+Encryption rule:
+
+- Sagnir must never claim perfect secure deletion.
+- Plaintext may exist while unlocked in the worktree, editor caches, build
+  outputs, OS indexes, shell history, swap, backups, and tooling caches.
+- The UI must distinguish encrypted realm storage from plaintext worktree
+  materialization.
+
+Privacy rule:
+
+- public mode may use plaintext content hashes for open verification;
+- sealed private mode uses private keyed object IDs and randomized ciphertext;
+- path names, world names, change titles, author identity, facts, symbol names,
+  and AI context packs are protected metadata in serious encrypted mode;
+- sync-visible operational metadata is minimized and documented.
+
+Post-quantum readiness rule:
+
+- Sagnir says post-quantum-ready, quantum-resistant, or hybrid classical plus
+  post-quantum; it does not claim a permanent quantum-proof key.
+- Hybrid recipient wrapping and post-quantum signature admission happen through
+  crypto epochs and reviewed algorithm registries.
+- ML-KEM, ML-DSA, and SLH-DSA are current standards to track, but Sagnir must
+  check official standards and implementation maturity before admitting a
+  provider.
+
+## Phase 8: Encrypted Bundles And Sync Modes
+
+Extend bundles and sync so encrypted realms can use trusted, blind, and
+split-trust remotes.
+
+Required work:
+
+- encrypted bundle manifest;
+- encrypted pack envelope;
+- recipient-targeted bundle creation;
+- bundle verification before decrypt/import;
+- blind remote storage mode;
+- split-trust metadata mode;
+- encrypted sync result facts;
+- policy for visible versus encrypted bundle metadata.
+
+Sync modes:
+
+- trusted remote: remote can decrypt only through admitted key policy;
+- blind remote: remote stores encrypted objects and facts but cannot read
+  source;
+- split-trust remote: remote can see approved proof summaries and redacted
+  metadata while protected source and fact bodies remain encrypted.
+
+## Phase 9: Bundles, Sync, And Rootless Podman
 
 Build portable transfer and optional daemon support.
 
@@ -225,7 +318,7 @@ Sync rule:
 - local work never requires network access;
 - remote acceptance can allow, deny, quarantine, or ask for more evidence.
 
-## Phase 8: Production Hardening
+## Phase 10: Production Hardening
 
 Build the 1.0 security and portability gates.
 
@@ -240,6 +333,8 @@ Required work:
 - reproducible release build check;
 - SBOM generation;
 - release metadata validator;
+- vault leak-scan fixtures;
+- encrypted bundle malicious corpus;
 - Linux, Windows, BSD, MacOS, Android, and iOS build checks where practical;
 - documented future operating-system portability constraints so Sagnir does not
   lock itself to one host operating system.
@@ -258,6 +353,9 @@ Sagnir 1.0.0 is production-ready when `saga` can:
 - promote state between worlds;
 - explain why a path exists;
 - trace local blast radius;
+- enable and use encrypted local realms;
+- lock and unlock encrypted realm materialization;
+- create and verify encrypted bundles;
 - undo through the operation ledger;
 - create, verify, and import bundles;
 - sync with a minimal Sagnir remote;

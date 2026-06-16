@@ -28,6 +28,17 @@ Required object kinds:
 - operation;
 - bundle.
 
+Encrypted realms add encrypted object envelopes:
+
+- public storage ID over ciphertext;
+- private keyed object ID over canonical plaintext;
+- object type in authenticated associated data;
+- realm ID in authenticated associated data;
+- crypto epoch in authenticated associated data;
+- nonce and AEAD algorithm metadata;
+- bounded ciphertext length;
+- authentication tag.
+
 Format rules:
 
 - field order is canonical;
@@ -37,3 +48,6 @@ Format rules:
 - unknown critical fields are rejected;
 - object body limits are checked before allocation;
 - hashes and type tags are verified before indexing.
+
+In sealed private mode, public plaintext hashes must not be used as externally
+visible storage identifiers.

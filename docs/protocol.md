@@ -15,3 +15,14 @@ Sync flow:
 7. Client records the remote decision locally.
 
 Local work must never require network access.
+
+## Encrypted Sync
+
+Encrypted realms support three planned sync modes:
+
+- trusted remote: remote can decrypt only through admitted key policy;
+- blind remote: remote stores encrypted packs and facts without source access;
+- split-trust remote: remote sees approved proof summaries and redacted
+  metadata while protected source remains encrypted.
+
+Encrypted bundles must be verified before decrypt or import.
