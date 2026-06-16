@@ -1046,9 +1046,195 @@ Exit criteria:
 
 - Sagnir can identify downstream local state that needs review or quarantine.
 
-## Phase 8: Native Encrypted Realms
+## Phase 8: Causal Memory And Explanation
 
-### v0.45.0 - Vault Metadata Model
+### v0.45.0 - Structured Event Log
+
+Goal: separate noisy command events from stable canonical facts.
+
+Deliverables:
+
+- event envelope;
+- event kind registry;
+- operation-to-event binding;
+- bounded command argument digest;
+- event replay tests;
+- corrupt event log tests.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-fact`
+
+Exit criteria:
+
+- Every state-changing `saga` command can emit bounded events without making
+  those events authoritative facts.
+
+### v0.46.0 - Fact Compiler
+
+Goal: derive stable local facts from admitted events and objects.
+
+Deliverables:
+
+- fact compiler input model;
+- event-to-fact derivation rules;
+- missing-source rejection;
+- duplicate derivation behavior;
+- compiler replay tests.
+
+Verification:
+
+- `cargo test -p sagnir-fact`
+
+Exit criteria:
+
+- Rebuilding facts from canonical objects and admitted events is deterministic.
+
+### v0.47.0 - Causal Graph Indexes
+
+Goal: build rebuildable indexes for forward and reverse causal traversal.
+
+Deliverables:
+
+- causal edge model;
+- forward causal index;
+- reverse causal index;
+- path-to-fact index;
+- operation index;
+- stale-index detection.
+
+Verification:
+
+- `cargo test -p sagnir-fact`
+- `cargo test -p sagnir-store`
+
+Exit criteria:
+
+- Deleting indexes does not delete truth; Sagnir can rebuild memory projections
+  from canonical objects, events, and facts.
+
+### v0.48.0 - Explanation Object
+
+Goal: make explanations auditable instead of transient text output.
+
+Deliverables:
+
+- explanation object;
+- query plan reference;
+- evidence edge list;
+- missing evidence list;
+- redaction notice list;
+- explanation verification tests.
+
+Verification:
+
+- `cargo test -p sagnir-fact`
+- `cargo test -p sagnir-proof`
+
+Exit criteria:
+
+- An explanation can be inspected later and tied to the exact facts, objects,
+  and policy decisions used to produce it.
+
+### v0.49.0 - Explain Command
+
+Goal: explain local changes, decisions, worlds, and operations.
+
+Deliverables:
+
+- `saga explain change`;
+- `saga explain decision`;
+- `saga explain world`;
+- `saga op explain last`;
+- missing-evidence output;
+- golden-output tests.
+
+Verification:
+
+- `cargo test -p sagnir-cli`
+- `cargo test -p sagnir-fact`
+
+Exit criteria:
+
+- Sagnir can answer why a local policy decision or operation succeeded or
+  failed without external infrastructure.
+
+### v0.50.0 - Trace Command
+
+Goal: follow local causal paths across changes, facts, proofs, and worlds.
+
+Deliverables:
+
+- `saga trace change`;
+- `saga trace world`;
+- `saga trace fact`;
+- `saga trace operation`;
+- confidence and uncertainty output;
+- trace traversal tests.
+
+Verification:
+
+- `cargo test -p sagnir-fact`
+- `cargo test -p sagnir-cli`
+
+Exit criteria:
+
+- Sagnir can show causal chains and clearly mark derived or uncertain analysis.
+
+### v0.51.0 - Context Packs
+
+Goal: build deterministic context packages for diagnostics and optional AI
+summaries.
+
+Deliverables:
+
+- context pack object;
+- `saga context build`;
+- fact and object selection rules;
+- redaction rules;
+- missing-evidence section;
+- context pack verification tests.
+
+Verification:
+
+- `cargo test -p sagnir-fact`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-cli`
+
+Exit criteria:
+
+- Sagnir can prepare bounded evidence packs without exposing unrelated local
+  source, facts, keys, or protected metadata.
+
+### v0.52.0 - Ask Query Scaffold
+
+Goal: allow natural-language questions only as a bounded layer over
+deterministic facts.
+
+Deliverables:
+
+- `saga ask` query-plan scaffold;
+- deterministic retrieval before optional summarization;
+- fact ID citations;
+- redaction notices;
+- output that separates known, inferred, and missing information;
+- tests that AI output cannot become authoritative evidence.
+
+Verification:
+
+- `cargo test -p sagnir-cli`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-proof`
+
+Exit criteria:
+
+- `saga ask` cannot approve changes, override policy, create authoritative
+  facts, hide missing evidence, or promote worlds.
+
+## Phase 9: Native Encrypted Realms
+
+### v0.53.0 - Vault Metadata Model
 
 Goal: represent encrypted realm state without encrypting data yet.
 
@@ -1071,7 +1257,7 @@ Exit criteria:
 - Sagnir can distinguish open realms from encrypted realms before touching
   object encryption.
 
-### v0.46.0 - Encrypted Object Envelope
+### v0.54.0 - Encrypted Object Envelope
 
 Goal: define encrypted object bytes and authenticated metadata.
 
@@ -1094,7 +1280,7 @@ Exit criteria:
 
 - Encrypted object metadata is bounded and context-bound before decryption.
 
-### v0.47.0 - Passphrase Unlock Baseline
+### v0.55.0 - Passphrase Unlock Baseline
 
 Goal: support one local unlock method for development and tests.
 
@@ -1114,7 +1300,7 @@ Exit criteria:
 
 - A passphrase can unlock a test realm key without becoming the realm key.
 
-### v0.48.0 - Encrypt Project Command
+### v0.56.0 - Encrypt Project Command
 
 Goal: enable encrypted realm storage through `saga`.
 
@@ -1137,7 +1323,7 @@ Exit criteria:
 - A user can turn a local realm into an encrypted realm through an explicit
   command.
 
-### v0.49.0 - Unlock Command
+### v0.57.0 - Unlock Command
 
 Goal: load admitted keys for a local encrypted realm.
 
@@ -1158,7 +1344,7 @@ Exit criteria:
 
 - Sagnir can verify encrypted storage without always materializing plaintext.
 
-### v0.50.0 - Lock Command
+### v0.58.0 - Lock Command
 
 Goal: evict local unlock state and optionally remove materialized plaintext.
 
@@ -1180,7 +1366,7 @@ Exit criteria:
 
 - Sagnir clearly separates encrypted storage from plaintext worktree state.
 
-### v0.51.0 - Vault Status And Leak Scanner
+### v0.59.0 - Vault Status And Leak Scanner
 
 Goal: make encrypted realm state and plaintext leak surfaces visible.
 
@@ -1202,7 +1388,7 @@ Exit criteria:
 
 - Users get honest warnings about plaintext risks while unlocked.
 
-### v0.52.0 - Recipient Slot Model
+### v0.60.0 - Recipient Slot Model
 
 Goal: support recipient-based key wrapping metadata.
 
@@ -1224,7 +1410,7 @@ Exit criteria:
 
 - Sagnir can describe who may unlock future encrypted realm keys.
 
-### v0.53.0 - Rekey And Crypto Epochs
+### v0.61.0 - Rekey And Crypto Epochs
 
 Goal: rotate encrypted realm keys without mutating old history in place.
 
@@ -1245,7 +1431,7 @@ Exit criteria:
 
 - Key rotation is a signed transition model, not an in-place mutation.
 
-### v0.54.0 - Sealed Private Object IDs
+### v0.62.0 - Sealed Private Object IDs
 
 Goal: avoid known-plaintext membership leaks in encrypted realms.
 
@@ -1266,7 +1452,7 @@ Exit criteria:
 
 - Encrypted realms can hide whether known plaintext objects are present.
 
-### v0.55.0 - Compartment Encryption Scaffold
+### v0.63.0 - Compartment Encryption Scaffold
 
 Goal: prepare path, world, and projection-level encryption boundaries.
 
@@ -1290,7 +1476,7 @@ Exit criteria:
 
 - Sagnir can represent different access boundaries inside one encrypted realm.
 
-### v0.56.0 - Hybrid Post-Quantum Readiness Scaffold
+### v0.64.0 - Hybrid Post-Quantum Readiness Scaffold
 
 Goal: prepare recipient wrapping and signatures for reviewed hybrid algorithms.
 
@@ -1312,9 +1498,9 @@ Exit criteria:
 - Sagnir is ready to admit hybrid classical plus post-quantum providers without
   changing object formats.
 
-## Phase 9: Bundles And Sync
+## Phase 10: Bundles And Sync
 
-### v0.57.0 - Pack File Format
+### v0.65.0 - Pack File Format
 
 Goal: store multiple immutable objects in a bounded pack.
 
@@ -1336,7 +1522,7 @@ Exit criteria:
 
 - Pack readers verify bounds before trusting offsets or object counts.
 
-### v0.58.0 - Bundle Manifest
+### v0.66.0 - Bundle Manifest
 
 Goal: describe a proof-carrying offline transfer, including encrypted transfer
 metadata.
@@ -1360,7 +1546,7 @@ Exit criteria:
 
 - Sagnir can describe what a bundle claims before loading bundle bodies.
 
-### v0.59.0 - Bundle Create And Verify
+### v0.67.0 - Bundle Create And Verify
 
 Goal: create and verify offline bundles before import or decrypt.
 
@@ -1384,7 +1570,7 @@ Exit criteria:
 - A bundle can be verified before import, and encrypted bundle metadata is
   checked before decrypt.
 
-### v0.60.0 - Bundle Import
+### v0.68.0 - Bundle Import
 
 Goal: import verified bundles safely, including encrypted bundles.
 
@@ -1406,7 +1592,7 @@ Exit criteria:
 
 - Import cannot overwrite local world aliases without explicit policy.
 
-### v0.61.0 - Sync Negotiation
+### v0.69.0 - Sync Negotiation
 
 Goal: exchange local and remote heads before transfer.
 
@@ -1427,7 +1613,7 @@ Exit criteria:
 
 - Sync can determine the smallest required bundle for a remote.
 
-### v0.62.0 - Sync Transfer
+### v0.70.0 - Sync Transfer
 
 Goal: transfer proof-carrying bundles to a remote endpoint.
 
@@ -1452,7 +1638,7 @@ Exit criteria:
 - Local work can sync without requiring a hosted product, including encrypted
   blind-storage workflows.
 
-### v0.63.0 - Minimal Daemon
+### v0.71.0 - Minimal Daemon
 
 Goal: provide optional local and remote daemon support.
 
@@ -1474,9 +1660,9 @@ Exit criteria:
 
 - A minimal Sagnir remote exists for sync testing.
 
-## Phase 10: Hardening And Portability
+## Phase 11: Hardening And Portability
 
-### v0.64.0 - Malicious Corpus
+### v0.72.0 - Malicious Corpus
 
 Goal: make hostile input testing part of normal development.
 
@@ -1497,7 +1683,7 @@ Exit criteria:
 
 - Known malicious bytes stay rejected across releases.
 
-### v0.65.0 - Expanded Fuzz And Model Test Scaffold
+### v0.73.0 - Expanded Fuzz And Model Test Scaffold
 
 Goal: expand fuzz and model testing beyond the parser scaffolds added earlier.
 
@@ -1519,7 +1705,7 @@ Exit criteria:
 
 - New parsers have a standard place to add fuzz coverage.
 
-### v0.66.0 - Cross-Platform Build Gate
+### v0.74.0 - Cross-Platform Build Gate
 
 Goal: keep Sagnir portable from day one.
 
@@ -1542,7 +1728,7 @@ Exit criteria:
 
 - Platform assumptions are explicit and tested where practical.
 
-### v0.67.0 - Rootless Podman Gate
+### v0.75.0 - Rootless Podman Gate
 
 Goal: make `saga` usable from a rootless container.
 
@@ -1564,7 +1750,7 @@ Exit criteria:
 - A user can run the CLI in rootless Podman.
 - Release images do not use mutable base image tags.
 
-### v0.68.0 - Release Evidence
+### v0.76.0 - Release Evidence
 
 Goal: make release outputs auditable.
 
@@ -1586,7 +1772,7 @@ Exit criteria:
 
 - A release candidate produces auditable local evidence.
 
-### v0.69.0 - 1.0 Release Candidate Gate
+### v0.77.0 - 1.0 Release Candidate Gate
 
 Goal: freeze the 1.0 feature set and reject incomplete production behavior.
 
@@ -1621,7 +1807,11 @@ Deliverables:
 - proofs and promotion;
 - operation undo;
 - local facts;
-- why and impact;
+- event log and deterministic fact compiler;
+- auditable explanations;
+- why, explain, trace, and impact;
+- bounded context packs;
+- `saga ask` scaffold over deterministic facts;
 - encrypted local realms;
 - lock and unlock;
 - vault status and leak scanning;

@@ -51,7 +51,14 @@ verification.
 - `sagnir-worktree`: path scanning, ignore rules, and materialization safety.
 - `sagnir-change`: changes, sealed revisions, amend chains, and touched scope.
 - `sagnir-world`: worlds, promotion preflight, rollback preflight, conflicts.
+- `sagnir-event`: typed command and state-transition event envelopes.
 - `sagnir-fact`: local fact envelopes, evidence references, confidence, causes.
+- `sagnir-memory`: append-only local event and fact memory.
+- `sagnir-causality`: causal edges, graph traversal, and impact planning.
+- `sagnir-query`: deterministic query planning and execution.
+- `sagnir-explain`: auditable explanation objects and builders.
+- `sagnir-context`: bounded context packs for diagnostics and optional AI use.
+- `sagnir-audit`: proof-backed local audit exports.
 - `sagnir-policy`: local policy decisions, proof requirements, obligations.
 - `sagnir-crypto`: crypto-agile algorithm metadata and signature envelopes.
 - `sagnir-proof`: verification reports for objects, changes, worlds, releases.
@@ -156,23 +163,49 @@ Undo rule:
 - undo does not erase immutable objects, facts, sealed revisions, or committed
   WAL frames.
 
-## Phase 5: Facts, Evidence, And Local Impact
+## Phase 5: Facts, Evidence, And Causal Memory
 
-Build local fact support that can answer provenance questions without external
-infrastructure.
+Build local fact support that can answer provenance and explanation questions
+without external infrastructure.
 
 Required work:
 
+- structured event envelope;
+- event log;
 - local fact envelope;
+- deterministic fact compiler;
 - fact log;
 - evidence references;
 - confidence score;
 - causal links;
+- rebuildable causal indexes;
+- explanation object;
+- context pack object;
 - `saga test record`;
 - `saga review approve`;
 - `saga why`;
+- `saga explain`;
+- `saga trace`;
+- `saga context build`;
+- `saga ask` scaffold;
 - `saga impact`;
 - taint and quarantine fact types.
+
+Memory rule:
+
+- objects, committed WAL frames, admitted events, and canonical facts are
+  truth;
+- path, symbol, policy, operation, causal graph, explanation, and context
+  indexes are rebuildable projections;
+- explanations cite facts and objects, show missing evidence, and can be
+  audited later.
+
+AI boundary:
+
+- optional AI support may summarize facts, draft query plans, and explain
+  already-selected evidence;
+- AI output must not create authoritative facts, approve changes, override
+  policy, hide evidence, or promote worlds.
 
 Impact rule:
 
@@ -352,6 +385,10 @@ Sagnir 1.0.0 is production-ready when `saga` can:
 - prove a change or world against local policy;
 - promote state between worlds;
 - explain why a path exists;
+- explain local policy decisions and operations;
+- trace local causal chains;
+- build bounded context packs;
+- answer bounded natural-language questions over deterministic facts;
 - trace local blast radius;
 - enable and use encrypted local realms;
 - lock and unlock encrypted realm materialization;

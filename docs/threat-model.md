@@ -19,6 +19,10 @@ exposure.
 - signatures;
 - evidence references;
 - local operation log;
+- local event log;
+- causal graph indexes;
+- explanation objects;
+- context packs;
 - sync bundles;
 - key metadata;
 - encrypted realm keys;
@@ -35,6 +39,11 @@ exposure.
 - path traversal during worktree materialization;
 - `.saga/` control data accidentally tracked as source;
 - forged facts or reviews;
+- forged or replayed command events;
+- event-to-fact compiler confusion;
+- explanation output that hides missing evidence;
+- context packs that leak unrelated source, facts, keys, or protected metadata;
+- AI summaries being mistaken for authoritative evidence;
 - oversized signature or fact payloads;
 - unauthorized promotion;
 - poisoned automation output;
@@ -50,6 +59,11 @@ exposure.
 - domain-separated object IDs;
 - strict canonical decoding;
 - append-only operation and fact logs;
+- separation between command events and authoritative facts;
+- deterministic fact compiler rules;
+- auditable explanation objects;
+- bounded context packs with redaction notices;
+- AI output cannot create authority, override policy, or promote worlds;
 - immutable objects;
 - rebuildable indexes;
 - deterministic promotion preflight;

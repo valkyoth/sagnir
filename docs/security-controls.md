@@ -25,6 +25,11 @@ Status: baseline control map
 | Private object IDs | Sealed private mode avoids public plaintext hash membership leaks | Planned | `docs/vault-encryption.md` |
 | Encrypted bundles | Recipient-targeted bundles and blind/split-trust sync modes | Planned | `docs/vault-encryption.md`, `docs/protocol.md` |
 | Facts | Confidence bounds and fact kinds | Scaffolded | `sagnir-fact` |
+| Events | Bounded command events are separated from authoritative facts | Planned | `docs/causal-memory.md` |
+| Fact compiler | Stable facts are derived deterministically from admitted inputs | Planned | `docs/causal-memory.md` |
+| Explanation objects | Explanations cite evidence, redactions, and missing facts | Planned | `docs/causal-memory.md` |
+| Context packs | Diagnostic and optional AI context is bounded and redacted | Planned | `docs/causal-memory.md` |
+| AI boundary | AI may summarize evidence but cannot create authority or override policy | Planned | `docs/causal-memory.md` |
 | Blast radius | Local causal traversal for taint and quarantine | Planned | `docs/IMPLEMENTATION_PLAN.md` |
 | Bundles | Bundle manifest and protocol metadata | Scaffolded | `sagnir-sync` |
 | Rootless container | Podman CLI image scaffold | Scaffolded | `Containerfile` |

@@ -23,6 +23,9 @@ This repository currently contains:
 - Planning for native encrypted realms through `saga encrypt project`,
   `saga unlock`, `saga lock`, encrypted bundles, recipient keys, and future
   compartment encryption.
+- Planning for causal memory through events, facts, explanations, context
+  packs, and evidence-first `saga why`, `saga explain`, `saga trace`,
+  `saga impact`, and `saga ask`.
 - `no_std` trusted library scaffolds where practical.
 - Security, modularity, release, and implementation planning docs.
 - Local check scripts for format, lint, tests, docs, security policy, and
@@ -49,6 +52,7 @@ scripts/checks.sh
 - [Version Plan](docs/VERSION_PLAN.md)
 - [Architecture](docs/architecture.md)
 - [Command Design](docs/command-design.md)
+- [Causal Memory](docs/causal-memory.md)
 - [Vault Encryption](docs/vault-encryption.md)
 - [Security Controls](docs/security-controls.md)
 - [Container Image Policy](docs/container-image-policy.md)

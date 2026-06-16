@@ -9,7 +9,10 @@ The architectural layers are:
 - `saga`: CLI command.
 - `sagnir`: main library crate.
 - focused Sagnir crates: core, codec, object, store, worktree, change, world,
-  fact, policy, crypto, proof, and sync.
+  event, fact, memory, causality, query, explain, context, audit, policy,
+  crypto, proof, and sync.
+- planned Sagnir causal memory layer: events, fact compiler, causal indexes,
+  explanation objects, context packs, and evidence-first queries.
 - planned Sagnir vault layer: encrypted realms, lock/unlock materialization,
   recipients, compartments, and encrypted bundles.
 - `.saga/`: local embedded store in a project worktree.
@@ -25,6 +28,7 @@ Durable rules:
 - objects are immutable;
 - world states are immutable;
 - facts are append-only;
+- admitted events are append-only;
 - operations are append-only;
 - indexes are rebuildable;
 - aliases are mutable pointers to immutable states.
