@@ -27,11 +27,21 @@ store, and protocol.
 The command-line interface is `saga`.
 
 Sagnir is not a Git rewrite. It is a local-first system for intent, changes,
-evidence, world transitions, and artifacts. The 1.0 target is a serious
-production-ready CLI that can initialize a local realm, inspect source state,
-seal changes, record evidence, verify proofs, promote worlds, protect encrypted
-realms, build bundles, and sync without requiring a hosted service or external
-database.
+evidence, world transitions, and artifacts. A realm is the local source-state
+workspace. A change starts as stated intent, then becomes one or more sealed
+revisions. Evidence such as tests, reviews, policy decisions, signatures, and
+facts can be attached to that state before it is trusted.
+
+Worlds are named states such as draft, review, staging, production, audit, or
+simulation. Moving source state between worlds is a proof and policy decision,
+not just a pointer update. Sagnir is designed to answer practical questions
+like what changed, why it changed, what proved it, who reviewed it, what policy
+accepted it, and what downstream state may be affected.
+
+The 1.0 target is a serious production-ready CLI that can initialize a local
+realm, inspect source state, seal changes, record evidence, verify proofs,
+promote worlds, protect encrypted realms, build proof-carrying bundles, and
+sync without requiring a hosted service or external database.
 
 Sagnir is licensed under the European Union Public Licence 1.2.
 
