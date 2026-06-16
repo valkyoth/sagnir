@@ -53,5 +53,10 @@ Format rules:
 - object body limits are checked before allocation;
 - hashes and type tags are verified before indexing.
 
+Future decode rule: the first decoder matching `write_len_prefixed` must expose
+a bounded read API that validates the declared length against a caller-provided
+maximum before allocation. Malicious object and bundle input must never be able
+to request allocation from an unchecked length prefix.
+
 In sealed private mode, public plaintext hashes must not be used as externally
 visible storage identifiers.

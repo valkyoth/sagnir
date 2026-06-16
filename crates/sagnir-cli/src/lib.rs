@@ -40,8 +40,9 @@ where
             let command = command.as_ref();
             if let Some(extra) = args.next() {
                 return usage_error(&format!(
-                    "unexpected saga argument after {command}: {}\n",
-                    extra.as_ref()
+                    "unexpected saga argument after {}: {}\n",
+                    sanitize_for_display(command),
+                    sanitize_for_display(extra.as_ref())
                 ));
             }
 
@@ -56,7 +57,10 @@ where
                     ),
                     stderr: String::new(),
                 },
-                unknown => usage_error(&format!("unknown saga command: {unknown}\n")),
+                unknown => usage_error(&format!(
+                    "unknown saga command: {}\n",
+                    sanitize_for_display(unknown)
+                )),
             }
         }
     }
@@ -76,6 +80,19 @@ fn usage_error(message: &str) -> CliOutput {
         stdout: String::new(),
         stderr: format!("{message}\n{HELP_TEXT}"),
     }
+}
+
+fn sanitize_for_display(value: &str) -> String {
+    value
+        .chars()
+        .map(|character| {
+            if character.is_ascii_graphic() || character == ' ' {
+                character
+            } else {
+                '?'
+            }
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -115,6 +132,13 @@ mod tests {
         let expected = format!("unexpected saga argument after version: extra\n\n{HELP_TEXT}");
 
         assert_output(&["version", "extra"], 2, "", &expected);
+    }
+
+    #[test]
+    fn usage_errors_sanitize_terminal_control_characters() {
+        let expected = format!("unknown saga command: ?[2J?[HACCESS\n\n{HELP_TEXT}");
+
+        assert_output(&["\u{1b}[2J\u{1b}[HACCESS"], 2, "", &expected);
     }
 
     fn assert_output(args: &[&str], code: u8, stdout: &str, stderr: &str) {

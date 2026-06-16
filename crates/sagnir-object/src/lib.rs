@@ -2,7 +2,7 @@
 #![forbid(unsafe_code)]
 #![deny(unused_must_use)]
 
-use sagnir_core::{ID_BYTES, TypedId, constant_time_bytes_eq};
+use sagnir_core::{FormatVersion, ID_BYTES, TypedId, constant_time_bytes_eq};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 #[non_exhaustive]
@@ -23,11 +23,24 @@ pub enum ObjectType {
     Bundle,
 }
 
-#[derive(Clone, Copy, Debug, Eq)]
+#[derive(Clone, Copy, Eq)]
 pub struct ObjectId {
     algorithm: HashAlgorithm,
     object_type: ObjectType,
     digest: [u8; ID_BYTES],
+}
+
+impl core::fmt::Debug for ObjectId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ObjectId")
+            .field("algorithm", &self.algorithm)
+            .field("object_type", &self.object_type)
+            .field(
+                "digest",
+                &format_args!("[{} bytes redacted]", self.digest.len()),
+            )
+            .finish()
+    }
 }
 
 impl core::hash::Hash for ObjectId {
@@ -80,9 +93,11 @@ impl ObjectId {
     /// formally specified constant-time primitive.
     #[must_use]
     pub fn ct_eq(&self, other: &Self) -> bool {
-        self.algorithm == other.algorithm
-            && self.object_type == other.object_type
-            && constant_time_bytes_eq(&self.digest, &other.digest)
+        let algorithm_eq = (self.algorithm == other.algorithm) as u8;
+        let object_type_eq = (self.object_type == other.object_type) as u8;
+        let digest_eq = constant_time_bytes_eq(&self.digest, &other.digest) as u8;
+
+        (algorithm_eq & object_type_eq & digest_eq) == 1
     }
 }
 
@@ -90,12 +105,16 @@ impl ObjectId {
 pub struct StateRootRef {
     state_id: TypedId,
     content_root: ObjectId,
-    format_version: u16,
+    format_version: FormatVersion,
 }
 
 impl StateRootRef {
     #[must_use]
-    pub const fn new(state_id: TypedId, content_root: ObjectId, format_version: u16) -> Self {
+    pub const fn new(
+        state_id: TypedId,
+        content_root: ObjectId,
+        format_version: FormatVersion,
+    ) -> Self {
         Self {
             state_id,
             content_root,
@@ -104,7 +123,7 @@ impl StateRootRef {
     }
 
     #[must_use]
-    pub const fn format_version(self) -> u16 {
+    pub const fn format_version(self) -> FormatVersion {
         self.format_version
     }
 }
@@ -127,7 +146,9 @@ pub const fn domain_tag(object_type: ObjectType) -> &'static [u8] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sagnir_core::{IdKind, TypedId};
+    use sagnir_core::{FORMAT_VERSION, IdKind, TypedId};
+    extern crate std;
+    use std::{format, string::String};
 
     #[test]
     fn object_id_keeps_type_separate_from_digest() {
@@ -158,8 +179,9 @@ mod tests {
     fn state_root_records_format_version() {
         let state_id = TypedId::new(IdKind::State, [2; ID_BYTES]);
         let object_id = ObjectId::new(HashAlgorithm::Sha256, ObjectType::Tree, [3; ID_BYTES]);
-        let root = StateRootRef::new(state_id, object_id, 1);
-        assert_eq!(root.format_version(), 1);
+        let root = StateRootRef::new(state_id, object_id, FORMAT_VERSION);
+        assert_eq!(root.format_version(), FORMAT_VERSION);
+        assert_eq!(root.format_version().get(), 1);
     }
 
     #[test]
@@ -167,6 +189,17 @@ mod tests {
         assert_eq!(
             parse_hash_algorithm(999),
             Err(sagnir_core::SagnirError::InvalidValue)
+        );
+    }
+
+    #[test]
+    fn object_id_debug_redacts_digest() {
+        let id = ObjectId::new(HashAlgorithm::Sha256, ObjectType::Blob, [4; ID_BYTES]);
+        assert_eq!(
+            format!("{id:?}"),
+            String::from(
+                "ObjectId { algorithm: Sha256, object_type: Blob, digest: [32 bytes redacted] }"
+            )
         );
     }
 }

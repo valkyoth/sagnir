@@ -70,6 +70,8 @@ exposure.
 - deterministic promotion preflight;
 - case-folded `.saga` control-path detection;
 - symlink resolution required before filesystem I/O accepts tracked candidates;
+- future filesystem APIs must use a verified worktree-path type so symlink
+  boundary checks are enforced before source-state I/O;
 - bounded signature envelopes;
 - crypto-agile metadata;
 - encrypted realm storage;

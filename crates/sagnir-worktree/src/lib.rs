@@ -25,10 +25,12 @@ pub fn classify_relative_path(path: &str) -> PathClass {
     if is_control_path(path) {
         return PathClass::Control;
     }
-    if path
-        .split('/')
-        .any(|part| part.is_empty() || part == "." || part == "..")
-    {
+    if path.split('/').any(|part| {
+        part.is_empty()
+            || part == "."
+            || part == ".."
+            || !part.bytes().all(sagnir_core::valid_name_byte_no_slash)
+    }) {
         return PathClass::Invalid;
     }
     PathClass::TrackedCandidate
@@ -73,6 +75,14 @@ mod tests {
     #[test]
     fn parent_escape_is_invalid() {
         assert_eq!(classify_relative_path("../outside"), PathClass::Invalid);
+    }
+
+    #[test]
+    fn control_characters_are_invalid() {
+        assert_eq!(classify_relative_path("src/\0inject"), PathClass::Invalid);
+        assert_eq!(classify_relative_path("src/\r\nfile"), PathClass::Invalid);
+        assert_eq!(classify_relative_path("src/file\ttab"), PathClass::Invalid);
+        assert_eq!(classify_relative_path("src/\u{1b}[31m"), PathClass::Invalid);
     }
 
     #[test]

@@ -36,10 +36,22 @@ pub enum IdKind {
     Bundle,
 }
 
-#[derive(Clone, Copy, Debug, Eq)]
+#[derive(Clone, Copy, Eq)]
 pub struct TypedId {
     kind: IdKind,
     bytes: [u8; ID_BYTES],
+}
+
+impl core::fmt::Debug for TypedId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("TypedId")
+            .field("kind", &self.kind)
+            .field(
+                "bytes",
+                &format_args!("[{} bytes redacted]", self.bytes.len()),
+            )
+            .finish()
+    }
 }
 
 impl core::hash::Hash for TypedId {
@@ -75,7 +87,10 @@ impl TypedId {
     /// scaffolds. See [`constant_time_bytes_eq`] for the current guarantee.
     #[must_use]
     pub fn ct_eq(&self, other: &Self) -> bool {
-        self.kind == other.kind && constant_time_bytes_eq(&self.bytes, &other.bytes)
+        let kind_eq = (self.kind == other.kind) as u8;
+        let bytes_eq = constant_time_bytes_eq(&self.bytes, &other.bytes) as u8;
+
+        (kind_eq & bytes_eq) == 1
     }
 }
 
@@ -129,6 +144,11 @@ pub const fn valid_name_byte(byte: u8) -> bool {
     matches!(byte, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-' | b'_' | b'/' | b'.')
 }
 
+#[must_use]
+pub const fn valid_name_byte_no_slash(byte: u8) -> bool {
+    matches!(byte, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-' | b'_' | b'.')
+}
+
 /// Accumulates XOR differences across two equal-length byte slices.
 ///
 /// This uses [`core::hint::black_box`] to reduce compiler-inserted early exits.
@@ -165,6 +185,8 @@ pub fn is_saga_segment(segment: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    extern crate std;
+    use std::format;
 
     #[test]
     fn bounded_name_accepts_world_path() {
@@ -235,5 +257,14 @@ mod tests {
         assert!(left.ct_eq(&right));
         assert!(!left.ct_eq(&different_kind));
         assert!(!left.ct_eq(&different_bytes));
+    }
+
+    #[test]
+    fn typed_id_debug_redacts_bytes() {
+        let id = TypedId::new(IdKind::Object, [9; ID_BYTES]);
+        assert_eq!(
+            format!("{id:?}"),
+            "TypedId { kind: Object, bytes: [32 bytes redacted] }"
+        );
     }
 }

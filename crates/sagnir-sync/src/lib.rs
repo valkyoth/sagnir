@@ -41,7 +41,7 @@ impl BundleManifest {
 
     #[must_use]
     pub const fn total_items(self) -> u64 {
-        self.object_count.saturating_add(self.fact_count)
+        self.object_count + self.fact_count
     }
 }
 

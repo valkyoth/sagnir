@@ -8,7 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-sagnir-policy = { path = "../sagnir-policy" }
+sagnir-policy = { path = "../sagnir-policy", version = "0.1.0" }
 
 [lib]
 path = "src/lib.rs"

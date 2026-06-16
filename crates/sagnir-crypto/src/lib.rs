@@ -54,7 +54,10 @@ impl<'a> SignatureEnvelope<'a> {
     /// admit a formally specified constant-time primitive.
     #[must_use]
     pub fn ct_eq(&self, other: &Self) -> bool {
-        self.algorithm == other.algorithm && constant_time_bytes_eq(self.bytes, other.bytes)
+        let algorithm_eq = (self.algorithm == other.algorithm) as u8;
+        let bytes_eq = constant_time_bytes_eq(self.bytes, other.bytes) as u8;
+
+        (algorithm_eq & bytes_eq) == 1
     }
 }
 

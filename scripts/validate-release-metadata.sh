@@ -26,3 +26,9 @@ scripts/validate-pentest-report.sh v0.3.0
 grep -q '1.96.0' rust-toolchain.toml
 grep -q 'EUPL-1.2' Cargo.toml
 grep -q 'Sagnir' README.md
+
+if grep -R 'path = "../sagnir' crates tools --include Cargo.toml |
+    grep -v 'version = "0.1.0"' >/dev/null 2>&1; then
+    echo "internal path dependencies must include explicit version = \"0.1.0\"" >&2
+    exit 1
+fi

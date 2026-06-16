@@ -92,8 +92,9 @@ fi
 
 check_ci_cargo_tool() {
     crate="$1"
+    variable="$2"
     pinned="$(
-        sed -n "s/.*cargo install --locked $crate --version \\([0-9][0-9.]*\\).*/\\1/p" .github/workflows/ci.yml |
+        sed -n "s/^$variable=\\([0-9][0-9.]*\\)$/\\1/p" scripts/install_security_tools.sh |
             sed -n '1p'
     )"
     latest="$(
@@ -103,7 +104,7 @@ check_ci_cargo_tool() {
     )"
 
     if [ -z "$pinned" ]; then
-        echo "tooling freshness: .github/workflows/ci.yml does not pin $crate" >&2
+        echo "tooling freshness: scripts/install_security_tools.sh does not pin $crate" >&2
         exit 1
     fi
 
@@ -118,8 +119,8 @@ check_ci_cargo_tool() {
     fi
 }
 
-check_ci_cargo_tool cargo-deny
-check_ci_cargo_tool cargo-audit
+check_ci_cargo_tool cargo-deny CARGO_DENY_VERSION
+check_ci_cargo_tool cargo-audit CARGO_AUDIT_VERSION
 
 checkout_pin="$(
     sed -n 's/^[[:space:]]*uses: actions\/checkout@\([0-9a-f]\{40\}\)$/\1/p' .github/workflows/ci.yml |

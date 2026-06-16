@@ -16,6 +16,10 @@ Status: implementation stop.
   without exception.
 - Added release-gate freshness checks for Rust, compatible Cargo updates, CI
   cargo tools, and the pinned GitHub checkout action.
+- Addressed the first v0.3.0 pentest findings across timing-hardened equality,
+  path byte validation, typed format versions, redacted debug output,
+  dependency policy, terminal-safe CLI errors, checked bundle totals, and
+  checksum-verified CI security tool installation.
 - Added v0.3.0 release notes, pentest placeholder, and release gate.
 
 ## 0.2.0
