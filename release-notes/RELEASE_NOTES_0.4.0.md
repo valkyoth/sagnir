@@ -24,6 +24,11 @@ are rejected by both core names and worktree classification, obligation
 emptiness has an explicit API, crypto dependency admission is release-gated,
 and cryptographic signature envelopes no longer implement `Copy`.
 
+The second v0.4.0 pentest findings are also closed: the comparison helper again
+forces the accumulated diff directly through `black_box`, the secret/key
+material `Copy` guard covers more vault-phase naming patterns, and
+`read_len_prefixed` has simpler in-bounds tail handling.
+
 ## Verification
 
 Required local verification for this implementation stop:
@@ -76,4 +81,6 @@ Pentest task:
 - `ObligationSet::is_empty` separates emptiness checks from bit membership.
 - Release gates reject known crypto provider crates unless `subtle` and
   `zeroize` are admitted.
+- Second pentest review findings are closed for diff-forcing comparison,
+  secret/key-material `Copy` guard coverage, and codec control-flow clarity.
 - Core validation remains `no_std` and allocation-free.

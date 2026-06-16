@@ -50,9 +50,7 @@ pub fn read_len_prefixed(input: &[u8], max_payload: usize) -> Result<(&[u8], &[u
     let payload = input
         .get(8..payload_end)
         .ok_or(SagnirError::BufferTooSmall)?;
-    let tail = input
-        .get(payload_end..)
-        .ok_or(SagnirError::BufferTooSmall)?;
+    let tail = &input[payload_end..];
     Ok((payload, tail))
 }
 

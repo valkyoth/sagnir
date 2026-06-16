@@ -167,7 +167,7 @@ pub fn constant_time_bytes_eq(left: &[u8], right: &[u8]) -> bool {
         diff |= left_byte ^ right_byte;
         index += 1;
     }
-    black_box(diff == 0 && len_eq)
+    black_box(diff) == 0 && len_eq
 }
 
 #[cfg(test)]

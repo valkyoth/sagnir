@@ -18,6 +18,8 @@ Status: implementation stop.
   bounded length-prefix decoding, Windows path aliases, obligation emptiness,
   crypto dependency admission gates, multiple-version dependency bans, and
   cryptographic envelope copying.
+- Addressed the second v0.4.0 pentest findings across diff-forcing comparison,
+  secret/key-material `Copy` guard coverage, and codec control-flow clarity.
 - Added v0.4.0 release notes, pentest placeholder, and release gate.
 
 ## 0.3.0

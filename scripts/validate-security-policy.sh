@@ -19,7 +19,7 @@ if rg "$unsafe_patterns" crates tools --glob '*.rs' >/dev/null 2>&1; then
     exit 1
 fi
 
-if rg -U '#\[derive\([^\]]*Copy[^\]]*\)\][[:space:]]*(pub[[:space:]]+)?struct[[:alnum:]_]*(Secret|Key|Passphrase|Token|Vault)' crates tools --glob '*.rs' >/dev/null 2>&1; then
+if rg -U '#\[derive\([^\]]*Copy[^\]]*\)\][[:space:]]*(pub[[:space:]]+)?struct[[:alnum:]_]*(Secret|Key|Passphrase|Token|Vault|Credential|Master|Material|Derived|Wrapped|Session|Epoch)' crates tools --glob '*.rs' >/dev/null 2>&1; then
     echo "secret or key material structs must not derive Copy" >&2
     exit 1
 fi
