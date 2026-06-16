@@ -21,4 +21,14 @@ Rules:
 - update release notes for dependency changes;
 - add tests for behavior introduced by a dependency.
 
+The scaffold uses local timing-hardened byte comparison helpers only to prevent
+accidental use of derived equality in future verification paths. Before live
+signature verification, HMAC verification, AEAD tag checks, or secret-dependent
+proof checks rely on constant-time behavior, Sagnir must admit `subtle` or an
+equivalent formally specified primitive through this policy.
+
+The hardcoded credential scanner supports `scanner:allow` on intentionally
+non-secret placeholder lines. Use it only for test fixtures or documentation
+examples, and keep the surrounding value obviously non-production.
+
 The initial scaffold has no third-party Rust dependencies.

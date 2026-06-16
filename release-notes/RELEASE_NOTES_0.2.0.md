@@ -43,3 +43,6 @@ Pentest task:
   credential scanning, pinned CI action and security-tool versions, bounded
   bundle counts, validated obligation bitmasks, symlink policy documentation,
   CodeQL default setup documentation, and container build-context cleanup.
+- Second pentest findings closed before tag: timing-helper documentation and
+  `black_box` hardening, Windows trailing-dot canary documentation, and
+  `scanner:allow` support for intentional non-secret placeholders.

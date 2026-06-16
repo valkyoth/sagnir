@@ -75,8 +75,9 @@ impl ObjectId {
         self.digest
     }
 
-    /// Constant-time digest equality for signature verification, proof
-    /// verification, and bundle acceptance checks.
+    /// Timing-hardened digest equality for verification scaffolds. Before live
+    /// signature or HMAC verification relies on this path, Sagnir must admit a
+    /// formally specified constant-time primitive.
     #[must_use]
     pub fn ct_eq(&self, other: &Self) -> bool {
         self.algorithm == other.algorithm

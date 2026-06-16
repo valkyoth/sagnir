@@ -2,6 +2,8 @@
 #![forbid(unsafe_code)]
 #![deny(unused_must_use)]
 
+use core::hint::black_box;
+
 pub const FORMAT_VERSION: FormatVersion = FormatVersion::new(1);
 pub const ID_BYTES: usize = 32;
 pub const NAME_MAX_BYTES: usize = 128;
@@ -69,7 +71,8 @@ impl TypedId {
         self.bytes
     }
 
-    /// Constant-time byte comparison for security-sensitive verification.
+    /// Timing-hardened byte comparison for security-sensitive verification
+    /// scaffolds. See [`constant_time_bytes_eq`] for the current guarantee.
     #[must_use]
     pub fn ct_eq(&self, other: &Self) -> bool {
         self.kind == other.kind && constant_time_bytes_eq(&self.bytes, &other.bytes)
@@ -126,6 +129,12 @@ pub const fn valid_name_byte(byte: u8) -> bool {
     matches!(byte, b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-' | b'_' | b'/' | b'.')
 }
 
+/// Accumulates XOR differences across two equal-length byte slices.
+///
+/// This uses [`core::hint::black_box`] to reduce compiler-inserted early exits.
+/// It is not a formal constant-time guarantee. Before live signature or HMAC
+/// verification relies on this path, Sagnir must admit `subtle` or an
+/// equivalent formally specified primitive through the dependency policy.
 #[must_use]
 pub fn constant_time_bytes_eq(left: &[u8], right: &[u8]) -> bool {
     if left.len() != right.len() {
@@ -138,9 +147,16 @@ pub fn constant_time_bytes_eq(left: &[u8], right: &[u8]) -> bool {
         diff |= left[index] ^ right[index];
         index += 1;
     }
-    diff == 0
+    black_box(diff) == 0
 }
 
+/// Returns true if `segment` is the `.saga` control directory name, using
+/// ASCII case-folding.
+///
+/// Platform note: Windows NTFS strips trailing dots at the Win32 API level, so
+/// `.saga.` can resolve to `.saga` on that boundary but is not caught here.
+/// Full Windows path normalization is deferred to the v0.15.0 worktree path
+/// scanner milestone.
 #[must_use]
 pub fn is_saga_segment(segment: &str) -> bool {
     segment.eq_ignore_ascii_case(".saga")
@@ -194,6 +210,12 @@ mod tests {
         assert!(constant_time_bytes_eq(&[1, 2, 3], &[1, 2, 3]));
         assert!(!constant_time_bytes_eq(&[1, 2, 3], &[1, 2, 4]));
         assert!(!constant_time_bytes_eq(&[1, 2, 3], &[1, 2]));
+    }
+
+    #[test]
+    fn is_saga_segment_documents_trailing_dot_windows_gap() {
+        assert!(!is_saga_segment(".saga."));
+        assert!(!is_saga_segment(".SAGA."));
     }
 
     #[test]

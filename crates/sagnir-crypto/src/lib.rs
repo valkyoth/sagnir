@@ -49,7 +49,9 @@ impl<'a> SignatureEnvelope<'a> {
         self.bytes.is_empty()
     }
 
-    /// Constant-time signature byte equality for verification paths.
+    /// Timing-hardened signature byte equality for verification scaffolds.
+    /// Before live signature verification relies on this path, Sagnir must
+    /// admit a formally specified constant-time primitive.
     #[must_use]
     pub fn ct_eq(&self, other: &Self) -> bool {
         self.algorithm == other.algorithm && constant_time_bytes_eq(self.bytes, other.bytes)
