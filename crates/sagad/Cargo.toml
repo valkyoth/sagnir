@@ -1,0 +1,18 @@
+[package]
+name = "sagad"
+description = "Optional Sagnir daemon scaffold."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+sagnir = { path = "../sagnir" }
+
+[[bin]]
+name = "sagad"
+path = "src/main.rs"
+
+[lints]
+workspace = true

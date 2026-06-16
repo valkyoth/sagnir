@@ -1,0 +1,17 @@
+[package]
+name = "sagnir-proof"
+description = "Sagnir proof status and verification report metadata."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+sagnir-policy = { path = "../sagnir-policy" }
+
+[lib]
+path = "src/lib.rs"
+
+[lints]
+workspace = true

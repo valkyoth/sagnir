@@ -1,0 +1,5 @@
+[build]
+rustflags = ["-Dunsafe-code"]
+
+[alias]
+xtask = "run -p xtask --"

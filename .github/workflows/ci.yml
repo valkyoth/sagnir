@@ -1,0 +1,61 @@
+name: Rust CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  checks:
+    name: Format, lint, test, and audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.3
+
+      - name: Install Rust toolchain
+        run: rustup show
+
+      - name: Install security tools
+        run: |
+          cargo install --locked cargo-deny
+          cargo install --locked cargo-audit
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Validate release metadata
+        run: scripts/validate-release-metadata.sh
+
+      - name: Validate modularity policy
+        run: scripts/validate-modularity-policy.sh check
+
+      - name: Validate security policy
+        run: scripts/validate-security-policy.sh check
+
+      - name: Check documentation links
+        run: scripts/check_doc_links.sh
+
+      - name: Run clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Run tests
+        run: cargo test --workspace
+
+      - name: Check dependency policy
+        run: cargo deny check
+
+      - name: Check RustSec advisories
+        run: cargo audit

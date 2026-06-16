@@ -1,0 +1,28 @@
+[package]
+name = "sagnir"
+description = "Main Sagnir library crate."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+sagnir-change = { path = "../sagnir-change" }
+sagnir-codec = { path = "../sagnir-codec" }
+sagnir-core = { path = "../sagnir-core" }
+sagnir-crypto = { path = "../sagnir-crypto" }
+sagnir-fact = { path = "../sagnir-fact" }
+sagnir-object = { path = "../sagnir-object" }
+sagnir-policy = { path = "../sagnir-policy" }
+sagnir-proof = { path = "../sagnir-proof" }
+sagnir-store = { path = "../sagnir-store" }
+sagnir-sync = { path = "../sagnir-sync" }
+sagnir-worktree = { path = "../sagnir-worktree" }
+sagnir-world = { path = "../sagnir-world" }
+
+[lib]
+path = "src/lib.rs"
+
+[lints]
+workspace = true

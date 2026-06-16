@@ -1,0 +1,17 @@
+[package]
+name = "sagnir-crypto"
+description = "Sagnir crypto-agile envelope metadata."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+sagnir-core = { path = "../sagnir-core" }
+
+[lib]
+path = "src/lib.rs"
+
+[lints]
+workspace = true
