@@ -18,6 +18,8 @@ impl ObligationSet {
     pub const REQUIRE_TEST_EVIDENCE: Self = Self(1 << 0);
     pub const REQUIRE_REVIEW: Self = Self(1 << 1);
 
+    /// Returns the raw bitmask for serialization. Use [`Self::has`] for
+    /// obligation checks.
     #[must_use]
     pub const fn bits(self) -> u16 {
         self.0
@@ -65,6 +67,10 @@ mod tests {
             PolicyDecision::new(PolicyResult::RequireProof, ObligationSet::REQUIRE_REVIEW);
         assert_eq!(decision.result(), PolicyResult::RequireProof);
         assert!(decision.obligations().has(ObligationSet::REQUIRE_REVIEW));
-        assert_eq!(decision.obligations().bits(), 2);
+        assert!(
+            !decision
+                .obligations()
+                .has(ObligationSet::REQUIRE_TEST_EVIDENCE)
+        );
     }
 }
