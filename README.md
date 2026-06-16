@@ -53,7 +53,7 @@ Sagnir is licensed under the European Union Public Licence 1.2.
 | --- | --- | --- |
 | Rust workspace | Active | Rust 2024 workspace pinned to Rust stable `1.96.0`. |
 | License baseline | Active | EUPL-1.2. |
-| CLI scaffold | Active | `saga version` reports the CLI and Sagnir format version. |
+| CLI router | Active | `saga help`, `saga version`, unknown commands, and extra arguments have stable tested output. |
 | Focused crates | Active | Core, codec, object, store, worktree, change, world, fact, policy, crypto, proof, sync, CLI, and daemon scaffolds. |
 | `no_std` trusted crates | Active | Core library scaffolds use `#![no_std]` where practical. |
 | Unsafe policy | Active | Trusted crates forbid unsafe Rust. |
@@ -127,7 +127,7 @@ Run the tests:
 cargo test --workspace
 ```
 
-Run the CLI scaffold:
+Run the CLI:
 
 ```bash
 cargo run -p sagnir-cli --bin saga -- version
@@ -153,8 +153,8 @@ scripts/podman_smoke.sh
 
 ## Current Release Line
 
-The repository is past `v0.1.0` and is currently working through the `v0.2.0`
-release-gate baseline.
+The repository is past `v0.2.0` and is currently working through the `v0.3.0`
+CLI router and golden-output baseline.
 
 Current release discipline:
 

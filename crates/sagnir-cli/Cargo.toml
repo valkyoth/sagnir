@@ -10,6 +10,9 @@ repository.workspace = true
 [dependencies]
 sagnir = { path = "../sagnir" }
 
+[lib]
+path = "src/lib.rs"
+
 [[bin]]
 name = "saga"
 path = "src/main.rs"

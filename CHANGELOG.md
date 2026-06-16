@@ -4,6 +4,20 @@ All notable Sagnir changes are recorded here.
 
 ## Unreleased
 
+## 0.3.0
+
+Status: implementation stop.
+
+- Added a testable `saga` CLI router.
+- Added golden-output tests for help, version, unknown-command, and
+  extra-argument behavior.
+- Added stable command-line usage errors with exit code `2`.
+- Added v0.3.0 release notes, pentest placeholder, and release gate.
+
+## 0.2.0
+
+Status: tagged release-gate baseline.
+
 - Added the v0.2.0 release gate baseline.
 - Added reusable release-note and pentest-report validators.
 - Added v0.2.0 release notes and pentest placeholder.

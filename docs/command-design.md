@@ -54,6 +54,13 @@ saga help
 saga version
 ```
 
+It also has stable command-line usage behavior:
+
+- successful commands return exit code `0`;
+- unknown commands return exit code `2`;
+- unexpected extra arguments return exit code `2`;
+- help and version output are pinned by golden tests.
+
 Planned vault commands:
 
 ```text
