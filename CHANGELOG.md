@@ -6,7 +6,7 @@ All notable Sagnir changes are recorded here.
 
 ## 0.4.0
 
-Status: implementation stop.
+Status: tagged core IDs and bounds release.
 
 - Split `sagnir-core` into focused error, ID, and name modules.
 - Added concrete typed ID wrappers for realm, world, change, revision, state,

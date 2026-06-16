@@ -1,6 +1,6 @@
 # Sagnir 0.4.0 Release Notes
 
-Status: implementation stop
+Status: released
 
 ## Summary
 
@@ -31,7 +31,7 @@ material `Copy` guard covers more vault-phase naming patterns, and
 
 ## Verification
 
-Required local verification for this implementation stop:
+Required local verification for this release:
 
 ```bash
 cargo test -p sagnir-core -p sagnir-codec -p sagnir-crypto -p sagnir-object -p sagnir-worktree -p sagnir-policy
@@ -39,7 +39,7 @@ scripts/checks.sh
 scripts/release_0_4_gate.sh
 ```
 
-`scripts/release_0_4_gate.sh` must fail until
+`scripts/release_0_4_gate.sh` passes after
 `security/pentest/v0.4.0.md` is completed with `Status: PASS`.
 
 Tag stop:

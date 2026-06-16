@@ -159,8 +159,9 @@ scripts/release_0_4_gate.sh
 
 ## Current Release Line
 
-The repository is past `v0.3.0` and is currently working through the `v0.4.0`
-core IDs and bounds baseline.
+The repository is ready for `v0.4.0`, the core IDs and bounds baseline. The
+matching release gate and pentest report are green; tagging waits for explicit
+maintainer instruction.
 
 Current release discipline:
 
