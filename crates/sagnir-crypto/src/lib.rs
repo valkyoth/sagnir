@@ -2,6 +2,8 @@
 #![forbid(unsafe_code)]
 #![deny(unused_must_use)]
 
+use core::hint::black_box;
+
 use sagnir_core::{SagnirError, constant_time_bytes_eq};
 
 pub const SIGNATURE_BYTES_MAX: usize = 4_096;
@@ -14,7 +16,7 @@ pub enum SignatureAlgorithm {
     HybridClassicalPq,
 }
 
-#[derive(Clone, Copy, Eq)]
+#[derive(Clone, Eq)]
 pub struct SignatureEnvelope<'a> {
     algorithm: SignatureAlgorithm,
     bytes: &'a [u8],
@@ -35,17 +37,17 @@ impl<'a> SignatureEnvelope<'a> {
     }
 
     #[must_use]
-    pub const fn algorithm(self) -> SignatureAlgorithm {
+    pub const fn algorithm(&self) -> SignatureAlgorithm {
         self.algorithm
     }
 
     #[must_use]
-    pub const fn len(self) -> usize {
+    pub const fn len(&self) -> usize {
         self.bytes.len()
     }
 
     #[must_use]
-    pub const fn is_empty(self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.bytes.is_empty()
     }
 
@@ -55,9 +57,9 @@ impl<'a> SignatureEnvelope<'a> {
     #[must_use]
     pub fn ct_eq(&self, other: &Self) -> bool {
         let algorithm_eq = (self.algorithm == other.algorithm) as u8;
-        let bytes_eq = constant_time_bytes_eq(self.bytes, other.bytes) as u8;
+        let bytes_eq = black_box(constant_time_bytes_eq(self.bytes, other.bytes)) as u8;
 
-        (algorithm_eq & bytes_eq) == 1
+        black_box(algorithm_eq & bytes_eq) == 1
     }
 }
 
@@ -100,7 +102,7 @@ mod tests {
     fn signature_envelope_keeps_algorithm() {
         let envelope = SignatureEnvelope::new(SignatureAlgorithm::HybridClassicalPq, &[1, 2]);
         assert_eq!(
-            envelope.map(SignatureEnvelope::algorithm),
+            envelope.map(|value| value.algorithm()),
             Ok(SignatureAlgorithm::HybridClassicalPq)
         );
     }
@@ -112,11 +114,20 @@ mod tests {
         let different_algorithm = SignatureEnvelope::new(SignatureAlgorithm::MlDsa, &[1, 2, 3]);
         let different_bytes = SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &[1, 2, 4]);
 
-        assert!(left.is_ok_and(|value| right.is_ok_and(|right| value.ct_eq(&right))));
         assert!(
-            left.is_ok_and(|value| { different_algorithm.is_ok_and(|right| !value.ct_eq(&right)) })
+            left.as_ref()
+                .is_ok_and(|value| right.as_ref().is_ok_and(|right| value.ct_eq(right)))
         );
-        assert!(left.is_ok_and(|value| different_bytes.is_ok_and(|right| !value.ct_eq(&right))));
+        assert!(left.as_ref().is_ok_and(|value| {
+            different_algorithm
+                .as_ref()
+                .is_ok_and(|right| !value.ct_eq(right))
+        }));
+        assert!(left.as_ref().is_ok_and(|value| {
+            different_bytes
+                .as_ref()
+                .is_ok_and(|right| !value.ct_eq(right))
+        }));
     }
 
     #[test]

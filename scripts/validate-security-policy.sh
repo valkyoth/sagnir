@@ -19,6 +19,11 @@ if rg "$unsafe_patterns" crates tools --glob '*.rs' >/dev/null 2>&1; then
     exit 1
 fi
 
+if rg -U '#\[derive\([^\]]*Copy[^\]]*\)\][[:space:]]*(pub[[:space:]]+)?struct[[:alnum:]_]*(Secret|Key|Passphrase|Token|Vault)' crates tools --glob '*.rs' >/dev/null 2>&1; then
+    echo "secret or key material structs must not derive Copy" >&2
+    exit 1
+fi
+
 if rg 'Sagaheim|Urdstack|Mimirroot|Nornvault|Wyrdgraph|Runeward' README.md SECURITY.md CHANGELOG.md ROADMAP.md docs .github release-notes >/dev/null; then
     echo "documentation contains non-Sagnir project wording" >&2
     exit 1
@@ -40,4 +45,18 @@ if rg -n '^[[:space:]]*uses: [^[:space:]]+@' .github/workflows --glob '*.yml' --
     grep -vE '@[0-9a-f]{40}([[:space:]]*(#.*)?)?$' >/dev/null 2>&1; then
     echo "GitHub Actions must be pinned to immutable 40-character SHAs" >&2
     exit 1
+fi
+
+if [ -f Cargo.lock ]; then
+    crypto_crate_pattern='name = "(aes-gcm|argon2|chacha20poly1305|ed25519-dalek|hmac|hkdf|ml-dsa|pbkdf2|password-hash|ring|scrypt|sha2)"'
+    if rg "$crypto_crate_pattern" Cargo.lock >/dev/null 2>&1; then
+        rg 'name = "subtle"' Cargo.lock >/dev/null 2>&1 || {
+            echo "crypto provider crates require subtle admission before release" >&2
+            exit 1
+        }
+        rg 'name = "zeroize"' Cargo.lock >/dev/null 2>&1 || {
+            echo "crypto provider crates require zeroize admission before release" >&2
+            exit 1
+        }
+    fi
 fi

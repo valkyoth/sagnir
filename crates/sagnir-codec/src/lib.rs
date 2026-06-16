@@ -32,6 +32,30 @@ pub fn write_len_prefixed<'a>(
     write_bytes(out, input)
 }
 
+pub fn read_len_prefixed(input: &[u8], max_payload: usize) -> Result<(&[u8], &[u8]), SagnirError> {
+    let len_bytes = input.get(..8).ok_or(SagnirError::BufferTooSmall)?;
+    let declared = u64::from_le_bytes(
+        len_bytes
+            .try_into()
+            .map_err(|_error| SagnirError::InvalidValue)?,
+    );
+    let declared = usize::try_from(declared).map_err(|_error| SagnirError::InvalidValue)?;
+    if declared > max_payload {
+        return Err(SagnirError::InvalidValue);
+    }
+
+    let payload_end = 8_usize
+        .checked_add(declared)
+        .ok_or(SagnirError::InvalidValue)?;
+    let payload = input
+        .get(8..payload_end)
+        .ok_or(SagnirError::BufferTooSmall)?;
+    let tail = input
+        .get(payload_end..)
+        .ok_or(SagnirError::BufferTooSmall)?;
+    Ok((payload, tail))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -56,5 +80,37 @@ mod tests {
         let tail_len = write_len_prefixed(&mut out, b"ab").map(|tail| tail.len());
         assert_eq!(tail_len, Ok(0));
         assert_eq!(out, [2, 0, 0, 0, 0, 0, 0, 0, b'a', b'b']);
+    }
+
+    #[test]
+    fn len_prefixed_reader_returns_payload_and_tail() {
+        let input = [2, 0, 0, 0, 0, 0, 0, 0, b'a', b'b', b'c'];
+
+        assert_eq!(read_len_prefixed(&input, 2), Ok((&b"ab"[..], &b"c"[..])));
+    }
+
+    #[test]
+    fn len_prefixed_reader_rejects_missing_length() {
+        assert_eq!(
+            read_len_prefixed(&[0; 7], 8),
+            Err(SagnirError::BufferTooSmall)
+        );
+    }
+
+    #[test]
+    fn len_prefixed_reader_rejects_payload_over_caller_bound() {
+        let input = [3, 0, 0, 0, 0, 0, 0, 0, b'a', b'b', b'c'];
+
+        assert_eq!(read_len_prefixed(&input, 2), Err(SagnirError::InvalidValue));
+    }
+
+    #[test]
+    fn len_prefixed_reader_rejects_truncated_payload() {
+        let input = [3, 0, 0, 0, 0, 0, 0, 0, b'a', b'b'];
+
+        assert_eq!(
+            read_len_prefixed(&input, 3),
+            Err(SagnirError::BufferTooSmall)
+        );
     }
 }

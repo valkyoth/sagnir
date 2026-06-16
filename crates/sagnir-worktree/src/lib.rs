@@ -29,6 +29,7 @@ pub fn classify_relative_path(path: &str) -> PathClass {
         part.is_empty()
             || part == "."
             || part == ".."
+            || sagnir_core::has_windows_path_alias(part)
             || !part.bytes().all(sagnir_core::valid_name_byte_no_slash)
     }) {
         return PathClass::Invalid;
@@ -65,6 +66,21 @@ mod tests {
         assert_eq!(classify_relative_path(".SAGA/objects"), PathClass::Control);
         assert_eq!(classify_relative_path("sub/.Saga"), PathClass::Control);
         assert!(is_control_path(".Saga/config"));
+    }
+
+    #[test]
+    fn windows_reserved_device_names_are_invalid() {
+        assert_eq!(classify_relative_path("CON"), PathClass::Invalid);
+        assert_eq!(classify_relative_path("src/nul.txt"), PathClass::Invalid);
+        assert_eq!(classify_relative_path("COM1"), PathClass::Invalid);
+        assert_eq!(classify_relative_path("build/LPT9.log"), PathClass::Invalid);
+    }
+
+    #[test]
+    fn trailing_dot_aliases_are_invalid() {
+        assert_eq!(classify_relative_path("file."), PathClass::Invalid);
+        assert_eq!(classify_relative_path("src/file."), PathClass::Invalid);
+        assert_eq!(classify_relative_path(".saga."), PathClass::Invalid);
     }
 
     #[test]

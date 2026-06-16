@@ -14,6 +14,10 @@ Status: implementation stop.
 - Added explicit current-format admission through `FormatVersion::try_new`.
 - Expanded allocation-free bounded-name tests for oversize names, invalid
   bytes, slash handling, and control-path aliases.
+- Addressed the first v0.4.0 pentest findings across timing-hardened equality,
+  bounded length-prefix decoding, Windows path aliases, obligation emptiness,
+  crypto dependency admission gates, multiple-version dependency bans, and
+  cryptographic envelope copying.
 - Added v0.4.0 release notes, pentest placeholder, and release gate.
 
 ## 0.3.0

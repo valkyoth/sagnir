@@ -29,6 +29,9 @@ impl<'a> BoundedName<'a> {
         {
             return Err(SagnirError::InvalidNameByte);
         }
+        if value.split('/').any(has_windows_path_alias) {
+            return Err(SagnirError::InvalidNameByte);
+        }
         Ok(Self { value })
     }
 
@@ -50,14 +53,34 @@ pub const fn valid_name_byte_no_slash(byte: u8) -> bool {
 
 /// Returns true if `segment` is the `.saga` control directory name, using
 /// ASCII case-folding.
-///
-/// Platform note: Windows NTFS strips trailing dots at the Win32 API level, so
-/// `.saga.` can resolve to `.saga` on that boundary but is not caught here.
-/// Full Windows path normalization is deferred to the v0.15.0 worktree path
-/// scanner milestone.
 #[must_use]
 pub fn is_saga_segment(segment: &str) -> bool {
     segment.eq_ignore_ascii_case(".saga")
+}
+
+#[must_use]
+pub fn has_windows_path_alias(segment: &str) -> bool {
+    segment.ends_with('.') || is_windows_reserved_name(segment)
+}
+
+#[must_use]
+pub fn is_windows_reserved_name(segment: &str) -> bool {
+    let stem = match segment.as_bytes().iter().position(|byte| *byte == b'.') {
+        Some(index) => &segment[..index],
+        None => segment,
+    };
+
+    stem.eq_ignore_ascii_case("CON")
+        || stem.eq_ignore_ascii_case("PRN")
+        || stem.eq_ignore_ascii_case("AUX")
+        || stem.eq_ignore_ascii_case("NUL")
+        || is_windows_reserved_numbered_device(stem, "COM")
+        || is_windows_reserved_numbered_device(stem, "LPT")
+}
+
+fn is_windows_reserved_numbered_device(stem: &str, prefix: &str) -> bool {
+    let bytes = stem.as_bytes();
+    bytes.len() == 4 && stem[..3].eq_ignore_ascii_case(prefix) && matches!(bytes[3], b'1'..=b'9')
 }
 
 #[cfg(test)]
@@ -109,6 +132,10 @@ mod tests {
             BoundedName::new("sub/.SAGA"),
             Err(SagnirError::InvalidNameByte)
         );
+        assert_eq!(
+            BoundedName::new("sub/.SAGA."),
+            Err(SagnirError::InvalidNameByte)
+        );
     }
 
     #[test]
@@ -134,8 +161,35 @@ mod tests {
     }
 
     #[test]
-    fn is_saga_segment_documents_trailing_dot_windows_gap() {
-        assert!(!is_saga_segment(".saga."));
-        assert!(!is_saga_segment(".SAGA."));
+    fn bounded_name_rejects_windows_reserved_device_names() {
+        assert_eq!(BoundedName::new("CON"), Err(SagnirError::InvalidNameByte));
+        assert_eq!(
+            BoundedName::new("dir/nul.txt"),
+            Err(SagnirError::InvalidNameByte)
+        );
+        assert_eq!(BoundedName::new("COM1"), Err(SagnirError::InvalidNameByte));
+        assert_eq!(
+            BoundedName::new("lpt9.log"),
+            Err(SagnirError::InvalidNameByte)
+        );
+    }
+
+    #[test]
+    fn bounded_name_rejects_trailing_dot_aliases() {
+        assert_eq!(BoundedName::new("file."), Err(SagnirError::InvalidNameByte));
+        assert_eq!(
+            BoundedName::new("dir/file."),
+            Err(SagnirError::InvalidNameByte)
+        );
+    }
+
+    #[test]
+    fn windows_reserved_name_detector_is_case_insensitive() {
+        assert!(is_windows_reserved_name("con"));
+        assert!(is_windows_reserved_name("Con.txt"));
+        assert!(is_windows_reserved_name("LPT1"));
+        assert!(!is_windows_reserved_name("COM0"));
+        assert!(!is_windows_reserved_name("COM10"));
+        assert!(!is_windows_reserved_name("config"));
     }
 }

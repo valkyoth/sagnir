@@ -29,6 +29,11 @@ signature verification, HMAC verification, AEAD tag checks, or secret-dependent
 proof checks rely on constant-time behavior, Sagnir must admit `subtle` or an
 equivalent formally specified primitive through this policy.
 
+The security-policy validator rejects known crypto-provider crates in
+`Cargo.lock` unless `subtle` and `zeroize` are also admitted. This keeps
+constant-time comparison and zero-on-drop policy admission ahead of live crypto
+implementation.
+
 The hardcoded credential scanner supports `scanner:allow` on intentionally
 non-secret placeholder lines. Use it only for test fixtures or documentation
 examples, and keep the surrounding value obviously non-production.

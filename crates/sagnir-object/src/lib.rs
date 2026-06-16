@@ -2,6 +2,8 @@
 #![forbid(unsafe_code)]
 #![deny(unused_must_use)]
 
+use core::hint::black_box;
+
 use sagnir_core::{FormatVersion, ID_BYTES, TypedId, constant_time_bytes_eq};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -95,9 +97,9 @@ impl ObjectId {
     pub fn ct_eq(&self, other: &Self) -> bool {
         let algorithm_eq = (self.algorithm == other.algorithm) as u8;
         let object_type_eq = (self.object_type == other.object_type) as u8;
-        let digest_eq = constant_time_bytes_eq(&self.digest, &other.digest) as u8;
+        let digest_eq = black_box(constant_time_bytes_eq(&self.digest, &other.digest)) as u8;
 
-        (algorithm_eq & object_type_eq & digest_eq) == 1
+        black_box(algorithm_eq & object_type_eq & digest_eq) == 1
     }
 }
 

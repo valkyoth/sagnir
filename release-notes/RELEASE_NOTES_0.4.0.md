@@ -14,15 +14,22 @@ format-version admission explicit through `FormatVersion::try_new`.
 
 Bounded names remain allocation-free and reject empty input, oversize input,
 path traversal segments, `.saga` control-path aliases, slash misuse in segment
-checks, non-ASCII bytes, whitespace, and terminal control bytes before object
-or store code can see them.
+checks, Windows path aliases, non-ASCII bytes, whitespace, and terminal control
+bytes before object or store code can see them.
+
+The first v0.4.0 pentest findings are closed in this line: timing-hardened
+equality call sites force byte comparisons before combining discriminants,
+length-prefixed decoding now has a caller-bounded read API, Windows path aliases
+are rejected by both core names and worktree classification, obligation
+emptiness has an explicit API, crypto dependency admission is release-gated,
+and cryptographic signature envelopes no longer implement `Copy`.
 
 ## Verification
 
 Required local verification for this implementation stop:
 
 ```bash
-cargo test -p sagnir-core
+cargo test -p sagnir-core -p sagnir-codec -p sagnir-crypto -p sagnir-object -p sagnir-worktree -p sagnir-policy
 scripts/checks.sh
 scripts/release_0_4_gate.sh
 ```
@@ -62,4 +69,11 @@ Pentest task:
 - `FormatVersion::try_new` accepts only the current format version.
 - Bounded-name validation rejects invalid and oversize names before object or
   store layers receive them.
+- Windows reserved device names and trailing-dot aliases are rejected before
+  they can become tracked names or worktree candidates.
+- `read_len_prefixed` requires a caller-provided maximum before accepting
+  untrusted length-prefixed payloads.
+- `ObligationSet::is_empty` separates emptiness checks from bit membership.
+- Release gates reject known crypto provider crates unless `subtle` and
+  `zeroize` are admitted.
 - Core validation remains `no_std` and allocation-free.

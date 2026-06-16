@@ -35,6 +35,16 @@ impl ObligationSet {
         self.0
     }
 
+    /// Returns true when no obligation flags are set.
+    #[must_use]
+    pub const fn is_empty(self) -> bool {
+        self.0 == 0
+    }
+
+    /// Returns true when every bit in `flag` is set.
+    ///
+    /// `has(Self::NONE)` is a bitmask tautology. Use [`Self::is_empty`] to
+    /// test whether no obligations are present.
     #[must_use]
     pub const fn has(self, flag: Self) -> bool {
         self.0 & flag.0 == flag.0
@@ -94,5 +104,17 @@ mod tests {
             ObligationSet::from_bits(1 << 15),
             Err(SagnirError::InvalidValue)
         );
+    }
+
+    #[test]
+    fn obligation_set_exposes_empty_check() {
+        assert!(ObligationSet::NONE.is_empty());
+        assert!(!ObligationSet::REQUIRE_REVIEW.is_empty());
+    }
+
+    #[test]
+    fn has_none_is_a_bitmask_tautology() {
+        assert!(ObligationSet::NONE.has(ObligationSet::NONE));
+        assert!(ObligationSet::REQUIRE_REVIEW.has(ObligationSet::NONE));
     }
 }

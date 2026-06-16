@@ -94,9 +94,9 @@ impl TypedId {
     #[must_use]
     pub fn ct_eq(&self, other: &Self) -> bool {
         let kind_eq = (self.kind == other.kind) as u8;
-        let bytes_eq = constant_time_bytes_eq(&self.bytes, &other.bytes) as u8;
+        let bytes_eq = black_box(constant_time_bytes_eq(&self.bytes, &other.bytes)) as u8;
 
-        (kind_eq & bytes_eq) == 1
+        black_box(kind_eq & bytes_eq) == 1
     }
 }
 
@@ -157,17 +157,17 @@ define_id_wrapper!(BundleId, IdKind::Bundle);
 /// equivalent formally specified primitive through the dependency policy.
 #[must_use]
 pub fn constant_time_bytes_eq(left: &[u8], right: &[u8]) -> bool {
-    if left.len() != right.len() {
-        return false;
-    }
-
+    let len_eq = left.len() == right.len();
+    let compare_len = left.len().max(right.len());
     let mut diff = 0_u8;
     let mut index = 0;
-    while index < left.len() {
-        diff |= left[index] ^ right[index];
+    while index < compare_len {
+        let left_byte = if index < left.len() { left[index] } else { 0 };
+        let right_byte = if index < right.len() { right[index] } else { 0 };
+        diff |= left_byte ^ right_byte;
         index += 1;
     }
-    black_box(diff) == 0
+    black_box(diff == 0 && len_eq)
 }
 
 #[cfg(test)]
