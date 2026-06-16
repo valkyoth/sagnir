@@ -10,6 +10,9 @@ This release keeps the CLI deliberately small. It stabilizes `saga help`,
 `saga version`, unknown-command handling, and command-line usage errors before
 stateful realm commands are added.
 
+The release gate also now enforces the strict 500-line Rust source limit and
+checks toolchain/tooling freshness before pentest handoff.
+
 ## Verification
 
 Required local verification for this implementation stop:
@@ -17,6 +20,7 @@ Required local verification for this implementation stop:
 ```bash
 cargo test -p sagnir-cli
 cargo run -p sagnir-cli --bin saga -- version
+scripts/check_latest_crates.sh
 scripts/checks.sh
 scripts/release_0_3_gate.sh
 ```
@@ -49,6 +53,9 @@ Pentest task:
   behavior.
 - Unknown commands and unexpected extra arguments fail closed with exit code
   `2`.
+- Release checks fail if Rust pins, compatible Cargo dependencies, CI cargo
+  tools, or pinned GitHub checkout tooling are stale.
+- Release checks fail if a non-generated Rust source file exceeds 500 lines.
 - Stateful source-state commands remain out of scope for this release.
 - No hosted service, external database, network protocol, or durable realm
   storage is introduced in this release.

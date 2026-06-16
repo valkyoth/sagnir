@@ -12,6 +12,10 @@ Status: implementation stop.
 - Added golden-output tests for help, version, unknown-command, and
   extra-argument behavior.
 - Added stable command-line usage errors with exit code `2`.
+- Tightened the modularity gate so non-generated Rust files over 500 lines fail
+  without exception.
+- Added release-gate freshness checks for Rust, compatible Cargo updates, CI
+  cargo tools, and the pinned GitHub checkout action.
 - Added v0.3.0 release notes, pentest placeholder, and release gate.
 
 ## 0.2.0

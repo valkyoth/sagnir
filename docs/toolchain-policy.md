@@ -6,6 +6,10 @@ Sagnir currently pins Rust stable `1.96.0`.
 
 ## Update Rule
 
+The release gate runs `scripts/check_latest_crates.sh`. That script checks the
+latest stable Rust manifest, compatible Cargo updates, pinned CI cargo tools,
+and the pinned `actions/checkout` release.
+
 Before changing the toolchain:
 
 1. Check the official Rust release announcements.

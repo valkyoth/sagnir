@@ -12,7 +12,9 @@ Rules:
 - split parsing, validation, policy, state, I/O, and tests into separate
   modules;
 - keep normal implementation files under 300 lines where practical;
-- split non-generated `.rs` files before they exceed 500 lines unless a
-  temporary exception is documented here.
+- split non-generated `.rs` files before they exceed 500 lines.
 
 The release gate runs `scripts/validate-modularity-policy.sh`.
+
+The gate is strict: a non-generated Rust source file over 500 lines fails the
+release. Split the module before crossing that limit.

@@ -35,3 +35,9 @@ if rg --multiline 'Authorization:\s*Bearer\s+[A-Za-z0-9._~+/=-]+' scripts docs .
     echo "possible hardcoded bearer token detected" >&2
     exit 1
 fi
+
+if rg -n '^[[:space:]]*uses: [^[:space:]]+@' .github/workflows --glob '*.yml' --glob '*.yaml' |
+    grep -vE '@[0-9a-f]{40}([[:space:]]*(#.*)?)?$' >/dev/null 2>&1; then
+    echo "GitHub Actions must be pinned to immutable 40-character SHAs" >&2
+    exit 1
+fi

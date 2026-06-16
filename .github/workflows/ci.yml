@@ -51,6 +51,9 @@ jobs:
       - name: Validate security policy
         run: scripts/validate-security-policy.sh check
 
+      - name: Check tooling freshness
+        run: scripts/check_latest_crates.sh
+
       - name: Check documentation links
         run: scripts/check_doc_links.sh
 
