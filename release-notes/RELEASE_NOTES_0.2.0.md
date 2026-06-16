@@ -1,6 +1,6 @@
 # Sagnir 0.2.0 Release Notes
 
-Status: implementation stop
+Status: released
 
 ## Summary
 
