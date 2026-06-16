@@ -70,6 +70,9 @@ Pentest task:
   archives.
 - Second v0.3.0 pentest review confirmed the first finding closure and found no
   new introduced issues.
+- GitHub freshness validation now reads crates.io metadata directly instead of
+  parsing `cargo info` output, so CI and local release gates use the same
+  version source.
 - Stateful source-state commands remain out of scope for this release.
 - No hosted service, external database, network protocol, or durable realm
   storage is introduced in this release.

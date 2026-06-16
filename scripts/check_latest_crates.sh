@@ -93,18 +93,31 @@ fi
 check_ci_cargo_tool() {
     crate="$1"
     variable="$2"
+    sha_variable="$3"
     pinned="$(
         sed -n "s/^$variable=\\([0-9][0-9.]*\\)$/\\1/p" scripts/install_security_tools.sh |
             sed -n '1p'
     )"
+    pinned_sha="$(
+        sed -n "s/^$sha_variable=\\([0-9a-f][0-9a-f]*\\)$/\\1/p" scripts/install_security_tools.sh |
+            sed -n '1p'
+    )"
+    crate_json="$(
+        curl -fsSL -A sagnir-release-gate "https://crates.io/api/v1/crates/$crate"
+    )"
     latest="$(
-        cargo info "$crate" |
-            sed -n 's/^version: \([0-9][0-9.]*\).*/\1/p' |
+        printf '%s\n' "$crate_json" |
+            sed -n 's/.*"max_stable_version":"\([^"]*\)".*/\1/p' |
             sed -n '1p'
     )"
 
     if [ -z "$pinned" ]; then
         echo "tooling freshness: scripts/install_security_tools.sh does not pin $crate" >&2
+        exit 1
+    fi
+
+    if ! printf '%s\n' "$pinned_sha" | grep -Eq '^[0-9a-f]{64}$'; then
+        echo "tooling freshness: scripts/install_security_tools.sh does not pin a valid SHA-256 for $crate" >&2
         exit 1
     fi
 
@@ -119,8 +132,8 @@ check_ci_cargo_tool() {
     fi
 }
 
-check_ci_cargo_tool cargo-deny CARGO_DENY_VERSION
-check_ci_cargo_tool cargo-audit CARGO_AUDIT_VERSION
+check_ci_cargo_tool cargo-deny CARGO_DENY_VERSION CARGO_DENY_SHA256
+check_ci_cargo_tool cargo-audit CARGO_AUDIT_VERSION CARGO_AUDIT_SHA256
 
 checkout_pin="$(
     sed -n 's/^[[:space:]]*uses: actions\/checkout@\([0-9a-f]\{40\}\)$/\1/p' .github/workflows/ci.yml |

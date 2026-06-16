@@ -21,6 +21,8 @@ Status: tag candidate awaiting GitHub.
   dependency policy, terminal-safe CLI errors, checked bundle totals, and
   checksum-verified CI security tool installation.
 - Recorded the second v0.3.0 pentest review with no new introduced issues.
+- Fixed CI freshness validation to read crates.io metadata directly instead of
+  parsing `cargo info` output.
 - Added v0.3.0 release notes, pentest placeholder, and release gate.
 
 ## 0.2.0
