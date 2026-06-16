@@ -63,6 +63,8 @@ Pentest task:
   sanitize terminal control characters, bundle item totals use checked
   arithmetic, and CI security tools install from checksum-verified crate
   archives.
+- Second v0.3.0 pentest review confirmed the first finding closure and found no
+  new introduced issues.
 - Stateful source-state commands remain out of scope for this release.
 - No hosted service, external database, network protocol, or durable realm
   storage is introduced in this release.
