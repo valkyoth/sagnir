@@ -4,9 +4,21 @@ All notable Sagnir changes are recorded here.
 
 ## Unreleased
 
+## 0.4.0
+
+Status: implementation stop.
+
+- Split `sagnir-core` into focused error, ID, and name modules.
+- Added concrete typed ID wrappers for realm, world, change, revision, state,
+  fact, object, operation, and bundle IDs.
+- Added explicit current-format admission through `FormatVersion::try_new`.
+- Expanded allocation-free bounded-name tests for oversize names, invalid
+  bytes, slash handling, and control-path aliases.
+- Added v0.4.0 release notes, pentest placeholder, and release gate.
+
 ## 0.3.0
 
-Status: tag candidate awaiting GitHub.
+Status: tagged CLI router release.
 
 - Added a testable `saga` CLI router.
 - Added golden-output tests for help, version, unknown-command, and

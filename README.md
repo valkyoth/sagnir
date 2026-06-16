@@ -76,7 +76,7 @@ Sagnir is licensed under the European Union Public Licence 1.2.
 
 | Capability | Status | Notes |
 | --- | --- | --- |
-| Core IDs and bounds | Scaffolded | Typed IDs, bounded names, case-folded `.saga` control-path rejection, redacted ID debug output, and timing-hardened equality APIs for sensitive IDs. |
+| Core IDs and bounds | Active | Typed ID wrappers, bounded names, explicit format-version admission, case-folded `.saga` control-path rejection, redacted ID debug output, and timing-hardened equality APIs for sensitive IDs. |
 | Canonical codec | Scaffolded | Bounded scalar encoding helpers. |
 | Object identity | Scaffolded | Domain-separated object types and fail-closed hash algorithm parsing. |
 | Local store metadata | Scaffolded | `.saga/` layout and WAL frame kind scaffolds. |
@@ -151,17 +151,16 @@ Run the rootless Podman smoke path:
 scripts/podman_smoke.sh
 ```
 
-Run the v0.3 release gate:
+Run the current release gate:
 
 ```bash
-scripts/release_0_3_gate.sh
+scripts/release_0_4_gate.sh
 ```
 
 ## Current Release Line
 
-The repository is past `v0.2.0`. The `v0.3.0` CLI router and golden-output
-baseline has completed local gates and two pentest passes. Tagging waits for
-GitHub to go green and for explicit maintainer instruction.
+The repository is past `v0.3.0` and is currently working through the `v0.4.0`
+core IDs and bounds baseline.
 
 Current release discipline:
 
