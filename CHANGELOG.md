@@ -17,6 +17,8 @@ Status: implementation stop.
 - Addressed the first v0.5.0 pentest findings across dotfile path rejection,
   signature bounds, credential scanning, scanner bypass policy, bundle count
   arithmetic, controlled error display, and hybrid signature composition policy.
+- Addressed the second v0.5.0 pentest finding by enforcing exact 64-byte
+  Ed25519 signature envelope admission.
 - Added v0.5.0 release notes, pentest placeholder, and release gate.
 
 ## 0.4.0

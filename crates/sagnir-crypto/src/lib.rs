@@ -33,7 +33,7 @@ impl PartialEq for SignatureEnvelope<'_> {
 
 impl<'a> SignatureEnvelope<'a> {
     pub fn new(algorithm: SignatureAlgorithm, bytes: &'a [u8]) -> Result<Self, SagnirError> {
-        if bytes.is_empty() || bytes.len() > max_signature_bytes_for(algorithm) {
+        if !valid_signature_len_for(algorithm, bytes.len()) {
             return Err(SagnirError::InvalidValue);
         }
         Ok(Self { algorithm, bytes })
@@ -87,6 +87,15 @@ pub const fn max_signature_bytes_for(algorithm: SignatureAlgorithm) -> usize {
     }
 }
 
+#[must_use]
+pub const fn valid_signature_len_for(algorithm: SignatureAlgorithm, len: usize) -> bool {
+    match algorithm {
+        SignatureAlgorithm::Ed25519 => len == ED25519_SIGNATURE_BYTES,
+        SignatureAlgorithm::MlDsa => len > 0 && len <= ML_DSA_SIGNATURE_BYTES_MAX,
+        SignatureAlgorithm::HybridClassicalPq => len > 0 && len <= HYBRID_SIGNATURE_BYTES_MAX,
+    }
+}
+
 pub const fn parse_signature_algorithm(raw: u16) -> Result<SignatureAlgorithm, SagnirError> {
     match raw {
         1 => Ok(SignatureAlgorithm::Ed25519),
@@ -113,11 +122,16 @@ mod tests {
     #[test]
     fn signature_envelope_enforces_algorithm_specific_bounds() {
         let ed25519 = [0_u8; ED25519_SIGNATURE_BYTES];
+        let too_small_ed25519 = [0_u8; ED25519_SIGNATURE_BYTES - 1];
         let too_large_ed25519 = [0_u8; ED25519_SIGNATURE_BYTES + 1];
         let ml_dsa_87 = [0_u8; ML_DSA_SIGNATURE_BYTES_MAX];
         let hybrid = [0_u8; HYBRID_SIGNATURE_BYTES_MAX];
 
         assert!(SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &ed25519).is_ok());
+        assert_eq!(
+            SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &too_small_ed25519),
+            Err(SagnirError::InvalidValue)
+        );
         assert_eq!(
             SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &too_large_ed25519),
             Err(SagnirError::InvalidValue)
@@ -137,10 +151,13 @@ mod tests {
 
     #[test]
     fn signature_envelope_has_constant_time_equality_api() {
-        let left = SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &[1, 2, 3]);
-        let right = SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &[1, 2, 3]);
-        let different_algorithm = SignatureEnvelope::new(SignatureAlgorithm::MlDsa, &[1, 2, 3]);
-        let different_bytes = SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &[1, 2, 4]);
+        let bytes = [1_u8; ED25519_SIGNATURE_BYTES];
+        let mut changed = bytes;
+        changed[ED25519_SIGNATURE_BYTES - 1] = 2;
+        let left = SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &bytes);
+        let right = SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &bytes);
+        let different_algorithm = SignatureEnvelope::new(SignatureAlgorithm::MlDsa, &bytes);
+        let different_bytes = SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &changed);
 
         assert!(
             left.as_ref()
@@ -168,12 +185,13 @@ mod tests {
 
     #[test]
     fn debug_redacts_signature_bytes() {
-        let envelope = SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &[1, 2, 3]);
+        let bytes = [1_u8; ED25519_SIGNATURE_BYTES];
+        let envelope = SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &bytes);
         let debug = envelope.map(|value| format!("{value:?}"));
         assert_eq!(
             debug,
             Ok(String::from(
-                "SignatureEnvelope { algorithm: Ed25519, bytes: [3 bytes redacted] }"
+                "SignatureEnvelope { algorithm: Ed25519, bytes: [64 bytes redacted] }"
             ))
         );
     }

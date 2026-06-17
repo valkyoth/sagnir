@@ -23,6 +23,10 @@ are restricted to documentation and reviewed fixtures, bundle count arithmetic
 has a compile-time invariant, `SagnirError` has controlled display messages,
 and hybrid signature composition has a binding policy before implementation.
 
+The second v0.5.0 pentest finding is also closed: Ed25519 signature envelopes
+now require the exact 64-byte signature size instead of treating 64 bytes as an
+upper bound.
+
 ## Verification
 
 Required local verification for this implementation stop:
@@ -71,6 +75,8 @@ Pentest task:
   materialization can treat them as tracked candidates.
 - Signature envelope bounds are algorithm-specific and account for ML-DSA-87
   and hybrid classical plus post-quantum envelopes.
+- Fixed-length Ed25519 signature envelopes require exactly 64 bytes at
+  admission.
 - Credential scanning rejects broader token, key, PEM private key, and
   JWT-shaped literals.
 - Hybrid signature implementation is blocked on a documented composition rule

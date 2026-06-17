@@ -11,8 +11,10 @@ Current envelope algorithm identifiers:
 - ML-DSA;
 - HybridClassicalPq.
 
-Signature byte bounds are algorithm-specific. Bounds are admission limits for
-envelope parsing, not cryptographic verification.
+Signature byte admission is algorithm-specific. Fixed-length algorithms must
+use exact byte sizes at the envelope boundary. Variable-length or family-level
+algorithms use explicit upper bounds for envelope parsing; those bounds are not
+cryptographic verification.
 
 Timing note: local byte-comparison helpers are scaffolding only. Before live
 signature verification relies on constant-time behavior, Sagnir must admit
