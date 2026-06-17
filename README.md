@@ -78,7 +78,7 @@ Sagnir is licensed under the European Union Public Licence 1.2.
 | --- | --- | --- |
 | Core IDs and bounds | Active | Typed ID wrappers, bounded names, explicit format-version admission, case-folded `.saga` control-path rejection, redacted ID debug output, and timing-hardened equality APIs for sensitive IDs. |
 | Canonical codec | Active | Fixed-width integer readers and writers, byte-string encoding, bounded list-length encoding, fail-closed buffer writes, and malformed scalar tests. |
-| Object identity | Scaffolded | Domain-separated object types and fail-closed hash algorithm parsing. |
+| Object identity and headers | Active | Domain-separated object types, fail-closed hash algorithm parsing, fixed object headers, object header body bounds, flags admission, and malformed header tests. |
 | Local store metadata | Scaffolded | `.saga/` layout and WAL frame kind scaffolds. |
 | Worktree path rules | Scaffolded | Control-path exclusion, non-control dotfile rejection, path traversal rejection, control-character rejection, separator policy, and symlink-boundary documentation. |
 | Policy metadata | Scaffolded | Policy results, validated obligation bitmasks, and named obligation checks. |
@@ -154,14 +154,13 @@ scripts/podman_smoke.sh
 Run the current release gate:
 
 ```bash
-scripts/release_0_5_gate.sh
+scripts/release_0_6_gate.sh
 ```
 
 ## Current Release Line
 
-The repository is ready for `v0.5.0`, the canonical scalar encoding baseline.
-The matching release gate and pentest report are green; tagging and pushing
-wait for explicit maintainer instruction.
+The repository is past `v0.5.0` and is currently working through `v0.6.0`,
+the object header format baseline.
 
 Current release discipline:
 

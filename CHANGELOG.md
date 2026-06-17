@@ -4,6 +4,19 @@ All notable Sagnir changes are recorded here.
 
 ## Unreleased
 
+## 0.6.0
+
+Status: implementation stop.
+
+- Split `sagnir-object` into focused identity and header modules.
+- Added fixed-width object header parsing and writing with magic, object type,
+  format version, body length, and flags fields.
+- Added fail-closed object type, format version, body length, and flags
+  admission for object headers.
+- Added a duplicate-field tracker for future variable header parsing.
+- Added an object-header fuzz target scaffold location.
+- Added v0.6.0 release notes, pentest placeholder, and release gate.
+
 ## 0.5.0
 
 Status: release-ready canonical scalar encoding release.

@@ -54,6 +54,17 @@ Format rules:
 - object body limits are checked before allocation;
 - hashes and type tags are verified before indexing.
 
+Object header v1 is fixed-width:
+
+- magic: `SAGNOBJ\0`;
+- object type: `u16`;
+- format version: `u16`;
+- body length: `u64`;
+- flags: `u32`.
+
+No flags are admitted in v0.6.0. Unknown flags fail closed and are treated as
+critical until explicitly admitted.
+
 Decode rule: length-prefixed decoding must use `read_len_prefixed` or an
 equivalent bounded API that validates the declared length against a
 caller-provided maximum before returning a payload slice. Malicious object and
