@@ -65,6 +65,10 @@ Object header v1 is fixed-width:
 No flags are admitted in v0.6.0. Unknown flags fail closed and are treated as
 critical until explicitly admitted.
 
+Zero-length bodies are admitted only for blob objects in v0.6.0. Structured
+object types must carry a body until their canonical empty encodings are
+explicitly admitted.
+
 Object header parsing validates that the input slice contains at least the
 declared body length before returning post-header bytes. Callers may still
 split body bytes from trailing transport data according to their own framing,

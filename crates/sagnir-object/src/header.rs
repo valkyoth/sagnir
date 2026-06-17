@@ -17,10 +17,10 @@ pub struct ObjectHeaderFlags(u32);
 
 impl ObjectHeaderFlags {
     pub const NONE: Self = Self(0);
-    const KNOWN_BITS: u32 = Self::NONE.0;
+    const ADMITTED_BITS: u32 = 0;
 
     pub const fn try_new(raw: u32) -> Result<Self, SagnirError> {
-        if raw & !Self::KNOWN_BITS != 0 {
+        if raw & !Self::ADMITTED_BITS != 0 {
             return Err(SagnirError::InvalidValue);
         }
         Ok(Self(raw))
@@ -48,6 +48,9 @@ impl ObjectHeader {
         flags: ObjectHeaderFlags,
     ) -> Result<Self, SagnirError> {
         if body_len > OBJECT_BODY_BYTES_MAX {
+            return Err(SagnirError::InvalidValue);
+        }
+        if body_len == 0 && !object_type_allows_empty_body(object_type) {
             return Err(SagnirError::InvalidValue);
         }
         Ok(Self {
@@ -151,6 +154,10 @@ pub fn write_object_header(out: &mut [u8], header: ObjectHeader) -> Result<&mut 
     sagnir_codec::write_u32(out, header.flags().bits())
 }
 
+const fn object_type_allows_empty_body(object_type: ObjectType) -> bool {
+    matches!(object_type, ObjectType::Blob)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -234,6 +241,39 @@ mod tests {
             .copy_from_slice(&(OBJECT_BODY_BYTES_MAX + 1).to_le_bytes());
 
         assert_eq!(parse_object_header(&bytes), Err(SagnirError::InvalidValue));
+    }
+
+    #[test]
+    fn object_header_rejects_empty_structured_body() {
+        let header =
+            ObjectHeader::new(ObjectType::Tree, FORMAT_VERSION, 0, ObjectHeaderFlags::NONE);
+
+        assert_eq!(header, Err(SagnirError::InvalidValue));
+    }
+
+    #[test]
+    fn object_header_allows_empty_blob_body() {
+        let mut bytes = [0_u8; HEADER_LEN];
+        let header =
+            ObjectHeader::new(ObjectType::Blob, FORMAT_VERSION, 0, ObjectHeaderFlags::NONE);
+        assert_eq!(
+            header
+                .and_then(|header| write_object_header(&mut bytes, header).map(|tail| tail.len())),
+            Ok(0)
+        );
+
+        assert_eq!(
+            parse_object_header(&bytes),
+            Ok((
+                ObjectHeader {
+                    object_type: ObjectType::Blob,
+                    format_version: FORMAT_VERSION,
+                    body_len: 0,
+                    flags: ObjectHeaderFlags::NONE,
+                },
+                &[][..],
+            ))
+        );
     }
 
     #[test]

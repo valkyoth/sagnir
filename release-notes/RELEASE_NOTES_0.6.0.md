@@ -31,6 +31,11 @@ the standalone fuzz workspace review rule is documented, NCSA license admission
 names the libFuzzer dependency, and `OwnedSignature` documents its fixed stack
 cost.
 
+The third v0.6.0 pentest findings are closed as well: the fuzz workspace now
+has an explicit `fuzz/deny.toml`, the root dependency policy no longer carries
+the fuzz-only NCSA license entry, object-header flag admission uses a literal
+zero-bit policy, and zero-length structured object bodies fail closed.
+
 ## Verification
 
 Required local verification for this implementation stop:
@@ -41,7 +46,7 @@ scripts/checks.sh
 scripts/release_0_6_gate.sh
 cargo test -p sagnir-crypto
 cargo check --manifest-path fuzz/Cargo.toml --bins
-cargo deny --manifest-path fuzz/Cargo.toml check
+cargo deny --manifest-path fuzz/Cargo.toml check --config fuzz/deny.toml
 ```
 
 `scripts/release_0_6_gate.sh` must fail until
@@ -78,6 +83,7 @@ Pentest task:
 - Body length metadata is bounded and declared body bytes must be available
   before future parser allocation paths.
 - No object header flags are admitted yet; any nonzero flag fails closed.
+- Zero-length bodies are admitted only for blob objects in v0.6.0.
 - A no-allocation field tracker rejects duplicate header fields for future
   variable header parsing.
 - The object-header fuzz target is active in the separate `fuzz/` package.

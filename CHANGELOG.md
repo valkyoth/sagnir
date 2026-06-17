@@ -27,6 +27,9 @@ Status: implementation stop.
 - Addressed the second v0.6.0 pentest findings across parser length comparison,
   fuzz workspace review documentation, NCSA license admission notes, and
   owned-signature stack-cost documentation.
+- Addressed the third v0.6.0 pentest findings across explicit fuzz dependency
+  policy, root license-policy scope, object-header flag naming, and
+  zero-length structured body rejection.
 - Added v0.6.0 release notes, pentest placeholder, and release gate.
 
 ## 0.5.0
