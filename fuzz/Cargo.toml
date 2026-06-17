@@ -4,6 +4,9 @@ version = "0.0.0"
 edition = "2024"
 publish = false
 
+# This standalone workspace keeps cargo-fuzz/nightly plumbing outside the
+# stable root workspace. Its dependency tree is still checked manually with:
+# cargo deny --manifest-path fuzz/Cargo.toml check
 [workspace]
 
 [package.metadata]

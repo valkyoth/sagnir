@@ -25,6 +25,8 @@ allow = [
     "ISC",
     "MIT",
     "MIT-0",
+    # Required by libfuzzer-sys v0.4.13 for the standalone fuzz workspace;
+    # reviewed 2026-06-17.
     "NCSA",
     "Unicode-3.0",
     "Zlib",

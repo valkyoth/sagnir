@@ -142,6 +142,11 @@ const fn valid_hybrid_signature_len(len: usize) -> bool {
         || len == HYBRID_SIGNATURE_BYTES_MAX
 }
 
+/// Owned, fixed-size signature buffer. Cleared on drop via `sanitization`.
+///
+/// Stack cost: `SIGNATURE_BYTES_MAX` bytes, currently 4691 bytes for
+/// Ed25519 plus ML-DSA-87. Callers on constrained stacks must box this type or
+/// use a future allocation-backed signature container.
 pub struct OwnedSignature {
     algorithm: SignatureAlgorithm,
     len: usize,

@@ -35,6 +35,14 @@ Reviewed advisory exceptions are allowed only when there is no compatible
 upgrade and the affected API is not reachable in Sagnir. Each exception must be
 listed in the tool that reports it, with a removal condition.
 
+The `fuzz/` package is a standalone workspace so `cargo-fuzz` and nightly
+tooling stay outside the stable root workspace. Its dependency tree must be
+reviewed during pentest handoff and checked manually with:
+
+```bash
+cargo deny --manifest-path fuzz/Cargo.toml check
+```
+
 ## Release Supply-Chain Evidence
 
 Stable releases must publish SBOM files generated from the tagged source tree.

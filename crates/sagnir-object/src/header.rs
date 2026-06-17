@@ -136,8 +136,8 @@ pub fn parse_object_header(input: &[u8]) -> Result<(ObjectHeader, &[u8]), Sagnir
     let format_version = FormatVersion::try_new(raw_version)?;
     let flags = ObjectHeaderFlags::try_new(raw_flags)?;
     let header = ObjectHeader::new(object_type, format_version, body_len, flags)?;
-    let available_len = u64::try_from(tail.len()).map_err(|_| SagnirError::InvalidValue)?;
-    if available_len < header.body_len() {
+    let body_len = usize::try_from(header.body_len()).map_err(|_| SagnirError::InvalidValue)?;
+    if tail.len() < body_len {
         return Err(SagnirError::BufferTooSmall);
     }
     Ok((header, tail))

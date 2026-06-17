@@ -24,6 +24,9 @@ Status: implementation stop.
 - Addressed the first v0.6.0 pentest findings across constant-time equality,
   signature bounds, parser body availability, sanitization policy, fuzz target
   activation, and header-length maintenance.
+- Addressed the second v0.6.0 pentest findings across parser length comparison,
+  fuzz workspace review documentation, NCSA license admission notes, and
+  owned-signature stack-cost documentation.
 - Added v0.6.0 release notes, pentest placeholder, and release gate.
 
 ## 0.5.0

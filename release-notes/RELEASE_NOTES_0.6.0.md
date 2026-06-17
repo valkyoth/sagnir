@@ -25,6 +25,12 @@ owned signature bytes clear through `sanitization`, object-header parsing
 requires the declared body bytes to be present, the header length derives from
 codec constants, and the object-header fuzz target is active.
 
+The second v0.6.0 pentest findings are also closed: object-header body
+availability now compares `tail.len()` against a checked `usize` body length,
+the standalone fuzz workspace review rule is documented, NCSA license admission
+names the libFuzzer dependency, and `OwnedSignature` documents its fixed stack
+cost.
+
 ## Verification
 
 Required local verification for this implementation stop:
@@ -34,6 +40,8 @@ cargo test -p sagnir-object
 scripts/checks.sh
 scripts/release_0_6_gate.sh
 cargo test -p sagnir-crypto
+cargo check --manifest-path fuzz/Cargo.toml --bins
+cargo deny --manifest-path fuzz/Cargo.toml check
 ```
 
 `scripts/release_0_6_gate.sh` must fail until
