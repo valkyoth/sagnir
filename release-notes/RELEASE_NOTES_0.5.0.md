@@ -16,6 +16,13 @@ length handling.
 The existing length-prefixed byte helpers remain available as aliases for the
 canonical byte-string API.
 
+The first v0.5.0 pentest findings are closed in this line: tracked names reject
+leading-dot path segments, signature envelopes use algorithm-specific maximums,
+credential scanning covers more token and key patterns, scanner bypass markers
+are restricted to documentation and reviewed fixtures, bundle count arithmetic
+has a compile-time invariant, `SagnirError` has controlled display messages,
+and hybrid signature composition has a binding policy before implementation.
+
 ## Verification
 
 Required local verification for this implementation stop:
@@ -60,4 +67,12 @@ Pentest task:
   caller-provided maximum before later parser code can allocate or iterate.
 - Scalar writers fail closed when the caller-provided output buffer is too
   small.
+- Non-control leading-dot path segments are rejected before worktree
+  materialization can treat them as tracked candidates.
+- Signature envelope bounds are algorithm-specific and account for ML-DSA-87
+  and hybrid classical plus post-quantum envelopes.
+- Credential scanning rejects broader token, key, PEM private key, and
+  JWT-shaped literals.
+- Hybrid signature implementation is blocked on a documented composition rule
+  that requires both classical and post-quantum components to verify.
 - Canonical scalar encoding remains `no_std` and allocation-free.

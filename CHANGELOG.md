@@ -14,6 +14,9 @@ Status: implementation stop.
 - Preserved the existing length-prefixed byte API as byte-string aliases.
 - Expanded malformed scalar tests for short buffers, truncated payloads, and
   caller-bound violations.
+- Addressed the first v0.5.0 pentest findings across dotfile path rejection,
+  signature bounds, credential scanning, scanner bypass policy, bundle count
+  arithmetic, controlled error display, and hybrid signature composition policy.
 - Added v0.5.0 release notes, pentest placeholder, and release gate.
 
 ## 0.4.0

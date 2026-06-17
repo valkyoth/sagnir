@@ -34,8 +34,10 @@ The security-policy validator rejects known crypto-provider crates in
 constant-time comparison and zero-on-drop policy admission ahead of live crypto
 implementation.
 
-The hardcoded credential scanner supports `scanner:allow` on intentionally
-non-secret placeholder lines. Use it only for test fixtures or documentation
-examples, and keep the surrounding value obviously non-production.
+The hardcoded credential scanner supports `scanner:allow` only in documentation,
+release notes, or reviewed fixtures. It is rejected in trusted code, scripts,
+CI configuration, root metadata, and root documentation. Use it only for
+intentionally non-secret placeholder lines, and keep the surrounding value
+obviously non-production.
 
 The initial scaffold has no third-party Rust dependencies.

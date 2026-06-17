@@ -29,6 +29,9 @@ impl<'a> BoundedName<'a> {
         {
             return Err(SagnirError::InvalidNameByte);
         }
+        if value.split('/').any(is_dotfile_segment) {
+            return Err(SagnirError::InvalidNameByte);
+        }
         if value.split('/').any(has_windows_path_alias) {
             return Err(SagnirError::InvalidNameByte);
         }
@@ -56,6 +59,11 @@ pub const fn valid_name_byte_no_slash(byte: u8) -> bool {
 #[must_use]
 pub fn is_saga_segment(segment: &str) -> bool {
     segment.eq_ignore_ascii_case(".saga")
+}
+
+#[must_use]
+pub fn is_dotfile_segment(segment: &str) -> bool {
+    segment.starts_with('.')
 }
 
 #[must_use]
@@ -134,6 +142,22 @@ mod tests {
         );
         assert_eq!(
             BoundedName::new("sub/.SAGA."),
+            Err(SagnirError::InvalidNameByte)
+        );
+    }
+
+    #[test]
+    fn bounded_name_rejects_dotfile_segments() {
+        assert_eq!(
+            BoundedName::new(".gitignore"),
+            Err(SagnirError::InvalidNameByte)
+        );
+        assert_eq!(
+            BoundedName::new(".git/hooks/pre-commit"),
+            Err(SagnirError::InvalidNameByte)
+        );
+        assert_eq!(
+            BoundedName::new("src/.env"),
             Err(SagnirError::InvalidNameByte)
         );
     }

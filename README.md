@@ -80,9 +80,9 @@ Sagnir is licensed under the European Union Public Licence 1.2.
 | Canonical codec | Active | Fixed-width integer readers and writers, byte-string encoding, bounded list-length encoding, fail-closed buffer writes, and malformed scalar tests. |
 | Object identity | Scaffolded | Domain-separated object types and fail-closed hash algorithm parsing. |
 | Local store metadata | Scaffolded | `.saga/` layout and WAL frame kind scaffolds. |
-| Worktree path rules | Scaffolded | Control-path exclusion, path traversal rejection, control-character rejection, separator policy, and symlink-boundary documentation. |
+| Worktree path rules | Scaffolded | Control-path exclusion, non-control dotfile rejection, path traversal rejection, control-character rejection, separator policy, and symlink-boundary documentation. |
 | Policy metadata | Scaffolded | Policy results, validated obligation bitmasks, and named obligation checks. |
-| Crypto envelope metadata | Scaffolded | Algorithm admission, signature bounds, redacted debug output, and constant-time signature equality API. |
+| Crypto envelope metadata | Scaffolded | Algorithm admission, algorithm-specific signature bounds, hybrid signature binding policy, redacted debug output, and constant-time signature equality API. |
 | Bundle metadata | Scaffolded | Bundle manifest counts are bounded before future parser allocation paths. |
 
 ### Planned Core Tracks
@@ -183,6 +183,7 @@ Current release discipline:
 - [Local Store](docs/local-store.md)
 - [World Model](docs/world-model.md)
 - [Proof Model](docs/proof-model.md)
+- [Signature Policy](docs/signature-policy.md)
 - [Vault Encryption](docs/vault-encryption.md)
 - [Protocol](docs/protocol.md)
 - [Security Controls](docs/security-controls.md)

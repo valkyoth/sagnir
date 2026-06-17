@@ -29,6 +29,7 @@ pub fn classify_relative_path(path: &str) -> PathClass {
         part.is_empty()
             || part == "."
             || part == ".."
+            || sagnir_core::is_dotfile_segment(part)
             || sagnir_core::has_windows_path_alias(part)
             || !part.bytes().all(sagnir_core::valid_name_byte_no_slash)
     }) {
@@ -66,6 +67,24 @@ mod tests {
         assert_eq!(classify_relative_path(".SAGA/objects"), PathClass::Control);
         assert_eq!(classify_relative_path("sub/.Saga"), PathClass::Control);
         assert!(is_control_path(".Saga/config"));
+    }
+
+    #[test]
+    fn non_control_dotfile_segments_are_invalid() {
+        assert_eq!(classify_relative_path(".gitignore"), PathClass::Invalid);
+        assert_eq!(
+            classify_relative_path(".git/hooks/pre-commit"),
+            PathClass::Invalid
+        );
+        assert_eq!(
+            classify_relative_path(".ssh/authorized_keys"),
+            PathClass::Invalid
+        );
+        assert_eq!(
+            classify_relative_path(".github/workflows/ci.yml"),
+            PathClass::Invalid
+        );
+        assert_eq!(classify_relative_path("src/.env"), PathClass::Invalid);
     }
 
     #[test]

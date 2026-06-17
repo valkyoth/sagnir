@@ -29,10 +29,20 @@ if rg 'Sagaheim|Urdstack|Mimirroot|Nornvault|Wyrdgraph|Runeward' README.md SECUR
     exit 1
 fi
 
-hardcoded_patterns='(password|passphrase|api_key|secret_key|private_key|signing_key|master_key|realm_key|encryption_key|token|secret|bearer)\s*=\s*"[^"]+'
+if rg 'scanner:allow' crates tools scripts .github README.md SECURITY.md CHANGELOG.md ROADMAP.md Cargo.toml deny.toml rust-toolchain.toml Containerfile containers --glob '!scripts/validate-security-policy.sh' >/dev/null 2>&1; then
+    echo "scanner:allow is only permitted in docs, release notes, or reviewed fixtures" >&2
+    exit 1
+fi
+
+hardcoded_patterns='(password|passphrase|api_key|secret_key|private_key|signing_key|master_key|realm_key|encryption_key|auth_token|access_token|refresh_token|id_token|jwt_token|hmac_key|aes_key|rsa_key|dsa_key|ecdsa_key|wrap_key|kek|token|secret|bearer|private|credential)\s*[=:]\s*"[^"]+'
 credential_paths='crates tools scripts docs .github release-notes README.md SECURITY.md CHANGELOG.md ROADMAP.md Cargo.toml deny.toml rust-toolchain.toml Containerfile containers'
-if rg --multiline "$hardcoded_patterns" $credential_paths --glob '*.rs' --glob '*.sh' --glob '*.toml' --glob '*.md' --glob '*.yml' --glob '*.yaml' --glob 'Containerfile*' | grep -v 'scanner:allow' >/dev/null 2>&1; then
+if rg --multiline --glob '*.rs' --glob '*.sh' --glob '*.toml' --glob '*.md' --glob '*.yml' --glob '*.yaml' --glob 'Containerfile*' "$hardcoded_patterns" $credential_paths | grep -v 'scanner:allow' >/dev/null 2>&1; then
     echo "possible hardcoded credential detected" >&2
+    exit 1
+fi
+
+if rg --multiline --glob '*.rs' --glob '*.sh' --glob '*.toml' --glob '*.md' --glob '*.yml' --glob '*.yaml' --glob 'Containerfile*' -- '-----BEGIN [A-Z ]+PRIVATE KEY-----|eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}' $credential_paths | grep -v 'scanner:allow' >/dev/null 2>&1; then
+    echo "possible PEM private key or JWT literal detected" >&2
     exit 1
 fi
 

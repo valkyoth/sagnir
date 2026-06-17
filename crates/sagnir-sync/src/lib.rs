@@ -6,6 +6,10 @@ use sagnir_core::SagnirError;
 
 pub const MAX_OBJECTS_PER_BUNDLE: u64 = 1_000_000;
 pub const MAX_FACTS_PER_BUNDLE: u64 = 1_000_000;
+const _: () = assert!(
+    MAX_OBJECTS_PER_BUNDLE.saturating_add(MAX_FACTS_PER_BUNDLE) < u64::MAX,
+    "BundleManifest::total_items overflow guard"
+);
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BundleKind {
@@ -41,6 +45,7 @@ impl BundleManifest {
 
     #[must_use]
     pub const fn total_items(self) -> u64 {
+        // Bounds enforced at construction and guarded above.
         self.object_count + self.fact_count
     }
 }

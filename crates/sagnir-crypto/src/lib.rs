@@ -6,7 +6,10 @@ use core::hint::black_box;
 
 use sagnir_core::{SagnirError, constant_time_bytes_eq};
 
-pub const SIGNATURE_BYTES_MAX: usize = 4_096;
+pub const ED25519_SIGNATURE_BYTES: usize = 64;
+pub const ML_DSA_SIGNATURE_BYTES_MAX: usize = 4_627;
+pub const HYBRID_SIGNATURE_BYTES_MAX: usize = 8_192;
+pub const SIGNATURE_BYTES_MAX: usize = HYBRID_SIGNATURE_BYTES_MAX;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[non_exhaustive]
@@ -30,7 +33,7 @@ impl PartialEq for SignatureEnvelope<'_> {
 
 impl<'a> SignatureEnvelope<'a> {
     pub fn new(algorithm: SignatureAlgorithm, bytes: &'a [u8]) -> Result<Self, SagnirError> {
-        if bytes.is_empty() || bytes.len() > SIGNATURE_BYTES_MAX {
+        if bytes.is_empty() || bytes.len() > max_signature_bytes_for(algorithm) {
             return Err(SagnirError::InvalidValue);
         }
         Ok(Self { algorithm, bytes })
@@ -75,6 +78,15 @@ impl core::fmt::Debug for SignatureEnvelope<'_> {
     }
 }
 
+#[must_use]
+pub const fn max_signature_bytes_for(algorithm: SignatureAlgorithm) -> usize {
+    match algorithm {
+        SignatureAlgorithm::Ed25519 => ED25519_SIGNATURE_BYTES,
+        SignatureAlgorithm::MlDsa => ML_DSA_SIGNATURE_BYTES_MAX,
+        SignatureAlgorithm::HybridClassicalPq => HYBRID_SIGNATURE_BYTES_MAX,
+    }
+}
+
 pub const fn parse_signature_algorithm(raw: u16) -> Result<SignatureAlgorithm, SagnirError> {
     match raw {
         1 => Ok(SignatureAlgorithm::Ed25519),
@@ -96,6 +108,22 @@ mod tests {
             SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &[]),
             Err(SagnirError::InvalidValue)
         );
+    }
+
+    #[test]
+    fn signature_envelope_enforces_algorithm_specific_bounds() {
+        let ed25519 = [0_u8; ED25519_SIGNATURE_BYTES];
+        let too_large_ed25519 = [0_u8; ED25519_SIGNATURE_BYTES + 1];
+        let ml_dsa_87 = [0_u8; ML_DSA_SIGNATURE_BYTES_MAX];
+        let hybrid = [0_u8; HYBRID_SIGNATURE_BYTES_MAX];
+
+        assert!(SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &ed25519).is_ok());
+        assert_eq!(
+            SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &too_large_ed25519),
+            Err(SagnirError::InvalidValue)
+        );
+        assert!(SignatureEnvelope::new(SignatureAlgorithm::MlDsa, &ml_dsa_87).is_ok());
+        assert!(SignatureEnvelope::new(SignatureAlgorithm::HybridClassicalPq, &hybrid).is_ok());
     }
 
     #[test]
