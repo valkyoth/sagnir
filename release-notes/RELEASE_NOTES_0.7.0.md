@@ -83,7 +83,7 @@ Pentest task:
 - `ProofStatus::Verified` cannot be admitted through generic report
   construction.
 - Security tool archive extraction rejects absolute names and directory
-  overwrite behavior.
+  traversal before extraction without relying on GNU-specific tar flags.
 - Composed equality paths keep `subtle::Choice` until the final boolean
   boundary.
 - `OwnedSignature::as_envelope` rejects sanitized signatures.

@@ -14,13 +14,28 @@ install_verified_crate() {
     version="$2"
     expected_sha="$3"
     archive="$tmp_dir/$crate-$version.crate"
+    expected_root="$crate-$version"
 
     curl -fsSL -A sagnir-release-gate \
         "https://crates.io/api/v1/crates/$crate/$version/download" \
         -o "$archive"
 
     printf '%s  %s\n' "$expected_sha" "$archive" | sha256sum --check
-    tar --no-absolute-names --no-overwrite-dir -xzf "$archive" -C "$tmp_dir"
+    tar -tzf "$archive" | while IFS= read -r entry; do
+        case "$entry" in
+            "" | /* | ../* | */../* | .. | */..)
+                echo "unsafe archive path in $archive: $entry" >&2
+                exit 1
+                ;;
+            "$expected_root" | "$expected_root"/*)
+                ;;
+            *)
+                echo "unexpected archive path in $archive: $entry" >&2
+                exit 1
+                ;;
+        esac
+    done
+    tar -xzf "$archive" -C "$tmp_dir"
     cargo install --locked --path "$tmp_dir/$crate-$version"
 }
 

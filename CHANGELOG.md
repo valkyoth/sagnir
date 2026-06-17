@@ -37,6 +37,8 @@ Status: implementation stop.
   codec byte strings.
 - Added forward-compatible protocol enum annotations and security tooling
   extraction hardening.
+- Made security tool archive extraction portable by validating archive paths
+  before extraction instead of relying on GNU-specific tar flags.
 - Split object identity tests into a focused test module to preserve the
   500-line implementation file policy.
 - Added v0.7.0 release notes, pentest placeholder, and release gate.
