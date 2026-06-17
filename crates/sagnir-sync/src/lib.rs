@@ -12,6 +12,7 @@ const _: () = assert!(
 );
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum BundleKind {
     World,
     Change,

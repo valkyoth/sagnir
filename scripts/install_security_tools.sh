@@ -20,7 +20,7 @@ install_verified_crate() {
         -o "$archive"
 
     printf '%s  %s\n' "$expected_sha" "$archive" | sha256sum --check
-    tar -xzf "$archive" -C "$tmp_dir"
+    tar --no-absolute-names --no-overwrite-dir -xzf "$archive" -C "$tmp_dir"
     cargo install --locked --path "$tmp_dir/$crate-$version"
 }
 

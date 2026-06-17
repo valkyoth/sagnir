@@ -1,4 +1,16 @@
-use sagnir_core::{FormatVersion, ID_BYTES, SagnirError, TypedId, constant_time_bytes_eq};
+use sagnir_core::{FormatVersion, ID_BYTES, SagnirError, StateId, constant_time_bytes_eq};
+
+pub const OBJECT_ID_PREFIX: &str = "sagnir-object-v1";
+pub const OBJECT_ID_DIGEST_HEX_LEN: usize = ID_BYTES * 2;
+pub const OBJECT_ID_MAX_LEN: usize = OBJECT_ID_PREFIX.len()
+    + 1
+    + OBJECT_TYPE_NAME_MAX_LEN
+    + 1
+    + HASH_ALGORITHM_NAME_MAX_LEN
+    + 1
+    + OBJECT_ID_DIGEST_HEX_LEN;
+pub const OBJECT_TYPE_NAME_MAX_LEN: usize = 15;
+pub const HASH_ALGORITHM_NAME_MAX_LEN: usize = 6;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 #[non_exhaustive]
@@ -7,6 +19,7 @@ pub enum HashAlgorithm {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[non_exhaustive]
 pub enum ObjectType {
     Blob,
     Tree,
@@ -60,6 +73,13 @@ pub const fn parse_hash_algorithm(raw: u16) -> Result<HashAlgorithm, SagnirError
     }
 }
 
+pub fn parse_hash_algorithm_name(name: &str) -> Result<HashAlgorithm, SagnirError> {
+    match name.as_bytes() {
+        b"sha256" => Ok(HashAlgorithm::Sha256),
+        _ => Err(SagnirError::InvalidValue),
+    }
+}
+
 pub const fn parse_object_type(raw: u16) -> Result<ObjectType, SagnirError> {
     match raw {
         1 => Ok(ObjectType::Blob),
@@ -71,6 +91,21 @@ pub const fn parse_object_type(raw: u16) -> Result<ObjectType, SagnirError> {
         7 => Ok(ObjectType::Fact),
         8 => Ok(ObjectType::Operation),
         9 => Ok(ObjectType::Bundle),
+        _ => Err(SagnirError::InvalidValue),
+    }
+}
+
+pub fn parse_object_type_name(name: &str) -> Result<ObjectType, SagnirError> {
+    match name.as_bytes() {
+        b"blob" => Ok(ObjectType::Blob),
+        b"tree" => Ok(ObjectType::Tree),
+        b"state-root" => Ok(ObjectType::StateRoot),
+        b"change" => Ok(ObjectType::Change),
+        b"change-revision" => Ok(ObjectType::ChangeRevision),
+        b"world" => Ok(ObjectType::World),
+        b"fact" => Ok(ObjectType::Fact),
+        b"operation" => Ok(ObjectType::Operation),
+        b"bundle" => Ok(ObjectType::Bundle),
         _ => Err(SagnirError::InvalidValue),
     }
 }
@@ -89,6 +124,20 @@ impl ObjectId {
         }
     }
 
+    pub fn from_digest_slice(
+        algorithm: HashAlgorithm,
+        object_type: ObjectType,
+        digest: &[u8],
+    ) -> Result<Self, SagnirError> {
+        if digest.len() != digest_len(algorithm) {
+            return Err(SagnirError::InvalidValue);
+        }
+
+        let mut admitted = [0_u8; ID_BYTES];
+        admitted.copy_from_slice(digest);
+        Ok(Self::new(algorithm, object_type, admitted))
+    }
+
     #[must_use]
     pub const fn object_type(self) -> ObjectType {
         self.object_type
@@ -97,6 +146,11 @@ impl ObjectId {
     #[must_use]
     pub const fn digest(self) -> [u8; ID_BYTES] {
         self.digest
+    }
+
+    #[must_use]
+    pub const fn algorithm(self) -> HashAlgorithm {
+        self.algorithm
     }
 
     /// Timing-hardened digest equality for verification scaffolds. Before live
@@ -118,9 +172,109 @@ impl ObjectId {
     }
 }
 
+impl core::fmt::Display for ObjectId {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "{}:{}:{}:",
+            OBJECT_ID_PREFIX,
+            object_type_name(self.object_type),
+            hash_algorithm_name(self.algorithm)
+        )?;
+
+        for byte in self.digest {
+            write!(f, "{byte:02x}")?;
+        }
+
+        Ok(())
+    }
+}
+
+impl core::str::FromStr for ObjectId {
+    type Err = SagnirError;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        parse_object_id(input)
+    }
+}
+
+pub fn parse_object_id(input: &str) -> Result<ObjectId, SagnirError> {
+    if input.len() > OBJECT_ID_MAX_LEN {
+        return Err(SagnirError::InvalidValue);
+    }
+
+    let mut fields = input.split(':');
+    let prefix = fields.next().ok_or(SagnirError::InvalidValue)?;
+    let object_type = fields.next().ok_or(SagnirError::InvalidValue)?;
+    let algorithm = fields.next().ok_or(SagnirError::InvalidValue)?;
+    let digest = fields.next().ok_or(SagnirError::InvalidValue)?;
+
+    if fields.next().is_some() || prefix != OBJECT_ID_PREFIX {
+        return Err(SagnirError::InvalidValue);
+    }
+
+    let object_type = parse_object_type_name(object_type)?;
+    let algorithm = parse_hash_algorithm_name(algorithm)?;
+    let digest = parse_digest_hex(digest, algorithm)?;
+
+    Ok(ObjectId::new(algorithm, object_type, digest))
+}
+
 const fn hash_algorithm_raw(algorithm: HashAlgorithm) -> u16 {
     match algorithm {
         HashAlgorithm::Sha256 => 1,
+    }
+}
+
+#[must_use]
+pub const fn digest_len(algorithm: HashAlgorithm) -> usize {
+    match algorithm {
+        HashAlgorithm::Sha256 => ID_BYTES,
+    }
+}
+
+#[must_use]
+pub const fn hash_algorithm_name(algorithm: HashAlgorithm) -> &'static str {
+    match algorithm {
+        HashAlgorithm::Sha256 => "sha256",
+    }
+}
+
+#[must_use]
+pub const fn object_type_name(object_type: ObjectType) -> &'static str {
+    match object_type {
+        ObjectType::Blob => "blob",
+        ObjectType::Tree => "tree",
+        ObjectType::StateRoot => "state-root",
+        ObjectType::Change => "change",
+        ObjectType::ChangeRevision => "change-revision",
+        ObjectType::World => "world",
+        ObjectType::Fact => "fact",
+        ObjectType::Operation => "operation",
+        ObjectType::Bundle => "bundle",
+    }
+}
+
+fn parse_digest_hex(input: &str, algorithm: HashAlgorithm) -> Result<[u8; ID_BYTES], SagnirError> {
+    let expected_hex_len = digest_len(algorithm) * 2;
+    if input.len() != expected_hex_len {
+        return Err(SagnirError::InvalidValue);
+    }
+
+    let mut digest = [0_u8; ID_BYTES];
+    for (index, pair) in input.as_bytes().chunks_exact(2).enumerate() {
+        let high = decode_lower_hex(pair[0])?;
+        let low = decode_lower_hex(pair[1])?;
+        digest[index] = (high << 4) | low;
+    }
+    Ok(digest)
+}
+
+fn decode_lower_hex(byte: u8) -> Result<u8, SagnirError> {
+    match byte {
+        b'0'..=b'9' => Ok(byte - b'0'),
+        b'a'..=b'f' => Ok(byte - b'a' + 10),
+        _ => Err(SagnirError::InvalidValue),
     }
 }
 
@@ -140,7 +294,7 @@ pub(crate) const fn object_type_raw(object_type: ObjectType) -> u16 {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct StateRootRef {
-    state_id: TypedId,
+    state_id: StateId,
     content_root: ObjectId,
     format_version: FormatVersion,
 }
@@ -148,7 +302,7 @@ pub struct StateRootRef {
 impl StateRootRef {
     #[must_use]
     pub const fn new(
-        state_id: TypedId,
+        state_id: StateId,
         content_root: ObjectId,
         format_version: FormatVersion,
     ) -> Self {
@@ -181,67 +335,4 @@ pub const fn domain_tag(object_type: ObjectType) -> &'static [u8] {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use sagnir_core::{FORMAT_VERSION, IdKind, TypedId};
-    extern crate std;
-    use std::{format, string::String};
-
-    #[test]
-    fn object_id_keeps_type_separate_from_digest() {
-        let id = ObjectId::new(HashAlgorithm::Sha256, ObjectType::Tree, [1; ID_BYTES]);
-        assert_eq!(id.object_type(), ObjectType::Tree);
-        assert_eq!(id.digest(), [1; ID_BYTES]);
-    }
-
-    #[test]
-    fn object_id_has_constant_time_equality_api() {
-        let left = ObjectId::new(HashAlgorithm::Sha256, ObjectType::Tree, [1; ID_BYTES]);
-        let right = ObjectId::new(HashAlgorithm::Sha256, ObjectType::Tree, [1; ID_BYTES]);
-        let different_type = ObjectId::new(HashAlgorithm::Sha256, ObjectType::Blob, [1; ID_BYTES]);
-        let different_digest =
-            ObjectId::new(HashAlgorithm::Sha256, ObjectType::Tree, [2; ID_BYTES]);
-
-        assert!(left.ct_eq(&right));
-        assert!(!left.ct_eq(&different_type));
-        assert!(!left.ct_eq(&different_digest));
-    }
-
-    #[test]
-    fn domain_tags_are_type_separated() {
-        assert_ne!(domain_tag(ObjectType::Blob), domain_tag(ObjectType::Tree));
-    }
-
-    #[test]
-    fn state_root_records_format_version() {
-        let state_id = TypedId::new(IdKind::State, [2; ID_BYTES]);
-        let object_id = ObjectId::new(HashAlgorithm::Sha256, ObjectType::Tree, [3; ID_BYTES]);
-        let root = StateRootRef::new(state_id, object_id, FORMAT_VERSION);
-        assert_eq!(root.format_version(), FORMAT_VERSION);
-        assert_eq!(root.format_version().get(), 1);
-    }
-
-    #[test]
-    fn unknown_hash_algorithm_fails_closed() {
-        assert_eq!(parse_hash_algorithm(999), Err(SagnirError::InvalidValue));
-    }
-
-    #[test]
-    fn object_type_parser_fails_closed() {
-        assert_eq!(parse_object_type(1), Ok(ObjectType::Blob));
-        assert_eq!(parse_object_type(9), Ok(ObjectType::Bundle));
-        assert_eq!(parse_object_type(0), Err(SagnirError::InvalidValue));
-        assert_eq!(parse_object_type(10), Err(SagnirError::InvalidValue));
-    }
-
-    #[test]
-    fn object_id_debug_redacts_digest() {
-        let id = ObjectId::new(HashAlgorithm::Sha256, ObjectType::Blob, [4; ID_BYTES]);
-        assert_eq!(
-            format!("{id:?}"),
-            String::from(
-                "ObjectId { algorithm: Sha256, object_type: Blob, digest: [32 bytes redacted] }"
-            )
-        );
-    }
-}
+mod tests;

@@ -4,9 +4,32 @@ All notable Sagnir changes are recorded here.
 
 ## Unreleased
 
-## 0.6.0
+## 0.7.0
 
 Status: implementation stop.
+
+- Added canonical object ID display and parse support with the
+  `sagnir-object-v1:<type>:<algorithm>:<digest>` format.
+- Added fail-closed object type and hash algorithm name parsing.
+- Added digest slice admission checks for algorithm-specific digest lengths.
+- Added object identity collision-domain tests across all admitted object
+  kinds.
+- Kept object ID equality on the admitted `subtle`-backed timing-safe byte
+  comparison path.
+- Added the hash migration plan for future algorithm admission.
+- Hardened proof report construction so `Verified` requires an opaque
+  verification token.
+- Tightened world, change, and state-root references to use typed ID wrappers.
+- Split parsed object headers into named `header`, `body`, and `rest` fields.
+- Added forward-compatible protocol enum annotations and security tooling
+  extraction hardening.
+- Split object identity tests into a focused test module to preserve the
+  500-line implementation file policy.
+- Added v0.7.0 release notes, pentest placeholder, and release gate.
+
+## 0.6.0
+
+Status: tagged object header format release.
 
 - Split `sagnir-object` into focused identity and header modules.
 - Added fixed-width object header parsing and writing with magic, object type,

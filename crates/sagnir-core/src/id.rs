@@ -59,6 +59,8 @@ impl core::fmt::Debug for TypedId {
     }
 }
 
+// HashMap<TypedId, _> users must keep Rust's randomized default hasher, or an
+// explicitly keyed hasher, so untrusted IDs cannot become deterministic buckets.
 impl core::hash::Hash for TypedId {
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         core::hash::Hash::hash(&self.kind, state);

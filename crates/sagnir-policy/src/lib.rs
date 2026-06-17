@@ -5,6 +5,7 @@
 use sagnir_core::SagnirError;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum PolicyResult {
     Allow,
     Deny,

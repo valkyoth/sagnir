@@ -74,6 +74,20 @@ declared body length before returning post-header bytes. Callers may still
 split body bytes from trailing transport data according to their own framing,
 but they must not accept a header whose declared body is unavailable.
 
+Object ID text format v1 is:
+
+```text
+sagnir-object-v1:<object-type>:<hash-algorithm>:<lowercase-hex-digest>
+```
+
+For v0.7.0, the admitted hash algorithm name is `sha256`, and the digest must
+be exactly 32 bytes encoded as 64 lowercase hex characters. Object type names
+match the object header type domain, for example `blob`, `tree`, `state-root`,
+`change`, `change-revision`, `world`, `fact`, `operation`, and `bundle`.
+Future algorithm changes must follow the [hash migration plan](hash-migration-plan.md).
+Unknown names, wrong digest lengths, uppercase hex, and non-hex characters fail
+closed.
+
 Decode rule: length-prefixed decoding must use `read_len_prefixed` or an
 equivalent bounded API that validates the declared length against a
 caller-provided maximum before returning a payload slice. Malicious object and

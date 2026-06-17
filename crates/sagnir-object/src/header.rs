@@ -83,6 +83,13 @@ impl ObjectHeader {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ParsedObjectHeader<'a> {
+    pub header: ObjectHeader,
+    pub body: &'a [u8],
+    pub rest: &'a [u8],
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ObjectHeaderField {
     Magic,
     ObjectType,
@@ -124,7 +131,7 @@ impl ObjectHeaderFields {
     }
 }
 
-pub fn parse_object_header(input: &[u8]) -> Result<(ObjectHeader, &[u8]), SagnirError> {
+pub fn parse_object_header(input: &[u8]) -> Result<ParsedObjectHeader<'_>, SagnirError> {
     let magic = input.get(..MAGIC_LEN).ok_or(SagnirError::BufferTooSmall)?;
     if magic != OBJECT_HEADER_MAGIC {
         return Err(SagnirError::InvalidValue);
@@ -143,7 +150,8 @@ pub fn parse_object_header(input: &[u8]) -> Result<(ObjectHeader, &[u8]), Sagnir
     if tail.len() < body_len {
         return Err(SagnirError::BufferTooSmall);
     }
-    Ok((header, tail))
+    let (body, rest) = tail.split_at(body_len);
+    Ok(ParsedObjectHeader { header, body, rest })
 }
 
 pub fn write_object_header(out: &mut [u8], header: ObjectHeader) -> Result<&mut [u8], SagnirError> {
@@ -188,15 +196,16 @@ mod tests {
 
         assert_eq!(
             parsed,
-            Ok((
-                ObjectHeader {
+            Ok(ParsedObjectHeader {
+                header: ObjectHeader {
                     object_type: ObjectType::Blob,
                     format_version: FORMAT_VERSION,
                     body_len: 3,
                     flags: ObjectHeaderFlags::NONE,
                 },
-                &b"\t\0\0\0"[..],
-            ))
+                body: &b"\t\0\0"[..],
+                rest: &b"\0"[..],
+            })
         );
     }
 
@@ -264,15 +273,16 @@ mod tests {
 
         assert_eq!(
             parse_object_header(&bytes),
-            Ok((
-                ObjectHeader {
+            Ok(ParsedObjectHeader {
+                header: ObjectHeader {
                     object_type: ObjectType::Blob,
                     format_version: FORMAT_VERSION,
                     body_len: 0,
                     flags: ObjectHeaderFlags::NONE,
                 },
-                &[][..],
-            ))
+                body: &[][..],
+                rest: &[][..],
+            })
         );
     }
 

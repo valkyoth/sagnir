@@ -22,6 +22,7 @@ pub const REQUIRED_DIRS: [&str; 12] = [
 ];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum WalFrameKind {
     BeginTx,
     PutObject,

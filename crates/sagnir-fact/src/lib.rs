@@ -7,6 +7,7 @@ use sagnir_core::SagnirError;
 pub const CONFIDENCE_MAX: u16 = 10_000;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum FactKind {
     RealmCreated,
     WorldCreated,

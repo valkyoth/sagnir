@@ -195,6 +195,7 @@ impl OwnedSignature {
 impl SecureSanitize for OwnedSignature {
     fn secure_sanitize(&mut self) {
         sanitize_bytes(&mut self.bytes);
+        self.algorithm = SignatureAlgorithm::Ed25519;
         self.len = 0;
     }
 }
@@ -358,6 +359,24 @@ mod tests {
             value.secure_sanitize();
         }
 
-        assert_eq!(owned.map(|value| value.len()), Ok(0));
+        assert_eq!(
+            owned.map(|value| (value.algorithm(), value.len())),
+            Ok((SignatureAlgorithm::Ed25519, 0))
+        );
+    }
+
+    #[test]
+    fn owned_signature_sanitizes_algorithm_sentinel() {
+        let bytes = [7_u8; ML_DSA_SIGNATURE_BYTES_MIN];
+        let mut owned = OwnedSignature::new(SignatureAlgorithm::MlDsa, &bytes);
+
+        if let Ok(value) = owned.as_mut() {
+            value.secure_sanitize();
+        }
+
+        assert_eq!(
+            owned.map(|value| (value.algorithm(), value.len())),
+            Ok((SignatureAlgorithm::Ed25519, 0))
+        );
     }
 }
