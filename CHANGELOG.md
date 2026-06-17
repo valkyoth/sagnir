@@ -6,7 +6,7 @@ All notable Sagnir changes are recorded here.
 
 ## 0.5.0
 
-Status: implementation stop.
+Status: release-ready canonical scalar encoding release.
 
 - Split `sagnir-codec` into module wiring and canonical scalar encoding.
 - Added fixed-width little-endian `u16`, `u32`, and `u64` readers and writers.

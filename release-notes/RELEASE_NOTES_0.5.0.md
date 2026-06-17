@@ -1,6 +1,6 @@
 # Sagnir 0.5.0 Release Notes
 
-Status: implementation stop
+Status: released
 
 ## Summary
 
@@ -29,7 +29,7 @@ upper bound.
 
 ## Verification
 
-Required local verification for this implementation stop:
+Required local verification for this release:
 
 ```bash
 cargo test -p sagnir-codec
@@ -37,7 +37,7 @@ scripts/checks.sh
 scripts/release_0_5_gate.sh
 ```
 
-`scripts/release_0_5_gate.sh` must fail until
+`scripts/release_0_5_gate.sh` passes after
 `security/pentest/v0.5.0.md` is completed with `Status: PASS`.
 
 Tag stop:

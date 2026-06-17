@@ -159,8 +159,9 @@ scripts/release_0_5_gate.sh
 
 ## Current Release Line
 
-The repository is past `v0.4.0` and is currently working through `v0.5.0`,
-the canonical scalar encoding baseline.
+The repository is ready for `v0.5.0`, the canonical scalar encoding baseline.
+The matching release gate and pentest report are green; tagging and pushing
+wait for explicit maintainer instruction.
 
 Current release discipline:
 
