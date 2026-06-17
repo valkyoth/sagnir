@@ -23,16 +23,16 @@ Rules:
 - update release notes for dependency changes;
 - add tests for behavior introduced by a dependency.
 
-The scaffold uses local timing-hardened byte comparison helpers only to prevent
-accidental use of derived equality in future verification paths. Before live
-signature verification, HMAC verification, AEAD tag checks, or secret-dependent
-proof checks rely on constant-time behavior, Sagnir must admit `subtle` or an
-equivalent formally specified primitive through this policy.
+Sagnir admits `subtle` for constant-time byte comparison before live signature
+verification, HMAC verification, AEAD tag checks, or secret-dependent proof
+checks rely on those paths.
 
 The security-policy validator rejects known crypto-provider crates in
-`Cargo.lock` unless `subtle` and `zeroize` are also admitted. This keeps
-constant-time comparison and zero-on-drop policy admission ahead of live crypto
-implementation.
+`Cargo.lock` unless `subtle` and `sanitization` are also admitted. This keeps
+constant-time comparison and explicit memory sanitization policy admission
+ahead of live crypto implementation. `zeroize` is not admitted in Sagnir; use
+`sanitization`, which is `no_std` by default and follows the project's security
+review process.
 
 The hardcoded credential scanner supports `scanner:allow` only in documentation,
 release notes, or reviewed fixtures. It is rejected in trusted code, scripts,
@@ -40,4 +40,5 @@ CI configuration, root metadata, and root documentation. Use it only for
 intentionally non-secret placeholder lines, and keep the surrounding value
 obviously non-production.
 
-The initial scaffold has no third-party Rust dependencies.
+Current admitted third-party Rust dependencies must remain narrowly scoped,
+current, license-reviewed, and covered by release notes when they change.

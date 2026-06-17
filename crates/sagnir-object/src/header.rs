@@ -1,10 +1,15 @@
 use sagnir_core::{FormatVersion, SagnirError};
 
+use crate::identity::object_type_raw;
 use crate::{ObjectType, parse_object_type};
 
 pub const OBJECT_HEADER_MAGIC: [u8; MAGIC_LEN] = *b"SAGNOBJ\0";
 pub const MAGIC_LEN: usize = 8;
-pub const HEADER_LEN: usize = MAGIC_LEN + 2 + 2 + 8 + 4;
+pub const HEADER_LEN: usize = MAGIC_LEN
+    + sagnir_codec::U16_BYTES
+    + sagnir_codec::U16_BYTES
+    + sagnir_codec::U64_BYTES
+    + sagnir_codec::U32_BYTES;
 pub const OBJECT_BODY_BYTES_MAX: u64 = 64 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -131,6 +136,10 @@ pub fn parse_object_header(input: &[u8]) -> Result<(ObjectHeader, &[u8]), Sagnir
     let format_version = FormatVersion::try_new(raw_version)?;
     let flags = ObjectHeaderFlags::try_new(raw_flags)?;
     let header = ObjectHeader::new(object_type, format_version, body_len, flags)?;
+    let available_len = u64::try_from(tail.len()).map_err(|_| SagnirError::InvalidValue)?;
+    if available_len < header.body_len() {
+        return Err(SagnirError::BufferTooSmall);
+    }
     Ok((header, tail))
 }
 
@@ -140,20 +149,6 @@ pub fn write_object_header(out: &mut [u8], header: ObjectHeader) -> Result<&mut 
     let out = sagnir_codec::write_u16(out, header.format_version().get())?;
     let out = sagnir_codec::write_u64(out, header.body_len())?;
     sagnir_codec::write_u32(out, header.flags().bits())
-}
-
-const fn object_type_raw(object_type: ObjectType) -> u16 {
-    match object_type {
-        ObjectType::Blob => 1,
-        ObjectType::Tree => 2,
-        ObjectType::StateRoot => 3,
-        ObjectType::Change => 4,
-        ObjectType::ChangeRevision => 5,
-        ObjectType::World => 6,
-        ObjectType::Fact => 7,
-        ObjectType::Operation => 8,
-        ObjectType::Bundle => 9,
-    }
 }
 
 #[cfg(test)]
@@ -178,7 +173,7 @@ mod tests {
 
     #[test]
     fn object_header_round_trips_with_tail() {
-        let mut bytes = [0_u8; HEADER_LEN + 1];
+        let mut bytes = [0_u8; HEADER_LEN + 4];
         bytes[..HEADER_LEN].copy_from_slice(&valid_header_bytes());
         bytes[HEADER_LEN] = 9;
 
@@ -193,7 +188,7 @@ mod tests {
                     body_len: 3,
                     flags: ObjectHeaderFlags::NONE,
                 },
-                &b"\t"[..],
+                &b"\t\0\0\0"[..],
             ))
         );
     }
@@ -247,6 +242,16 @@ mod tests {
         bytes[MAGIC_LEN + 12..MAGIC_LEN + 16].copy_from_slice(&1_u32.to_le_bytes());
 
         assert_eq!(parse_object_header(&bytes), Err(SagnirError::InvalidValue));
+    }
+
+    #[test]
+    fn object_header_rejects_missing_declared_body() {
+        let bytes = valid_header_bytes();
+
+        assert_eq!(
+            parse_object_header(&bytes),
+            Err(SagnirError::BufferTooSmall)
+        );
     }
 
     #[test]

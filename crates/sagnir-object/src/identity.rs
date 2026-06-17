@@ -1,5 +1,3 @@
-use core::hint::black_box;
-
 use sagnir_core::{FormatVersion, ID_BYTES, SagnirError, TypedId, constant_time_bytes_eq};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -106,11 +104,37 @@ impl ObjectId {
     /// formally specified constant-time primitive.
     #[must_use]
     pub fn ct_eq(&self, other: &Self) -> bool {
-        let algorithm_eq = (self.algorithm == other.algorithm) as u8;
-        let object_type_eq = (self.object_type == other.object_type) as u8;
-        let digest_eq = black_box(constant_time_bytes_eq(&self.digest, &other.digest)) as u8;
+        let algorithm_eq = constant_time_bytes_eq(
+            &hash_algorithm_raw(self.algorithm).to_le_bytes(),
+            &hash_algorithm_raw(other.algorithm).to_le_bytes(),
+        ) as u8;
+        let object_type_eq = constant_time_bytes_eq(
+            &object_type_raw(self.object_type).to_le_bytes(),
+            &object_type_raw(other.object_type).to_le_bytes(),
+        ) as u8;
+        let digest_eq = constant_time_bytes_eq(&self.digest, &other.digest) as u8;
 
-        black_box(algorithm_eq & object_type_eq & digest_eq) == 1
+        (algorithm_eq & object_type_eq & digest_eq) == 1
+    }
+}
+
+const fn hash_algorithm_raw(algorithm: HashAlgorithm) -> u16 {
+    match algorithm {
+        HashAlgorithm::Sha256 => 1,
+    }
+}
+
+pub(crate) const fn object_type_raw(object_type: ObjectType) -> u16 {
+    match object_type {
+        ObjectType::Blob => 1,
+        ObjectType::Tree => 2,
+        ObjectType::StateRoot => 3,
+        ObjectType::Change => 4,
+        ObjectType::ChangeRevision => 5,
+        ObjectType::World => 6,
+        ObjectType::Fact => 7,
+        ObjectType::Operation => 8,
+        ObjectType::Bundle => 9,
     }
 }
 

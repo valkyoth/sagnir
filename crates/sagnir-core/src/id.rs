@@ -1,6 +1,5 @@
-use core::hint::black_box;
-
 use crate::SagnirError;
+use subtle::ConstantTimeEq;
 
 pub const FORMAT_VERSION: FormatVersion = FormatVersion::current();
 pub const ID_BYTES: usize = 32;
@@ -93,10 +92,13 @@ impl TypedId {
     /// scaffolds. See [`constant_time_bytes_eq`] for the current guarantee.
     #[must_use]
     pub fn ct_eq(&self, other: &Self) -> bool {
-        let kind_eq = (self.kind == other.kind) as u8;
-        let bytes_eq = black_box(constant_time_bytes_eq(&self.bytes, &other.bytes)) as u8;
+        let kind_eq = constant_time_bytes_eq(
+            &id_kind_raw(self.kind).to_le_bytes(),
+            &id_kind_raw(other.kind).to_le_bytes(),
+        ) as u8;
+        let bytes_eq = constant_time_bytes_eq(&self.bytes, &other.bytes) as u8;
 
-        black_box(kind_eq & bytes_eq) == 1
+        (kind_eq & bytes_eq) == 1
     }
 }
 
@@ -149,25 +151,27 @@ define_id_wrapper!(ObjectIdRef, IdKind::Object);
 define_id_wrapper!(OperationId, IdKind::Operation);
 define_id_wrapper!(BundleId, IdKind::Bundle);
 
-/// Accumulates XOR differences across two equal-length byte slices.
+const fn id_kind_raw(kind: IdKind) -> u16 {
+    match kind {
+        IdKind::Realm => 1,
+        IdKind::World => 2,
+        IdKind::Change => 3,
+        IdKind::Revision => 4,
+        IdKind::State => 5,
+        IdKind::Fact => 6,
+        IdKind::Object => 7,
+        IdKind::Operation => 8,
+        IdKind::Bundle => 9,
+    }
+}
+
+/// Compares bytes through the admitted `subtle` constant-time primitive.
 ///
-/// This uses [`core::hint::black_box`] to reduce compiler-inserted early exits.
-/// It is not a formal constant-time guarantee. Before live signature or HMAC
-/// verification relies on this path, Sagnir must admit `subtle` or an
-/// equivalent formally specified primitive through the dependency policy.
+/// Length equality is public metadata for Sagnir envelope parsing. Equal-length
+/// payload bytes are compared without data-dependent early exit.
 #[must_use]
 pub fn constant_time_bytes_eq(left: &[u8], right: &[u8]) -> bool {
-    let len_eq = left.len() == right.len();
-    let compare_len = left.len().max(right.len());
-    let mut diff = 0_u8;
-    let mut index = 0;
-    while index < compare_len {
-        let left_byte = if index < left.len() { left[index] } else { 0 };
-        let right_byte = if index < right.len() { right[index] } else { 0 };
-        diff |= left_byte ^ right_byte;
-        index += 1;
-    }
-    black_box(diff) == 0 && len_eq
+    left.ct_eq(right).into()
 }
 
 #[cfg(test)]

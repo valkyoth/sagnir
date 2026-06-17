@@ -80,7 +80,7 @@ Pentest task:
   untrusted length-prefixed payloads.
 - `ObligationSet::is_empty` separates emptiness checks from bit membership.
 - Release gates reject known crypto provider crates unless `subtle` and
-  `zeroize` are admitted.
+  `sanitization` are admitted.
 - Second pentest review findings are closed for diff-forcing comparison,
   secret/key-material `Copy` guard coverage, and codec control-flow clarity.
 - Core validation remains `no_std` and allocation-free.

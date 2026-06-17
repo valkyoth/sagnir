@@ -2,13 +2,17 @@
 #![forbid(unsafe_code)]
 #![deny(unused_must_use)]
 
-use core::hint::black_box;
-
 use sagnir_core::{SagnirError, constant_time_bytes_eq};
+use sanitization::{SecureSanitize, sanitize_bytes};
 
 pub const ED25519_SIGNATURE_BYTES: usize = 64;
-pub const ML_DSA_SIGNATURE_BYTES_MAX: usize = 4_627;
-pub const HYBRID_SIGNATURE_BYTES_MAX: usize = 8_192;
+pub const ML_DSA_44_SIGNATURE_BYTES: usize = 2_420;
+pub const ML_DSA_65_SIGNATURE_BYTES: usize = 3_309;
+pub const ML_DSA_87_SIGNATURE_BYTES: usize = 4_627;
+pub const ML_DSA_SIGNATURE_BYTES_MIN: usize = ML_DSA_44_SIGNATURE_BYTES;
+pub const ML_DSA_SIGNATURE_BYTES_MAX: usize = ML_DSA_87_SIGNATURE_BYTES;
+pub const HYBRID_SIGNATURE_BYTES_MIN: usize = ED25519_SIGNATURE_BYTES + ML_DSA_SIGNATURE_BYTES_MIN;
+pub const HYBRID_SIGNATURE_BYTES_MAX: usize = ED25519_SIGNATURE_BYTES + ML_DSA_SIGNATURE_BYTES_MAX;
 pub const SIGNATURE_BYTES_MAX: usize = HYBRID_SIGNATURE_BYTES_MAX;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -59,10 +63,13 @@ impl<'a> SignatureEnvelope<'a> {
     /// admit a formally specified constant-time primitive.
     #[must_use]
     pub fn ct_eq(&self, other: &Self) -> bool {
-        let algorithm_eq = (self.algorithm == other.algorithm) as u8;
-        let bytes_eq = black_box(constant_time_bytes_eq(self.bytes, other.bytes)) as u8;
+        let algorithm_eq = constant_time_bytes_eq(
+            &signature_algorithm_raw(self.algorithm).to_le_bytes(),
+            &signature_algorithm_raw(other.algorithm).to_le_bytes(),
+        ) as u8;
+        let bytes_eq = constant_time_bytes_eq(self.bytes, other.bytes) as u8;
 
-        black_box(algorithm_eq & bytes_eq) == 1
+        (algorithm_eq & bytes_eq) == 1
     }
 }
 
@@ -88,11 +95,20 @@ pub const fn max_signature_bytes_for(algorithm: SignatureAlgorithm) -> usize {
 }
 
 #[must_use]
+pub const fn min_signature_bytes_for(algorithm: SignatureAlgorithm) -> usize {
+    match algorithm {
+        SignatureAlgorithm::Ed25519 => ED25519_SIGNATURE_BYTES,
+        SignatureAlgorithm::MlDsa => ML_DSA_SIGNATURE_BYTES_MIN,
+        SignatureAlgorithm::HybridClassicalPq => HYBRID_SIGNATURE_BYTES_MIN,
+    }
+}
+
+#[must_use]
 pub const fn valid_signature_len_for(algorithm: SignatureAlgorithm, len: usize) -> bool {
     match algorithm {
         SignatureAlgorithm::Ed25519 => len == ED25519_SIGNATURE_BYTES,
-        SignatureAlgorithm::MlDsa => len > 0 && len <= ML_DSA_SIGNATURE_BYTES_MAX,
-        SignatureAlgorithm::HybridClassicalPq => len > 0 && len <= HYBRID_SIGNATURE_BYTES_MAX,
+        SignatureAlgorithm::MlDsa => valid_ml_dsa_signature_len(len),
+        SignatureAlgorithm::HybridClassicalPq => valid_hybrid_signature_len(len),
     }
 }
 
@@ -102,6 +118,94 @@ pub const fn parse_signature_algorithm(raw: u16) -> Result<SignatureAlgorithm, S
         2 => Ok(SignatureAlgorithm::MlDsa),
         3 => Ok(SignatureAlgorithm::HybridClassicalPq),
         _ => Err(SagnirError::InvalidValue),
+    }
+}
+
+const fn signature_algorithm_raw(algorithm: SignatureAlgorithm) -> u16 {
+    match algorithm {
+        SignatureAlgorithm::Ed25519 => 1,
+        SignatureAlgorithm::MlDsa => 2,
+        SignatureAlgorithm::HybridClassicalPq => 3,
+    }
+}
+
+const fn valid_ml_dsa_signature_len(len: usize) -> bool {
+    matches!(
+        len,
+        ML_DSA_44_SIGNATURE_BYTES | ML_DSA_65_SIGNATURE_BYTES | ML_DSA_87_SIGNATURE_BYTES
+    )
+}
+
+const fn valid_hybrid_signature_len(len: usize) -> bool {
+    len == HYBRID_SIGNATURE_BYTES_MIN
+        || len == ED25519_SIGNATURE_BYTES + ML_DSA_65_SIGNATURE_BYTES
+        || len == HYBRID_SIGNATURE_BYTES_MAX
+}
+
+pub struct OwnedSignature {
+    algorithm: SignatureAlgorithm,
+    len: usize,
+    bytes: [u8; SIGNATURE_BYTES_MAX],
+}
+
+impl OwnedSignature {
+    pub fn new(algorithm: SignatureAlgorithm, bytes: &[u8]) -> Result<Self, SagnirError> {
+        if !valid_signature_len_for(algorithm, bytes.len()) {
+            return Err(SagnirError::InvalidValue);
+        }
+
+        let mut owned = Self {
+            algorithm,
+            len: bytes.len(),
+            bytes: [0; SIGNATURE_BYTES_MAX],
+        };
+        owned.bytes[..bytes.len()].copy_from_slice(bytes);
+        Ok(owned)
+    }
+
+    #[must_use]
+    pub const fn algorithm(&self) -> SignatureAlgorithm {
+        self.algorithm
+    }
+
+    #[must_use]
+    pub const fn len(&self) -> usize {
+        self.len
+    }
+
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
+    #[must_use]
+    pub fn as_envelope(&self) -> SignatureEnvelope<'_> {
+        SignatureEnvelope {
+            algorithm: self.algorithm,
+            bytes: &self.bytes[..self.len],
+        }
+    }
+}
+
+impl SecureSanitize for OwnedSignature {
+    fn secure_sanitize(&mut self) {
+        sanitize_bytes(&mut self.bytes);
+        self.len = 0;
+    }
+}
+
+impl Drop for OwnedSignature {
+    fn drop(&mut self) {
+        self.secure_sanitize();
+    }
+}
+
+impl core::fmt::Debug for OwnedSignature {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("OwnedSignature")
+            .field("algorithm", &self.algorithm)
+            .field("bytes", &format_args!("[{} bytes redacted]", self.len))
+            .finish()
     }
 }
 
@@ -124,7 +228,15 @@ mod tests {
         let ed25519 = [0_u8; ED25519_SIGNATURE_BYTES];
         let too_small_ed25519 = [0_u8; ED25519_SIGNATURE_BYTES - 1];
         let too_large_ed25519 = [0_u8; ED25519_SIGNATURE_BYTES + 1];
+        let too_small_ml_dsa = [0_u8; ML_DSA_SIGNATURE_BYTES_MIN - 1];
+        let ml_dsa_44 = [0_u8; ML_DSA_SIGNATURE_BYTES_MIN];
+        let invalid_ml_dsa_gap = [0_u8; ML_DSA_SIGNATURE_BYTES_MIN + 1];
+        let ml_dsa_65 = [0_u8; ML_DSA_65_SIGNATURE_BYTES];
         let ml_dsa_87 = [0_u8; ML_DSA_SIGNATURE_BYTES_MAX];
+        let too_small_hybrid = [0_u8; HYBRID_SIGNATURE_BYTES_MIN - 1];
+        let hybrid_min = [0_u8; HYBRID_SIGNATURE_BYTES_MIN];
+        let invalid_hybrid_gap = [0_u8; HYBRID_SIGNATURE_BYTES_MIN + 1];
+        let hybrid_middle = [0_u8; ED25519_SIGNATURE_BYTES + ML_DSA_65_SIGNATURE_BYTES];
         let hybrid = [0_u8; HYBRID_SIGNATURE_BYTES_MAX];
 
         assert!(SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &ed25519).is_ok());
@@ -136,13 +248,36 @@ mod tests {
             SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &too_large_ed25519),
             Err(SagnirError::InvalidValue)
         );
+        assert_eq!(
+            SignatureEnvelope::new(SignatureAlgorithm::MlDsa, &too_small_ml_dsa),
+            Err(SagnirError::InvalidValue)
+        );
+        assert!(SignatureEnvelope::new(SignatureAlgorithm::MlDsa, &ml_dsa_44).is_ok());
+        assert_eq!(
+            SignatureEnvelope::new(SignatureAlgorithm::MlDsa, &invalid_ml_dsa_gap),
+            Err(SagnirError::InvalidValue)
+        );
+        assert!(SignatureEnvelope::new(SignatureAlgorithm::MlDsa, &ml_dsa_65).is_ok());
         assert!(SignatureEnvelope::new(SignatureAlgorithm::MlDsa, &ml_dsa_87).is_ok());
+        assert_eq!(
+            SignatureEnvelope::new(SignatureAlgorithm::HybridClassicalPq, &too_small_hybrid),
+            Err(SagnirError::InvalidValue)
+        );
+        assert!(SignatureEnvelope::new(SignatureAlgorithm::HybridClassicalPq, &hybrid_min).is_ok());
+        assert_eq!(
+            SignatureEnvelope::new(SignatureAlgorithm::HybridClassicalPq, &invalid_hybrid_gap),
+            Err(SagnirError::InvalidValue)
+        );
+        assert!(
+            SignatureEnvelope::new(SignatureAlgorithm::HybridClassicalPq, &hybrid_middle).is_ok()
+        );
         assert!(SignatureEnvelope::new(SignatureAlgorithm::HybridClassicalPq, &hybrid).is_ok());
     }
 
     #[test]
     fn signature_envelope_keeps_algorithm() {
-        let envelope = SignatureEnvelope::new(SignatureAlgorithm::HybridClassicalPq, &[1, 2]);
+        let bytes = [0_u8; HYBRID_SIGNATURE_BYTES_MIN];
+        let envelope = SignatureEnvelope::new(SignatureAlgorithm::HybridClassicalPq, &bytes);
         assert_eq!(
             envelope.map(|value| value.algorithm()),
             Ok(SignatureAlgorithm::HybridClassicalPq)
@@ -154,9 +289,10 @@ mod tests {
         let bytes = [1_u8; ED25519_SIGNATURE_BYTES];
         let mut changed = bytes;
         changed[ED25519_SIGNATURE_BYTES - 1] = 2;
+        let ml_dsa = [1_u8; ML_DSA_SIGNATURE_BYTES_MIN];
         let left = SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &bytes);
         let right = SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &bytes);
-        let different_algorithm = SignatureEnvelope::new(SignatureAlgorithm::MlDsa, &bytes);
+        let different_algorithm = SignatureEnvelope::new(SignatureAlgorithm::MlDsa, &ml_dsa);
         let different_bytes = SignatureEnvelope::new(SignatureAlgorithm::Ed25519, &changed);
 
         assert!(
@@ -194,5 +330,29 @@ mod tests {
                 "SignatureEnvelope { algorithm: Ed25519, bytes: [64 bytes redacted] }"
             ))
         );
+    }
+
+    #[test]
+    fn owned_signature_redacts_and_sanitizes() {
+        let bytes = [7_u8; ED25519_SIGNATURE_BYTES];
+        let mut owned = OwnedSignature::new(SignatureAlgorithm::Ed25519, &bytes);
+
+        assert!(
+            owned
+                .as_ref()
+                .is_ok_and(|value| value.as_envelope().len() == ED25519_SIGNATURE_BYTES)
+        );
+        assert_eq!(
+            owned.as_ref().map(|value| format!("{value:?}")),
+            Ok(String::from(
+                "OwnedSignature { algorithm: Ed25519, bytes: [64 bytes redacted] }"
+            ))
+        );
+
+        if let Ok(value) = owned.as_mut() {
+            value.secure_sanitize();
+        }
+
+        assert_eq!(owned.map(|value| value.len()), Ok(0));
     }
 }

@@ -78,11 +78,11 @@ Sagnir is licensed under the European Union Public Licence 1.2.
 | --- | --- | --- |
 | Core IDs and bounds | Active | Typed ID wrappers, bounded names, explicit format-version admission, case-folded `.saga` control-path rejection, redacted ID debug output, and timing-hardened equality APIs for sensitive IDs. |
 | Canonical codec | Active | Fixed-width integer readers and writers, byte-string encoding, bounded list-length encoding, fail-closed buffer writes, and malformed scalar tests. |
-| Object identity and headers | Active | Domain-separated object types, fail-closed hash algorithm parsing, fixed object headers, object header body bounds, flags admission, and malformed header tests. |
+| Object identity and headers | Active | Domain-separated object types, fail-closed hash algorithm parsing, fixed object headers, parser-enforced body availability, flags admission, and malformed header tests. |
 | Local store metadata | Scaffolded | `.saga/` layout and WAL frame kind scaffolds. |
 | Worktree path rules | Scaffolded | Control-path exclusion, non-control dotfile rejection, path traversal rejection, control-character rejection, separator policy, and symlink-boundary documentation. |
 | Policy metadata | Scaffolded | Policy results, validated obligation bitmasks, and named obligation checks. |
-| Crypto envelope metadata | Scaffolded | Algorithm admission, algorithm-specific signature bounds, hybrid signature binding policy, redacted debug output, and constant-time signature equality API. |
+| Crypto envelope metadata | Scaffolded | Algorithm admission, algorithm-specific signature bounds, hybrid signature binding policy, `subtle`-backed equality, `sanitization`-backed owned signature clearing, and redacted debug output. |
 | Bundle metadata | Scaffolded | Bundle manifest counts are bounded before future parser allocation paths. |
 
 ### Planned Core Tracks

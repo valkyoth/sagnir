@@ -1,0 +1,21 @@
+[package]
+name = "sagnir-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4.13"
+sagnir-object = { path = "../crates/sagnir-object", version = "0.1.0" }
+
+[[bin]]
+name = "object_header_parse"
+path = "fuzz_targets/object_header_parse.rs"
+test = false
+doc = false
+bench = false

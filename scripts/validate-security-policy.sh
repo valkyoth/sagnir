@@ -64,9 +64,14 @@ if [ -f Cargo.lock ]; then
             echo "crypto provider crates require subtle admission before release" >&2
             exit 1
         }
-        rg 'name = "zeroize"' Cargo.lock >/dev/null 2>&1 || {
-            echo "crypto provider crates require zeroize admission before release" >&2
+        rg 'name = "sanitization"' Cargo.lock >/dev/null 2>&1 || {
+            echo "crypto provider crates require sanitization admission before release" >&2
             exit 1
         }
+    fi
+
+    if rg 'name = "zeroize"' Cargo.lock >/dev/null 2>&1; then
+        echo "zeroize is not admitted for Sagnir; use sanitization" >&2
+        exit 1
     fi
 fi

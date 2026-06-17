@@ -16,10 +16,9 @@ use exact byte sizes at the envelope boundary. Variable-length or family-level
 algorithms use explicit upper bounds for envelope parsing; those bounds are not
 cryptographic verification.
 
-Timing note: local byte-comparison helpers are scaffolding only. Before live
-signature verification relies on constant-time behavior, Sagnir must admit
-`subtle` or an equivalent formally specified primitive through the dependency
-policy.
+Timing note: Sagnir admits `subtle` for constant-time byte comparison and
+`sanitization` for owned signature-byte clearing before live verification code
+depends on these envelope paths.
 
 ## Hybrid Binding Rule
 

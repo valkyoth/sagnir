@@ -65,6 +65,11 @@ Object header v1 is fixed-width:
 No flags are admitted in v0.6.0. Unknown flags fail closed and are treated as
 critical until explicitly admitted.
 
+Object header parsing validates that the input slice contains at least the
+declared body length before returning post-header bytes. Callers may still
+split body bytes from trailing transport data according to their own framing,
+but they must not accept a header whose declared body is unavailable.
+
 Decode rule: length-prefixed decoding must use `read_len_prefixed` or an
 equivalent bounded API that validates the declared length against a
 caller-provided maximum before returning a payload slice. Malicious object and

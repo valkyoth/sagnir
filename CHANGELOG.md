@@ -13,8 +13,17 @@ Status: implementation stop.
   format version, body length, and flags fields.
 - Added fail-closed object type, format version, body length, and flags
   admission for object headers.
+- Tightened object-header parsing so declared body bytes must be available at
+  the parser boundary.
 - Added a duplicate-field tracker for future variable header parsing.
-- Added an object-header fuzz target scaffold location.
+- Admitted `subtle` for constant-time byte comparison and `sanitization` for
+  owned signature-byte clearing without admitting `zeroize`.
+- Tightened ML-DSA and hybrid signature-envelope admission to concrete
+  algorithm sizes.
+- Added an active object-header fuzz target package.
+- Addressed the first v0.6.0 pentest findings across constant-time equality,
+  signature bounds, parser body availability, sanitization policy, fuzz target
+  activation, and header-length maintenance.
 - Added v0.6.0 release notes, pentest placeholder, and release gate.
 
 ## 0.5.0

@@ -9,6 +9,7 @@ repository.workspace = true
 
 [dependencies]
 sagnir-core = { path = "../sagnir-core", version = "0.1.0" }
+sanitization = { version = "1.1.0", default-features = false }
 
 [lib]
 path = "src/lib.rs"
