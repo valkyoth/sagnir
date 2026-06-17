@@ -88,7 +88,10 @@ Pentest task:
   boundary.
 - `OwnedSignature::as_envelope` rejects sanitized signatures.
 - `HybridSignatureEnvelope` separates classical and post-quantum components.
+- `HybridSignatureEnvelope` debug output redacts component bytes and is not
+  implicitly `Copy`.
 - `ObjectId::redacted()` hides plaintext digests for sealed private contexts.
 - WAL frame metadata includes CRC-32c integrity scaffolding.
+- Empty-payload WAL structural frames are constructable and verifiable.
 - `scripts/validate-pentest-pass.sh` strictly requires `Status: PASS`, exact
   commit, tester, scope, and date before tagging.

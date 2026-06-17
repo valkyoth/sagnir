@@ -153,10 +153,25 @@ pub struct OwnedSignature {
     bytes: [u8; SIGNATURE_BYTES_MAX],
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct HybridSignatureEnvelope<'a> {
     classical_bytes: &'a [u8],
     pq_bytes: &'a [u8],
+}
+
+impl core::fmt::Debug for HybridSignatureEnvelope<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("HybridSignatureEnvelope")
+            .field(
+                "classical_bytes",
+                &format_args!("[{} bytes redacted]", self.classical_bytes.len()),
+            )
+            .field(
+                "pq_bytes",
+                &format_args!("[{} bytes redacted]", self.pq_bytes.len()),
+            )
+            .finish()
+    }
 }
 
 impl<'a> HybridSignatureEnvelope<'a> {
@@ -440,6 +455,19 @@ mod tests {
         assert_eq!(
             HybridSignatureEnvelope::parse(&raw),
             Err(SagnirError::InvalidValue)
+        );
+    }
+
+    #[test]
+    fn hybrid_signature_envelope_debug_redacts_components() {
+        let raw = [9_u8; HYBRID_SIGNATURE_BYTES_MIN];
+        let debug = HybridSignatureEnvelope::parse(&raw).map(|value| format!("{value:?}"));
+
+        assert_eq!(
+            debug,
+            Ok(String::from(
+                "HybridSignatureEnvelope { classical_bytes: [64 bytes redacted], pq_bytes: [2420 bytes redacted] }"
+            ))
         );
     }
 }

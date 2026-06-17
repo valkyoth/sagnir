@@ -37,11 +37,9 @@ pub enum WalFrameKind {
 pub struct WalFrameChecksum(u32);
 
 impl WalFrameChecksum {
-    pub const fn new(raw: u32) -> Result<Self, sagnir_core::SagnirError> {
-        if raw == 0 {
-            return Err(sagnir_core::SagnirError::InvalidValue);
-        }
-        Ok(Self(raw))
+    #[must_use]
+    pub const fn new(raw: u32) -> Self {
+        Self(raw)
     }
 
     #[must_use]
@@ -66,7 +64,7 @@ impl WalFrameHeader {
     ) -> Result<Self, sagnir_core::SagnirError> {
         let payload_len =
             u64::try_from(payload.len()).map_err(|_| sagnir_core::SagnirError::InvalidValue)?;
-        let checksum = WalFrameChecksum::new(crc32c(payload))?;
+        let checksum = WalFrameChecksum::new(crc32c(payload));
         Ok(Self {
             kind,
             tx_id,
@@ -141,10 +139,11 @@ mod tests {
     }
 
     #[test]
-    fn wal_frame_checksum_rejects_zero_sentinel() {
-        assert_eq!(
-            WalFrameChecksum::new(0),
-            Err(sagnir_core::SagnirError::InvalidValue)
-        );
+    fn wal_frame_header_handles_empty_payload() {
+        let header = WalFrameHeader::new(WalFrameKind::BeginTx, 1, b"");
+
+        assert!(header.is_ok_and(|value| value.verifies(b"")));
+        assert_eq!(crc32c(b""), 0);
+        assert_eq!(WalFrameChecksum::new(0).get(), 0);
     }
 }

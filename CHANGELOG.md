@@ -27,8 +27,12 @@ Status: implementation stop.
 - Added redacted object ID display for sealed private contexts.
 - Added hybrid signature component parsing and sanitized signature envelope
   rejection.
+- Added redacted hybrid signature debug output and removed implicit `Copy` from
+  hybrid signature envelopes.
 - Added worktree path proof types for future symlink-resolved filesystem I/O.
 - Added WAL frame CRC-32c integrity metadata.
+- Allowed empty-payload WAL structural frames while still verifying their
+  CRC-32c checksum.
 - Added parser fuzz targets for object IDs, bounded names, worktree paths, and
   codec byte strings.
 - Added forward-compatible protocol enum annotations and security tooling
