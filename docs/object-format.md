@@ -46,8 +46,9 @@ Encrypted realms add encrypted object envelopes:
 Format rules:
 
 - field order is canonical;
-- integer encoding is specified;
-- lists are length-prefixed;
+- integer encoding is fixed-width little-endian through `sagnir-codec`;
+- byte strings are encoded as `u64` length followed by exact payload bytes;
+- lists use bounded `u64` item-count encoding before element bytes;
 - duplicate fields are rejected;
 - unknown critical fields are rejected;
 - object body limits are checked before allocation;

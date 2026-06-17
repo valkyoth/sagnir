@@ -4,6 +4,18 @@ All notable Sagnir changes are recorded here.
 
 ## Unreleased
 
+## 0.5.0
+
+Status: implementation stop.
+
+- Split `sagnir-codec` into module wiring and canonical scalar encoding.
+- Added fixed-width little-endian `u16`, `u32`, and `u64` readers and writers.
+- Added canonical byte-string and bounded list-length helpers.
+- Preserved the existing length-prefixed byte API as byte-string aliases.
+- Expanded malformed scalar tests for short buffers, truncated payloads, and
+  caller-bound violations.
+- Added v0.5.0 release notes, pentest placeholder, and release gate.
+
 ## 0.4.0
 
 Status: tagged core IDs and bounds release.
