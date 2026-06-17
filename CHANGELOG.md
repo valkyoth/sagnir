@@ -6,7 +6,7 @@ All notable Sagnir changes are recorded here.
 
 ## 0.7.0
 
-Status: implementation stop.
+Status: tagged domain-separated object identity release.
 
 - Added canonical object ID display and parse support with the
   `sagnir-object-v1:<type>:<algorithm>:<digest>` format.

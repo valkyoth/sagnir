@@ -151,7 +151,7 @@ Run the rootless Podman smoke path:
 scripts/podman_smoke.sh
 ```
 
-Run the current release gate:
+Run the latest completed release gate:
 
 ```bash
 scripts/release_0_7_gate.sh
@@ -159,8 +159,8 @@ scripts/release_0_7_gate.sh
 
 ## Current Release Line
 
-The repository is past `v0.6.0` and is currently working through `v0.7.0`,
-the domain-separated object identity baseline.
+The repository is at the `v0.7.0` release stop. The next planned line is
+`v0.8.0`, the in-memory object graph baseline.
 
 Current release discipline:
 
