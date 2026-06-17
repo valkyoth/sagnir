@@ -50,3 +50,7 @@ The v0.7.0 scaffold exposes a `HybridSignatureEnvelope` parser that splits the
 fixed Ed25519 component from the ML-DSA component and rejects unknown component
 lengths. It is not a verifier; live verification must preserve the binding rule
 above.
+
+`HybridSignatureEnvelope::parse()` is a length-admission parser only. It must
+not be used as a policy or promotion decision boundary until live verification
+binds both components to the same message and domain.

@@ -96,7 +96,10 @@ Object graph verification before disk persistence is in-memory and
 fixed-capacity. Each graph entry is an `ObjectId`, and each reference binds the
 source ID, target ID, and expected target object kind. Graph verification fails
 closed on missing targets and cycles. Blob objects are leaf data and must not
-act as reference sources.
+act as reference sources. The admitted v0.8.0 traversal path is iterative, not
+recursive. Production callers should stay at or below
+`OBJECT_GRAPH_ENTRIES_MAX` entries and `OBJECT_GRAPH_REFS_MAX` references unless
+a release gate explicitly admits a larger budget.
 
 Decode rule: length-prefixed decoding must use `read_len_prefixed` or an
 equivalent bounded API that validates the declared length against a

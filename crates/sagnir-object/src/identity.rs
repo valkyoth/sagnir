@@ -53,6 +53,8 @@ impl core::fmt::Debug for ObjectId {
     }
 }
 
+// HashMap<ObjectId, _> users must keep Rust's randomized default hasher, or an
+// audited keyed hasher, for attacker-influenced object ID sets.
 impl core::hash::Hash for ObjectId {
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         core::hash::Hash::hash(&self.algorithm, state);

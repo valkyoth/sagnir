@@ -14,6 +14,15 @@ Status: implementation stop.
   verification report.
 - Added an acyclic graph policy for pre-persistence object relationships.
 - Added graph traversal tests proving reachable and unreachable object paths.
+- Hardened graph traversal and verification to use bounded iterative worklists
+  instead of recursion.
+- Added public object graph capacity constants for the admitted v0.8.0 budget.
+- Added object graph fuzz targets for verification and path traversal.
+- Bound WAL CRC-32C metadata to frame kind and transaction ID in addition to
+  payload bytes while documenting that CRC is not adversarial authentication.
+- Documented that hybrid signature parsing is length admission only and added a
+  compile-time stack-budget guard for owned signatures.
+- Added ObjectId keyed-hasher policy guidance for attacker-influenced maps.
 - Split graph tests from production code to preserve the 500-line modularity
   policy.
 - Added v0.8.0 release notes, pentest placeholder, and release gate.

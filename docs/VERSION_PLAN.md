@@ -261,16 +261,21 @@ Deliverables:
 - typed object references;
 - missing-reference detection;
 - cycle policy for object kinds;
-- graph traversal tests.
+- iterative graph traversal tests;
+- object graph fuzz targets;
+- documented graph capacity constants.
 
 Verification:
 
 - `cargo test -p sagnir-object`
+- `cargo check --manifest-path fuzz/Cargo.toml --bins`
 
 Exit criteria:
 
 - Tests can prove a small object graph is complete or identify exact missing
   references.
+- Traversal is bounded and iterative so hostile graph shape cannot recurse into
+  the host stack.
 
 ## Phase 2: Local Store
 

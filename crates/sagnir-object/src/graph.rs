@@ -2,6 +2,11 @@ use sagnir_core::SagnirError;
 
 use crate::{ObjectId, ObjectType};
 
+/// Recommended maximum object graph entries for one in-memory admission pass.
+pub const OBJECT_GRAPH_ENTRIES_MAX: usize = 256;
+/// Recommended maximum object graph references for one in-memory admission pass.
+pub const OBJECT_GRAPH_REFS_MAX: usize = 512;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ObjectGraphEntry {
     id: ObjectId,
@@ -69,6 +74,7 @@ pub enum ObjectGraphReport {
     Complete,
     MissingReference(ObjectReference),
     Cycle(ObjectId),
+    InvalidEntry,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -78,6 +84,17 @@ enum VisitState {
     Done,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum VisitError {
+    Cycle(ObjectId),
+    InvalidEntry,
+}
+
+/// Fixed-capacity object relationship graph.
+///
+/// `N` and `R` are compile-time storage bounds. Production callers should stay
+/// at or below `OBJECT_GRAPH_ENTRIES_MAX` and `OBJECT_GRAPH_REFS_MAX` unless a
+/// release gate explicitly admits a larger stack and runtime budget.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ObjectGraph<const N: usize, const R: usize> {
     entries: [Option<ObjectGraphEntry>; N],
@@ -150,8 +167,11 @@ impl<const N: usize, const R: usize> ObjectGraph<N, R> {
         let mut states = [VisitState::Unseen; N];
         let mut entry_index = 0;
         while entry_index < self.entry_len {
-            if let Err(id) = self.visit(entry_index, &mut states) {
-                return ObjectGraphReport::Cycle(id);
+            if let Err(error) = self.visit(entry_index, &mut states) {
+                return match error {
+                    VisitError::Cycle(id) => ObjectGraphReport::Cycle(id),
+                    VisitError::InvalidEntry => ObjectGraphReport::InvalidEntry,
+                };
             }
             entry_index += 1;
         }
@@ -165,8 +185,46 @@ impl<const N: usize, const R: usize> ObjectGraph<N, R> {
             return Err(SagnirError::InvalidValue);
         }
 
+        let mut stack = [0_usize; N];
+        let mut queued = [false; N];
         let mut seen = [false; N];
-        Ok(self.contains_path_from(source_index, target, &mut seen))
+        let mut depth = 1;
+        stack[0] = source_index;
+        queued[source_index] = true;
+
+        while depth > 0 {
+            depth -= 1;
+            let index = stack[depth];
+            if seen[index] {
+                continue;
+            }
+            seen[index] = true;
+
+            let Some(source_id) = self.entry_id(index) else {
+                continue;
+            };
+            if source_id == target {
+                return Ok(true);
+            }
+
+            let mut reference_index = 0;
+            while reference_index < self.reference_len {
+                if let Some(reference) = self.references[reference_index]
+                    && reference.source() == source_id
+                    && let Some(target_index) = self.node_index(reference.target())
+                    && !seen[target_index]
+                    && !queued[target_index]
+                    && depth < N
+                {
+                    stack[depth] = target_index;
+                    queued[target_index] = true;
+                    depth += 1;
+                }
+                reference_index += 1;
+            }
+        }
+
+        Ok(false)
     }
 
     fn node_index(&self, id: ObjectId) -> Option<usize> {
@@ -182,58 +240,65 @@ impl<const N: usize, const R: usize> ObjectGraph<N, R> {
         None
     }
 
-    fn visit(&self, index: usize, states: &mut [VisitState; N]) -> Result<(), ObjectId> {
+    fn visit(&self, index: usize, states: &mut [VisitState; N]) -> Result<(), VisitError> {
         match states[index] {
-            VisitState::Visiting => return self.entry_id(index).map_or(Ok(()), Err),
+            VisitState::Visiting => {
+                let id = self.entry_id(index).ok_or(VisitError::InvalidEntry)?;
+                return Err(VisitError::Cycle(id));
+            }
             VisitState::Done => return Ok(()),
             VisitState::Unseen => {}
         }
 
+        let start_id = self.entry_id(index).ok_or(VisitError::InvalidEntry)?;
+        let mut stack = [(0_usize, 0_usize); N];
+        let mut depth = 1;
+        stack[0] = (index, 0);
         states[index] = VisitState::Visiting;
 
-        if let Some(source) = self.entry_id(index) {
-            let mut reference_index = 0;
+        while depth > 0 {
+            let frame_index = depth - 1;
+            let (node_index, mut reference_index) = stack[frame_index];
+            let source = self
+                .entry_id(node_index)
+                .ok_or(VisitError::Cycle(start_id))?;
+            let mut advanced = false;
+
             while reference_index < self.reference_len {
+                stack[frame_index].1 = reference_index + 1;
                 if let Some(reference) = self.references[reference_index]
                     && reference.source() == source
                     && let Some(target_index) = self.node_index(reference.target())
                 {
-                    self.visit(target_index, states)?;
+                    match states[target_index] {
+                        VisitState::Visiting => {
+                            return Err(VisitError::Cycle(
+                                self.entry_id(target_index).unwrap_or(source),
+                            ));
+                        }
+                        VisitState::Done => {}
+                        VisitState::Unseen => {
+                            if depth >= N {
+                                return Err(VisitError::Cycle(reference.target()));
+                            }
+                            states[target_index] = VisitState::Visiting;
+                            stack[depth] = (target_index, 0);
+                            depth += 1;
+                            advanced = true;
+                            break;
+                        }
+                    }
                 }
                 reference_index += 1;
             }
-        }
 
-        states[index] = VisitState::Done;
-        Ok(())
-    }
-
-    fn contains_path_from(&self, index: usize, target: ObjectId, seen: &mut [bool; N]) -> bool {
-        if seen[index] {
-            return false;
-        }
-        seen[index] = true;
-
-        let Some(source) = self.entry_id(index) else {
-            return false;
-        };
-        if source == target {
-            return true;
-        }
-
-        let mut reference_index = 0;
-        while reference_index < self.reference_len {
-            if let Some(reference) = self.references[reference_index]
-                && reference.source() == source
-                && let Some(target_index) = self.node_index(reference.target())
-                && self.contains_path_from(target_index, target, seen)
-            {
-                return true;
+            if !advanced {
+                states[node_index] = VisitState::Done;
+                depth -= 1;
             }
-            reference_index += 1;
         }
 
-        false
+        Ok(())
     }
 
     fn entry_id(&self, index: usize) -> Option<ObjectId> {

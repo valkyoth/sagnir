@@ -78,8 +78,8 @@ Sagnir is licensed under the European Union Public Licence 1.2.
 | --- | --- | --- |
 | Core IDs and bounds | Active | Typed ID wrappers, bounded names, explicit format-version admission, case-folded `.saga` control-path rejection, redacted ID debug output, and timing-hardened equality APIs for sensitive IDs. |
 | Canonical codec | Active | Fixed-width integer readers and writers, byte-string encoding, bounded list-length encoding, fail-closed buffer writes, and malformed scalar tests. |
-| Object identity, headers, and graph | Active | Domain-separated object types, fail-closed hash algorithm parsing, canonical object ID display and parse, fixed object headers, in-memory object graph verification, parser-enforced body availability, flags admission, and malformed header tests. |
-| Local store metadata | Scaffolded | `.saga/` layout and WAL frame kind scaffolds. |
+| Object identity, headers, and graph | Active | Domain-separated object types, fail-closed hash algorithm parsing, canonical object ID display and parse, fixed object headers, bounded in-memory object graph verification, iterative graph traversal, graph fuzz targets, parser-enforced body availability, flags admission, and malformed header tests. |
+| Local store metadata | Scaffolded | `.saga/` layout, WAL frame kind scaffolds, and CRC-32C crash-corruption checks bound to frame kind, transaction ID, and payload. |
 | Worktree path rules | Scaffolded | Control-path exclusion, non-control dotfile rejection, path traversal rejection, control-character rejection, separator policy, and symlink-boundary proof types for future filesystem I/O. |
 | Policy metadata | Scaffolded | Policy results, validated obligation bitmasks, and named obligation checks. |
 | Crypto envelope metadata | Scaffolded | Algorithm admission, algorithm-specific signature bounds, hybrid signature binding policy, `subtle`-backed equality, `sanitization`-backed owned signature clearing, and redacted debug output. |

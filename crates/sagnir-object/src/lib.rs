@@ -6,7 +6,10 @@ mod graph;
 mod header;
 mod identity;
 
-pub use graph::{ObjectGraph, ObjectGraphEntry, ObjectGraphReport, ObjectReference};
+pub use graph::{
+    OBJECT_GRAPH_ENTRIES_MAX, OBJECT_GRAPH_REFS_MAX, ObjectGraph, ObjectGraphEntry,
+    ObjectGraphReport, ObjectReference,
+};
 pub use header::{
     HEADER_LEN, MAGIC_LEN, OBJECT_BODY_BYTES_MAX, OBJECT_HEADER_MAGIC, ObjectHeader,
     ObjectHeaderField, ObjectHeaderFields, ObjectHeaderFlags, ParsedObjectHeader,

@@ -12,14 +12,16 @@ Status: baseline control map
 | Unsafe code | Forbidden in trusted scaffold | Active | crate roots and `scripts/validate-security-policy.sh` |
 | Hardcoded credentials | Targeted scan rejects common credential, token, key, PEM private key, and JWT literal patterns | Active | `scripts/validate-security-policy.sh` |
 | Modularity | Focused crates and file-size gate | Active | `docs/modularity-policy.md` |
-| Canonical identity | Object type is part of identity metadata and object graph references are checked before persistence | Scaffolded | `sagnir-object` |
-| Local store | `.saga/` layout, WAL frame kinds, and WAL checksum metadata | Scaffolded | `sagnir-store` |
+| Canonical identity | Object type is part of identity metadata and object graph references are checked before persistence with bounded iterative traversal | Scaffolded | `sagnir-object` |
+| Object ID hashing | `TypedId` and `ObjectId` map users must keep Rust's randomized default hasher or an audited keyed hasher for attacker-influenced sets | Policy | `sagnir-core`, `sagnir-object` |
+| Local store | `.saga/` layout, WAL frame kinds, and WAL CRC-32C metadata bound to frame kind, transaction ID, and payload for crash-corruption detection | Scaffolded | `sagnir-store` |
 | Worktree safety | Control paths, traversal, separators, unsafe path bytes, and unverified symlink boundaries are rejected before source-state I/O | Scaffolded | `sagnir-worktree` |
 | Policy | Aggregate policy decision type | Scaffolded | `sagnir-policy` |
 | Proof | Verification report type | Scaffolded | `sagnir-proof` |
 | Crypto agility | Signature algorithm and envelope metadata | Scaffolded | `sagnir-crypto` |
 | Algorithm admission | Unknown hash and signature algorithms fail closed at parse boundaries | Scaffolded | `sagnir-object`, `sagnir-crypto` |
 | Signature bounds | Empty and algorithm-oversized signatures rejected | Scaffolded | `sagnir-crypto` |
+| Signature storage | `OwnedSignature` inline stack budget is documented and compile-time guarded | Scaffolded | `sagnir-crypto` |
 | Hybrid signatures | Hybrid signature composition must bind classical and post-quantum components | Scaffolded | `sagnir-crypto`, `docs/signature-policy.md` |
 | Redacted debug output | Signature envelopes, typed IDs, and object IDs redact sensitive bytes in `Debug` output | Scaffolded | `sagnir-core`, `sagnir-object`, `sagnir-crypto` |
 | Native encrypted realms | Encrypted `.saga/` storage, lock/unlock, recipient wrapping, crypto epochs, and leak scanning | Planned | `docs/vault-encryption.md` |

@@ -53,3 +53,17 @@ path = "fuzz_targets/codec_byte_string_read.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "object_graph_verify"
+path = "fuzz_targets/object_graph_verify.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "object_graph_path"
+path = "fuzz_targets/object_graph_path.rs"
+test = false
+doc = false
+bench = false

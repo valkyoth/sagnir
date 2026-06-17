@@ -153,6 +153,11 @@ pub struct OwnedSignature {
     bytes: [u8; SIGNATURE_BYTES_MAX],
 }
 
+const _: () = assert!(
+    core::mem::size_of::<OwnedSignature>() <= 4_800,
+    "OwnedSignature stack budget changed; update security controls before release"
+);
+
 #[derive(Clone, Eq, PartialEq)]
 pub struct HybridSignatureEnvelope<'a> {
     classical_bytes: &'a [u8],
@@ -175,6 +180,12 @@ impl core::fmt::Debug for HybridSignatureEnvelope<'_> {
 }
 
 impl<'a> HybridSignatureEnvelope<'a> {
+    /// Parses hybrid signature bytes into classical and post-quantum slices.
+    ///
+    /// Security: this is a length-admission parser only. It does not verify
+    /// either signature component and must not be used as a security decision
+    /// boundary without a live verifier that binds both components to the same
+    /// message and domain.
     pub fn parse(raw: &'a [u8]) -> Result<Self, SagnirError> {
         if raw.len() < ED25519_SIGNATURE_BYTES {
             return Err(SagnirError::InvalidValue);

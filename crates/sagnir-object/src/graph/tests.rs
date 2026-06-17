@@ -122,6 +122,37 @@ fn graph_traversal_follows_references() {
 }
 
 #[test]
+fn graph_verifies_long_linear_chain_iteratively() {
+    let mut graph = ObjectGraph::<64, 63>::new();
+    let mut index = 0_u8;
+    while index < 64 {
+        assert_eq!(
+            graph.insert_entry(ObjectGraphEntry::new(id(ObjectType::Tree, index))),
+            Ok(())
+        );
+        index += 1;
+    }
+
+    index = 0;
+    while index < 63 {
+        let source = id(ObjectType::Tree, index);
+        let target = id(ObjectType::Tree, index + 1);
+        assert_eq!(
+            ObjectReference::new(source, target, ObjectType::Tree)
+                .and_then(|reference| graph.insert_reference(reference)),
+            Ok(())
+        );
+        index += 1;
+    }
+
+    assert_eq!(graph.verify(), ObjectGraphReport::Complete);
+    assert_eq!(
+        graph.contains_path(id(ObjectType::Tree, 0), id(ObjectType::Tree, 63)),
+        Ok(true)
+    );
+}
+
+#[test]
 fn graph_rejects_capacity_overflow_and_duplicate_entries() {
     let one = id(ObjectType::Tree, 1);
     let two = id(ObjectType::Tree, 2);

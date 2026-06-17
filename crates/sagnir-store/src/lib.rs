@@ -64,7 +64,7 @@ impl WalFrameHeader {
     ) -> Result<Self, sagnir_core::SagnirError> {
         let payload_len =
             u64::try_from(payload.len()).map_err(|_| sagnir_core::SagnirError::InvalidValue)?;
-        let checksum = WalFrameChecksum::new(crc32c(payload));
+        let checksum = wal_frame_checksum(kind, tx_id, payload);
         Ok(Self {
             kind,
             tx_id,
@@ -81,13 +81,37 @@ impl WalFrameHeader {
     #[must_use]
     pub fn verifies(self, payload: &[u8]) -> bool {
         u64::try_from(payload.len()).is_ok_and(|len| len == self.payload_len)
-            && crc32c(payload) == self.checksum.get()
+            && wal_frame_checksum(self.kind, self.tx_id, payload).get() == self.checksum.get()
     }
 }
 
 #[must_use]
 pub fn crc32c(payload: &[u8]) -> u32 {
+    !crc32c_update(!0_u32, payload)
+}
+
+#[must_use]
+pub fn wal_frame_checksum(kind: WalFrameKind, tx_id: u64, payload: &[u8]) -> WalFrameChecksum {
     let mut crc = !0_u32;
+    crc = crc32c_update(crc, &wal_frame_kind_raw(kind).to_le_bytes());
+    crc = crc32c_update(crc, &tx_id.to_le_bytes());
+    crc = crc32c_update(crc, payload);
+    WalFrameChecksum::new(!crc)
+}
+
+const fn wal_frame_kind_raw(kind: WalFrameKind) -> u16 {
+    match kind {
+        WalFrameKind::BeginTx => 1,
+        WalFrameKind::PutObject => 2,
+        WalFrameKind::PutFact => 3,
+        WalFrameKind::PutWorldState => 4,
+        WalFrameKind::UpdateAlias => 5,
+        WalFrameKind::CommitTx => 6,
+        WalFrameKind::AbortTx => 7,
+    }
+}
+
+fn crc32c_update(mut crc: u32, payload: &[u8]) -> u32 {
     let mut index = 0;
     while index < payload.len() {
         crc ^= u32::from(payload[index]);
@@ -99,7 +123,7 @@ pub fn crc32c(payload: &[u8]) -> u32 {
         }
         index += 1;
     }
-    !crc
+    crc
 }
 
 #[must_use]
@@ -145,5 +169,25 @@ mod tests {
         assert!(header.is_ok_and(|value| value.verifies(b"")));
         assert_eq!(crc32c(b""), 0);
         assert_eq!(WalFrameChecksum::new(0).get(), 0);
+    }
+
+    #[test]
+    fn wal_frame_checksum_binds_kind_and_transaction_id() {
+        let checksum = wal_frame_checksum(WalFrameKind::PutFact, 7, b"payload");
+        let forged_kind = WalFrameHeader {
+            kind: WalFrameKind::AbortTx,
+            tx_id: 7,
+            payload_len: 7,
+            checksum,
+        };
+        let forged_tx = WalFrameHeader {
+            kind: WalFrameKind::PutFact,
+            tx_id: 8,
+            payload_len: 7,
+            checksum,
+        };
+
+        assert!(!forged_kind.verifies(b"payload"));
+        assert!(!forged_tx.verifies(b"payload"));
     }
 }
