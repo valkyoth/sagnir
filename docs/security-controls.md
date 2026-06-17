@@ -13,17 +13,17 @@ Status: baseline control map
 | Hardcoded credentials | Targeted scan rejects common credential, token, key, PEM private key, and JWT literal patterns | Active | `scripts/validate-security-policy.sh` |
 | Modularity | Focused crates and file-size gate | Active | `docs/modularity-policy.md` |
 | Canonical identity | Object type is part of identity metadata | Scaffolded | `sagnir-object` |
-| Local store | `.saga/` layout and WAL frame kinds | Scaffolded | `sagnir-store` |
-| Worktree safety | Control paths, traversal, separators, and unsafe path bytes are rejected | Scaffolded | `sagnir-worktree` |
+| Local store | `.saga/` layout, WAL frame kinds, and WAL checksum metadata | Scaffolded | `sagnir-store` |
+| Worktree safety | Control paths, traversal, separators, unsafe path bytes, and unverified symlink boundaries are rejected before source-state I/O | Scaffolded | `sagnir-worktree` |
 | Policy | Aggregate policy decision type | Scaffolded | `sagnir-policy` |
 | Proof | Verification report type | Scaffolded | `sagnir-proof` |
 | Crypto agility | Signature algorithm and envelope metadata | Scaffolded | `sagnir-crypto` |
 | Algorithm admission | Unknown hash and signature algorithms fail closed at parse boundaries | Scaffolded | `sagnir-object`, `sagnir-crypto` |
 | Signature bounds | Empty and algorithm-oversized signatures rejected | Scaffolded | `sagnir-crypto` |
-| Hybrid signatures | Hybrid signature composition must bind classical and post-quantum components | Planned | `docs/signature-policy.md` |
+| Hybrid signatures | Hybrid signature composition must bind classical and post-quantum components | Scaffolded | `sagnir-crypto`, `docs/signature-policy.md` |
 | Redacted debug output | Signature envelopes, typed IDs, and object IDs redact sensitive bytes in `Debug` output | Scaffolded | `sagnir-core`, `sagnir-object`, `sagnir-crypto` |
 | Native encrypted realms | Encrypted `.saga/` storage, lock/unlock, recipient wrapping, crypto epochs, and leak scanning | Planned | `docs/vault-encryption.md` |
-| Private object IDs | Sealed private mode avoids public plaintext hash membership leaks | Planned | `docs/vault-encryption.md` |
+| Private object IDs | Sealed private mode avoids public plaintext hash membership leaks | Scaffolded | `sagnir-object`, `docs/vault-encryption.md` |
 | Encrypted bundles | Recipient-targeted bundles and blind/split-trust sync modes | Planned | `docs/vault-encryption.md`, `docs/protocol.md` |
 | Facts | Confidence bounds and fact kinds | Scaffolded | `sagnir-fact` |
 | Events | Bounded command events are separated from authoritative facts | Planned | `docs/causal-memory.md` |

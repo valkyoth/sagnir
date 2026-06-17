@@ -5,6 +5,9 @@ pub enum SagnirError {
     InvalidNameByte,
     BufferTooSmall,
     InvalidValue,
+    UnknownAlgorithm,
+    UnknownObjectType,
+    FormatVersionMismatch,
 }
 
 impl core::fmt::Display for SagnirError {
@@ -15,6 +18,9 @@ impl core::fmt::Display for SagnirError {
             Self::InvalidNameByte => f.write_str("name contains an invalid byte"),
             Self::BufferTooSmall => f.write_str("buffer too small"),
             Self::InvalidValue => f.write_str("invalid value"),
+            Self::UnknownAlgorithm => f.write_str("unknown algorithm"),
+            Self::UnknownObjectType => f.write_str("unknown object type"),
+            Self::FormatVersionMismatch => f.write_str("format version mismatch"),
         }
     }
 }
@@ -41,5 +47,17 @@ mod tests {
             "buffer too small"
         );
         assert_eq!(format!("{}", SagnirError::InvalidValue), "invalid value");
+        assert_eq!(
+            format!("{}", SagnirError::UnknownAlgorithm),
+            "unknown algorithm"
+        );
+        assert_eq!(
+            format!("{}", SagnirError::UnknownObjectType),
+            "unknown object type"
+        );
+        assert_eq!(
+            format!("{}", SagnirError::FormatVersionMismatch),
+            "format version mismatch"
+        );
     }
 }

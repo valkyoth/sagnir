@@ -42,3 +42,9 @@ obviously non-production.
 
 Current admitted third-party Rust dependencies must remain narrowly scoped,
 current, license-reviewed, and covered by release notes when they change.
+
+Highest-assurance deployments should build release tooling from a pinned,
+attested Rust distribution or compare installed `cargo deny` and `cargo audit`
+outputs against independently reproducible builds. The repository release gate
+verifies crate archive checksums and locked versions; toolchain provenance is an
+environment control.

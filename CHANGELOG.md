@@ -17,10 +17,20 @@ Status: implementation stop.
 - Kept object ID equality on the admitted `subtle`-backed timing-safe byte
   comparison path.
 - Added the hash migration plan for future algorithm admission.
+- Added SHA3-256 hash algorithm admission metadata for sensitive deployment
+  profiles.
 - Hardened proof report construction so `Verified` requires an opaque
   verification token.
 - Tightened world, change, and state-root references to use typed ID wrappers.
 - Split parsed object headers into named `header`, `body`, and `rest` fields.
+- Preserved `subtle::Choice` through composed timing-sensitive comparisons.
+- Added redacted object ID display for sealed private contexts.
+- Added hybrid signature component parsing and sanitized signature envelope
+  rejection.
+- Added worktree path proof types for future symlink-resolved filesystem I/O.
+- Added WAL frame CRC-32c integrity metadata.
+- Added parser fuzz targets for object IDs, bounded names, worktree paths, and
+  codec byte strings.
 - Added forward-compatible protocol enum annotations and security tooling
   extraction hardening.
 - Split object identity tests into a focused test module to preserve the

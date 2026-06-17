@@ -42,12 +42,19 @@ impl ObligationSet {
         self.0 == 0
     }
 
-    /// Returns true when every bit in `flag` is set.
-    ///
-    /// `has(Self::NONE)` is a bitmask tautology. Use [`Self::is_empty`] to
-    /// test whether no obligations are present.
+    /// Returns true when every non-empty bit in `flag` is set.
     #[must_use]
     pub const fn has(self, flag: Self) -> bool {
+        if flag.0 == 0 {
+            return false;
+        }
+        self.0 & flag.0 == flag.0
+    }
+
+    /// Returns true when every bit in `flag` is set, including the bitmask
+    /// tautology for `NONE`. This is only for serialization-level bit logic.
+    #[must_use]
+    pub const fn contains_bits(self, flag: Self) -> bool {
         self.0 & flag.0 == flag.0
     }
 }
@@ -114,8 +121,9 @@ mod tests {
     }
 
     #[test]
-    fn has_none_is_a_bitmask_tautology() {
-        assert!(ObligationSet::NONE.has(ObligationSet::NONE));
-        assert!(ObligationSet::REQUIRE_REVIEW.has(ObligationSet::NONE));
+    fn has_none_is_rejected_for_policy_checks() {
+        assert!(!ObligationSet::NONE.has(ObligationSet::NONE));
+        assert!(!ObligationSet::REQUIRE_REVIEW.has(ObligationSet::NONE));
+        assert!(ObligationSet::REQUIRE_REVIEW.contains_bits(ObligationSet::NONE));
     }
 }

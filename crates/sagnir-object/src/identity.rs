@@ -1,4 +1,4 @@
-use sagnir_core::{FormatVersion, ID_BYTES, SagnirError, StateId, constant_time_bytes_eq};
+use sagnir_core::{FormatVersion, ID_BYTES, SagnirError, StateId, constant_time_bytes_choice};
 
 pub const OBJECT_ID_PREFIX: &str = "sagnir-object-v1";
 pub const OBJECT_ID_DIGEST_HEX_LEN: usize = ID_BYTES * 2;
@@ -10,12 +10,13 @@ pub const OBJECT_ID_MAX_LEN: usize = OBJECT_ID_PREFIX.len()
     + 1
     + OBJECT_ID_DIGEST_HEX_LEN;
 pub const OBJECT_TYPE_NAME_MAX_LEN: usize = 15;
-pub const HASH_ALGORITHM_NAME_MAX_LEN: usize = 6;
+pub const HASH_ALGORITHM_NAME_MAX_LEN: usize = 8;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 #[non_exhaustive]
 pub enum HashAlgorithm {
     Sha256,
+    Sha3_256,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -69,14 +70,16 @@ impl PartialEq for ObjectId {
 pub const fn parse_hash_algorithm(raw: u16) -> Result<HashAlgorithm, SagnirError> {
     match raw {
         1 => Ok(HashAlgorithm::Sha256),
-        _ => Err(SagnirError::InvalidValue),
+        2 => Ok(HashAlgorithm::Sha3_256),
+        _ => Err(SagnirError::UnknownAlgorithm),
     }
 }
 
 pub fn parse_hash_algorithm_name(name: &str) -> Result<HashAlgorithm, SagnirError> {
     match name.as_bytes() {
         b"sha256" => Ok(HashAlgorithm::Sha256),
-        _ => Err(SagnirError::InvalidValue),
+        b"sha3-256" => Ok(HashAlgorithm::Sha3_256),
+        _ => Err(SagnirError::UnknownAlgorithm),
     }
 }
 
@@ -91,7 +94,7 @@ pub const fn parse_object_type(raw: u16) -> Result<ObjectType, SagnirError> {
         7 => Ok(ObjectType::Fact),
         8 => Ok(ObjectType::Operation),
         9 => Ok(ObjectType::Bundle),
-        _ => Err(SagnirError::InvalidValue),
+        _ => Err(SagnirError::UnknownObjectType),
     }
 }
 
@@ -106,13 +109,13 @@ pub fn parse_object_type_name(name: &str) -> Result<ObjectType, SagnirError> {
         b"fact" => Ok(ObjectType::Fact),
         b"operation" => Ok(ObjectType::Operation),
         b"bundle" => Ok(ObjectType::Bundle),
-        _ => Err(SagnirError::InvalidValue),
+        _ => Err(SagnirError::UnknownObjectType),
     }
 }
 
 impl ObjectId {
     #[must_use]
-    pub const fn new(
+    pub(crate) const fn new(
         algorithm: HashAlgorithm,
         object_type: ObjectType,
         digest: [u8; ID_BYTES],
@@ -124,6 +127,12 @@ impl ObjectId {
         }
     }
 
+    #[doc(hidden)]
+    /// Builds an object ID from externally supplied digest bytes.
+    ///
+    /// Trust model: this only admits algorithm/type/length shape. Callers must
+    /// already have verified that the digest was computed from canonical object
+    /// bytes for the same domain.
     pub fn from_digest_slice(
         algorithm: HashAlgorithm,
         object_type: ObjectType,
@@ -158,17 +167,17 @@ impl ObjectId {
     /// formally specified constant-time primitive.
     #[must_use]
     pub fn ct_eq(&self, other: &Self) -> bool {
-        let algorithm_eq = constant_time_bytes_eq(
+        let algorithm_eq = constant_time_bytes_choice(
             &hash_algorithm_raw(self.algorithm).to_le_bytes(),
             &hash_algorithm_raw(other.algorithm).to_le_bytes(),
-        ) as u8;
-        let object_type_eq = constant_time_bytes_eq(
+        );
+        let object_type_eq = constant_time_bytes_choice(
             &object_type_raw(self.object_type).to_le_bytes(),
             &object_type_raw(other.object_type).to_le_bytes(),
-        ) as u8;
-        let digest_eq = constant_time_bytes_eq(&self.digest, &other.digest) as u8;
+        );
+        let digest_eq = constant_time_bytes_choice(&self.digest, &other.digest);
 
-        (algorithm_eq & object_type_eq & digest_eq) == 1
+        (algorithm_eq & object_type_eq & digest_eq).into()
     }
 }
 
@@ -187,6 +196,28 @@ impl core::fmt::Display for ObjectId {
         }
 
         Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct RedactedObjectId<'a>(&'a ObjectId);
+
+impl ObjectId {
+    #[must_use]
+    pub const fn redacted(&self) -> RedactedObjectId<'_> {
+        RedactedObjectId(self)
+    }
+}
+
+impl core::fmt::Display for RedactedObjectId<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "{}:{}:{}:[redacted]",
+            OBJECT_ID_PREFIX,
+            object_type_name(self.0.object_type),
+            hash_algorithm_name(self.0.algorithm)
+        )
     }
 }
 
@@ -223,6 +254,7 @@ pub fn parse_object_id(input: &str) -> Result<ObjectId, SagnirError> {
 const fn hash_algorithm_raw(algorithm: HashAlgorithm) -> u16 {
     match algorithm {
         HashAlgorithm::Sha256 => 1,
+        HashAlgorithm::Sha3_256 => 2,
     }
 }
 
@@ -230,6 +262,7 @@ const fn hash_algorithm_raw(algorithm: HashAlgorithm) -> u16 {
 pub const fn digest_len(algorithm: HashAlgorithm) -> usize {
     match algorithm {
         HashAlgorithm::Sha256 => ID_BYTES,
+        HashAlgorithm::Sha3_256 => ID_BYTES,
     }
 }
 
@@ -237,6 +270,7 @@ pub const fn digest_len(algorithm: HashAlgorithm) -> usize {
 pub const fn hash_algorithm_name(algorithm: HashAlgorithm) -> &'static str {
     match algorithm {
         HashAlgorithm::Sha256 => "sha256",
+        HashAlgorithm::Sha3_256 => "sha3-256",
     }
 }
 

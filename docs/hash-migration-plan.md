@@ -1,14 +1,16 @@
 # Sagnir Hash Migration Plan
 
-Sagnir v0.7.0 admits `sha256` as the only live object hash algorithm. Object
-IDs still carry the algorithm name so future hash changes can be introduced
-without reusing the same collision domain.
+Sagnir v0.7.0 admits `sha256` and `sha3-256` object hash algorithm metadata.
+Object IDs carry the algorithm name so hash changes do not reuse the same
+collision domain.
 
 ## Rules
 
 - Unknown hash algorithm names fail closed at every parse boundary.
 - A digest is admitted only when its byte length matches the selected algorithm.
 - Object type, hash algorithm, and digest are all part of object ID equality.
+- `sha3-256` is the quantum-horizon parallel-admission path for sensitive
+  profiles that do not want new object IDs minted with SHA-256.
 - New hash algorithms require a release note entry, object ID parse tests,
   collision-domain tests, and a completed pentest report.
 - Hash migration must be additive first: new objects may use the new algorithm

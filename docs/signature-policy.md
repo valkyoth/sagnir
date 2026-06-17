@@ -45,3 +45,8 @@ hybrid = sig_classical || sig_pq
 
 Verification must check `sig_pq` over `message || sig_classical` and then check
 `sig_classical` over `message`. Both checks must pass.
+
+The v0.7.0 scaffold exposes a `HybridSignatureEnvelope` parser that splits the
+fixed Ed25519 component from the ML-DSA component and rejects unknown component
+lengths. It is not a verifier; live verification must preserve the binding rule
+above.

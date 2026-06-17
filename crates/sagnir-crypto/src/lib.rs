@@ -2,7 +2,7 @@
 #![forbid(unsafe_code)]
 #![deny(unused_must_use)]
 
-use sagnir_core::{SagnirError, constant_time_bytes_eq};
+use sagnir_core::{SagnirError, constant_time_bytes_choice};
 use sanitization::{SecureSanitize, sanitize_bytes};
 
 pub const ED25519_SIGNATURE_BYTES: usize = 64;
@@ -63,13 +63,13 @@ impl<'a> SignatureEnvelope<'a> {
     /// admit a formally specified constant-time primitive.
     #[must_use]
     pub fn ct_eq(&self, other: &Self) -> bool {
-        let algorithm_eq = constant_time_bytes_eq(
+        let algorithm_eq = constant_time_bytes_choice(
             &signature_algorithm_raw(self.algorithm).to_le_bytes(),
             &signature_algorithm_raw(other.algorithm).to_le_bytes(),
-        ) as u8;
-        let bytes_eq = constant_time_bytes_eq(self.bytes, other.bytes) as u8;
+        );
+        let bytes_eq = constant_time_bytes_choice(self.bytes, other.bytes);
 
-        (algorithm_eq & bytes_eq) == 1
+        (algorithm_eq & bytes_eq).into()
     }
 }
 
@@ -153,6 +153,40 @@ pub struct OwnedSignature {
     bytes: [u8; SIGNATURE_BYTES_MAX],
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct HybridSignatureEnvelope<'a> {
+    classical_bytes: &'a [u8],
+    pq_bytes: &'a [u8],
+}
+
+impl<'a> HybridSignatureEnvelope<'a> {
+    pub fn parse(raw: &'a [u8]) -> Result<Self, SagnirError> {
+        if raw.len() < ED25519_SIGNATURE_BYTES {
+            return Err(SagnirError::InvalidValue);
+        }
+
+        let (classical_bytes, pq_bytes) = raw.split_at(ED25519_SIGNATURE_BYTES);
+        if !valid_ml_dsa_signature_len(pq_bytes.len()) {
+            return Err(SagnirError::InvalidValue);
+        }
+
+        Ok(Self {
+            classical_bytes,
+            pq_bytes,
+        })
+    }
+
+    #[must_use]
+    pub const fn classical_bytes(&self) -> &'a [u8] {
+        self.classical_bytes
+    }
+
+    #[must_use]
+    pub const fn pq_bytes(&self) -> &'a [u8] {
+        self.pq_bytes
+    }
+}
+
 impl OwnedSignature {
     pub fn new(algorithm: SignatureAlgorithm, bytes: &[u8]) -> Result<Self, SagnirError> {
         if !valid_signature_len_for(algorithm, bytes.len()) {
@@ -183,12 +217,8 @@ impl OwnedSignature {
         self.len == 0
     }
 
-    #[must_use]
-    pub fn as_envelope(&self) -> SignatureEnvelope<'_> {
-        SignatureEnvelope {
-            algorithm: self.algorithm,
-            bytes: &self.bytes[..self.len],
-        }
+    pub fn as_envelope(&self) -> Result<SignatureEnvelope<'_>, SagnirError> {
+        SignatureEnvelope::new(self.algorithm, &self.bytes[..self.len])
     }
 }
 
@@ -343,11 +373,11 @@ mod tests {
         let bytes = [7_u8; ED25519_SIGNATURE_BYTES];
         let mut owned = OwnedSignature::new(SignatureAlgorithm::Ed25519, &bytes);
 
-        assert!(
-            owned
-                .as_ref()
-                .is_ok_and(|value| value.as_envelope().len() == ED25519_SIGNATURE_BYTES)
-        );
+        assert!(owned.as_ref().is_ok_and(|value| {
+            value
+                .as_envelope()
+                .is_ok_and(|envelope| envelope.len() == ED25519_SIGNATURE_BYTES)
+        }));
         assert_eq!(
             owned.as_ref().map(|value| format!("{value:?}")),
             Ok(String::from(
@@ -377,6 +407,39 @@ mod tests {
         assert_eq!(
             owned.map(|value| (value.algorithm(), value.len())),
             Ok((SignatureAlgorithm::Ed25519, 0))
+        );
+    }
+
+    #[test]
+    fn sanitized_owned_signature_has_no_envelope() {
+        let bytes = [7_u8; ED25519_SIGNATURE_BYTES];
+        let mut owned = OwnedSignature::new(SignatureAlgorithm::Ed25519, &bytes);
+
+        if let Ok(value) = owned.as_mut() {
+            value.secure_sanitize();
+        }
+
+        assert!(owned.is_ok_and(|value| value.as_envelope().is_err()));
+    }
+
+    #[test]
+    fn hybrid_signature_envelope_splits_bound_components() {
+        let raw = [9_u8; HYBRID_SIGNATURE_BYTES_MIN];
+        let parsed = HybridSignatureEnvelope::parse(&raw);
+
+        assert_eq!(
+            parsed.map(|value| (value.classical_bytes().len(), value.pq_bytes().len())),
+            Ok((ED25519_SIGNATURE_BYTES, ML_DSA_SIGNATURE_BYTES_MIN))
+        );
+    }
+
+    #[test]
+    fn hybrid_signature_envelope_rejects_unbound_component_lengths() {
+        let raw = [9_u8; ED25519_SIGNATURE_BYTES + ML_DSA_SIGNATURE_BYTES_MIN + 1];
+
+        assert_eq!(
+            HybridSignatureEnvelope::parse(&raw),
+            Err(SagnirError::InvalidValue)
         );
     }
 }

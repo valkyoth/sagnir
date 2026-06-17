@@ -40,6 +40,10 @@ sync bundle, object pack, WAL frame, or policy file may be malicious.
 
 Verification happens before durable acceptance.
 
+Worktree source-state I/O must not accept raw path strings. Lexical paths pass
+through `WorktreePath`, and filesystem materialization must require a
+`VerifiedWorktreePath` carrying symlink-boundary proof.
+
 Encrypted realms add another trust boundary: while locked, Sagnir storage is
 encrypted; while unlocked, plaintext may exist in the worktree and external
 tool caches. Sagnir must make that distinction visible.

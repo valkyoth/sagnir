@@ -12,7 +12,8 @@ pub use header::{
 };
 pub use identity::{
     HASH_ALGORITHM_NAME_MAX_LEN, HashAlgorithm, OBJECT_ID_DIGEST_HEX_LEN, OBJECT_ID_MAX_LEN,
-    OBJECT_ID_PREFIX, OBJECT_TYPE_NAME_MAX_LEN, ObjectId, ObjectType, StateRootRef, digest_len,
-    domain_tag, hash_algorithm_name, object_type_name, parse_hash_algorithm,
-    parse_hash_algorithm_name, parse_object_id, parse_object_type, parse_object_type_name,
+    OBJECT_ID_PREFIX, OBJECT_TYPE_NAME_MAX_LEN, ObjectId, ObjectType, RedactedObjectId,
+    StateRootRef, digest_len, domain_tag, hash_algorithm_name, object_type_name,
+    parse_hash_algorithm, parse_hash_algorithm_name, parse_object_id, parse_object_type,
+    parse_object_type_name,
 };

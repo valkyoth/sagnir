@@ -1,5 +1,5 @@
 use crate::SagnirError;
-use subtle::ConstantTimeEq;
+use subtle::{Choice, ConstantTimeEq};
 
 pub const FORMAT_VERSION: FormatVersion = FormatVersion::current();
 pub const ID_BYTES: usize = 32;
@@ -94,13 +94,13 @@ impl TypedId {
     /// scaffolds. See [`constant_time_bytes_eq`] for the current guarantee.
     #[must_use]
     pub fn ct_eq(&self, other: &Self) -> bool {
-        let kind_eq = constant_time_bytes_eq(
+        let kind_eq = constant_time_bytes_choice(
             &id_kind_raw(self.kind).to_le_bytes(),
             &id_kind_raw(other.kind).to_le_bytes(),
-        ) as u8;
-        let bytes_eq = constant_time_bytes_eq(&self.bytes, &other.bytes) as u8;
+        );
+        let bytes_eq = constant_time_bytes_choice(&self.bytes, &other.bytes);
 
-        (kind_eq & bytes_eq) == 1
+        (kind_eq & bytes_eq).into()
     }
 }
 
@@ -172,8 +172,16 @@ const fn id_kind_raw(kind: IdKind) -> u16 {
 /// Length equality is public metadata for Sagnir envelope parsing. Equal-length
 /// payload bytes are compared without data-dependent early exit.
 #[must_use]
+pub fn constant_time_bytes_choice(left: &[u8], right: &[u8]) -> Choice {
+    left.ct_eq(right)
+}
+
+/// Boolean boundary for callers that do not combine multiple timing-sensitive
+/// comparisons. Callers composing checks must use [`constant_time_bytes_choice`]
+/// and combine `Choice` values before converting to `bool`.
+#[must_use]
 pub fn constant_time_bytes_eq(left: &[u8], right: &[u8]) -> bool {
-    left.ct_eq(right).into()
+    constant_time_bytes_choice(left, right).into()
 }
 
 #[cfg(test)]

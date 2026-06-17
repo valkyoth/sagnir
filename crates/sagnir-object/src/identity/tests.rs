@@ -64,10 +64,13 @@ fn state_root_records_format_version() {
 
 #[test]
 fn unknown_hash_algorithm_fails_closed() {
-    assert_eq!(parse_hash_algorithm(999), Err(SagnirError::InvalidValue));
+    assert_eq!(
+        parse_hash_algorithm(999),
+        Err(SagnirError::UnknownAlgorithm)
+    );
     assert_eq!(
         parse_hash_algorithm_name("sha-256"),
-        Err(SagnirError::InvalidValue)
+        Err(SagnirError::UnknownAlgorithm)
     );
 }
 
@@ -75,12 +78,12 @@ fn unknown_hash_algorithm_fails_closed() {
 fn object_type_parser_fails_closed() {
     assert_eq!(parse_object_type(1), Ok(ObjectType::Blob));
     assert_eq!(parse_object_type(9), Ok(ObjectType::Bundle));
-    assert_eq!(parse_object_type(0), Err(SagnirError::InvalidValue));
-    assert_eq!(parse_object_type(10), Err(SagnirError::InvalidValue));
+    assert_eq!(parse_object_type(0), Err(SagnirError::UnknownObjectType));
+    assert_eq!(parse_object_type(10), Err(SagnirError::UnknownObjectType));
     assert_eq!(parse_object_type_name("blob"), Ok(ObjectType::Blob));
     assert_eq!(
         parse_object_type_name("state_root"),
-        Err(SagnirError::InvalidValue)
+        Err(SagnirError::UnknownObjectType)
     );
 }
 
@@ -111,6 +114,25 @@ fn object_ids_display_and_parse() {
 }
 
 #[test]
+fn object_ids_support_sha3_256_admission_metadata() {
+    let id = ObjectId::new(
+        HashAlgorithm::Sha3_256,
+        ObjectType::Blob,
+        [0xabu8; ID_BYTES],
+    );
+    let text = format!("{id}");
+
+    assert_eq!(digest_len(HashAlgorithm::Sha3_256), ID_BYTES);
+    assert_eq!(hash_algorithm_name(HashAlgorithm::Sha3_256), "sha3-256");
+    assert_eq!(parse_hash_algorithm(2), Ok(HashAlgorithm::Sha3_256));
+    assert_eq!(
+        parse_hash_algorithm_name("sha3-256"),
+        Ok(HashAlgorithm::Sha3_256)
+    );
+    assert_eq!(parse_object_id(&text), Ok(id));
+}
+
+#[test]
 fn object_id_parse_fails_closed() {
     assert_eq!(parse_object_id(""), Err(SagnirError::InvalidValue));
     assert_eq!(
@@ -123,7 +145,7 @@ fn object_id_parse_fails_closed() {
         parse_object_id(
             "sagnir-object-v1:blob:sha512:abababababababababababababababababababababababababababababababab"
         ),
-        Err(SagnirError::InvalidValue)
+        Err(SagnirError::UnknownAlgorithm)
     );
     assert_eq!(
         parse_object_id(
@@ -183,5 +205,15 @@ fn object_id_debug_redacts_digest() {
         String::from(
             "ObjectId { algorithm: Sha256, object_type: Blob, digest: [32 bytes redacted] }"
         )
+    );
+}
+
+#[test]
+fn object_id_redacted_display_hides_digest() {
+    let id = ObjectId::new(HashAlgorithm::Sha256, ObjectType::Blob, [4; ID_BYTES]);
+
+    assert_eq!(
+        format!("{}", id.redacted()),
+        String::from("sagnir-object-v1:blob:sha256:[redacted]")
     );
 }

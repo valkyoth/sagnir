@@ -9,6 +9,58 @@ pub enum PathClass {
     Invalid,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct WorktreePath<'a> {
+    relative: &'a str,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SymlinkBoundaryProof {
+    _private: (),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct VerifiedWorktreePath<'a> {
+    relative: WorktreePath<'a>,
+    _proof: SymlinkBoundaryProof,
+}
+
+impl SymlinkBoundaryProof {
+    #[cfg(test)]
+    const fn for_test() -> Self {
+        Self { _private: () }
+    }
+}
+
+impl<'a> WorktreePath<'a> {
+    pub fn new(relative: &'a str) -> Result<Self, sagnir_core::SagnirError> {
+        match classify_relative_path(relative) {
+            PathClass::TrackedCandidate => Ok(Self { relative }),
+            PathClass::Control | PathClass::Invalid => Err(sagnir_core::SagnirError::InvalidValue),
+        }
+    }
+
+    #[must_use]
+    pub const fn as_str(self) -> &'a str {
+        self.relative
+    }
+}
+
+impl<'a> VerifiedWorktreePath<'a> {
+    #[must_use]
+    pub const fn from_resolved(relative: WorktreePath<'a>, proof: SymlinkBoundaryProof) -> Self {
+        Self {
+            relative,
+            _proof: proof,
+        }
+    }
+
+    #[must_use]
+    pub const fn as_str(self) -> &'a str {
+        self.relative.as_str()
+    }
+}
+
 /// Classifies a relative path by string content only.
 ///
 /// Note: this function does not resolve symlinks. Callers performing
@@ -126,5 +178,28 @@ mod tests {
             classify_relative_path("src/link"),
             PathClass::TrackedCandidate
         );
+    }
+
+    #[test]
+    fn worktree_path_rejects_untracked_strings() {
+        assert!(WorktreePath::new("src/lib.rs").is_ok());
+        assert_eq!(
+            WorktreePath::new("../outside"),
+            Err(sagnir_core::SagnirError::InvalidValue)
+        );
+        assert_eq!(
+            WorktreePath::new(".saga/config"),
+            Err(sagnir_core::SagnirError::InvalidValue)
+        );
+    }
+
+    #[test]
+    fn verified_worktree_path_requires_boundary_proof() {
+        let path = WorktreePath::new("src/lib.rs");
+        let verified = path.map(|path| {
+            VerifiedWorktreePath::from_resolved(path, SymlinkBoundaryProof::for_test())
+        });
+
+        assert_eq!(verified.map(VerifiedWorktreePath::as_str), Ok("src/lib.rs"));
     }
 }

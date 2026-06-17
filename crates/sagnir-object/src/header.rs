@@ -143,7 +143,8 @@ pub fn parse_object_header(input: &[u8]) -> Result<ParsedObjectHeader<'_>, Sagni
     let (raw_flags, tail) = sagnir_codec::read_u32(rest)?;
 
     let object_type = parse_object_type(raw_type)?;
-    let format_version = FormatVersion::try_new(raw_version)?;
+    let format_version =
+        FormatVersion::try_new(raw_version).map_err(|_| SagnirError::FormatVersionMismatch)?;
     let flags = ObjectHeaderFlags::try_new(raw_flags)?;
     let header = ObjectHeader::new(object_type, format_version, body_len, flags)?;
     let body_len = usize::try_from(header.body_len()).map_err(|_| SagnirError::InvalidValue)?;
@@ -232,7 +233,10 @@ mod tests {
         let mut bytes = valid_header_bytes();
         bytes[MAGIC_LEN..MAGIC_LEN + 2].copy_from_slice(&99_u16.to_le_bytes());
 
-        assert_eq!(parse_object_header(&bytes), Err(SagnirError::InvalidValue));
+        assert_eq!(
+            parse_object_header(&bytes),
+            Err(SagnirError::UnknownObjectType)
+        );
     }
 
     #[test]
@@ -240,7 +244,10 @@ mod tests {
         let mut bytes = valid_header_bytes();
         bytes[MAGIC_LEN + 2..MAGIC_LEN + 4].copy_from_slice(&99_u16.to_le_bytes());
 
-        assert_eq!(parse_object_header(&bytes), Err(SagnirError::InvalidValue));
+        assert_eq!(
+            parse_object_header(&bytes),
+            Err(SagnirError::FormatVersionMismatch)
+        );
     }
 
     #[test]

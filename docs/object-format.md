@@ -80,13 +80,17 @@ Object ID text format v1 is:
 sagnir-object-v1:<object-type>:<hash-algorithm>:<lowercase-hex-digest>
 ```
 
-For v0.7.0, the admitted hash algorithm name is `sha256`, and the digest must
-be exactly 32 bytes encoded as 64 lowercase hex characters. Object type names
-match the object header type domain, for example `blob`, `tree`, `state-root`,
-`change`, `change-revision`, `world`, `fact`, `operation`, and `bundle`.
-Future algorithm changes must follow the [hash migration plan](hash-migration-plan.md).
-Unknown names, wrong digest lengths, uppercase hex, and non-hex characters fail
-closed.
+For v0.7.0, the admitted hash algorithm names are `sha256` and `sha3-256`, and
+the digest must be exactly 32 bytes encoded as 64 lowercase hex characters.
+Object type names match the object header type domain, for example `blob`,
+`tree`, `state-root`, `change`, `change-revision`, `world`, `fact`,
+`operation`, and `bundle`. Future algorithm changes must follow the
+[hash migration plan](hash-migration-plan.md). Unknown names, wrong digest
+lengths, uppercase hex, and non-hex characters fail closed.
+
+Plain object ID display is for open-mode canonical text. Sealed private mode
+must use redacted object ID display or keyed storage IDs so plaintext digest
+membership is not exposed.
 
 Decode rule: length-prefixed decoding must use `read_len_prefixed` or an
 equivalent bounded API that validates the declared length against a

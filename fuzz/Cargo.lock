@@ -95,7 +95,10 @@ name = "sagnir-fuzz"
 version = "0.0.0"
 dependencies = [
  "libfuzzer-sys",
+ "sagnir-codec",
+ "sagnir-core",
  "sagnir-object",
+ "sagnir-worktree",
 ]
 
 [[package]]
@@ -103,6 +106,13 @@ name = "sagnir-object"
 version = "0.1.0"
 dependencies = [
  "sagnir-codec",
+ "sagnir-core",
+]
+
+[[package]]
+name = "sagnir-worktree"
+version = "0.1.0"
+dependencies = [
  "sagnir-core",
 ]
 

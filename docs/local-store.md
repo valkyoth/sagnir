@@ -29,5 +29,10 @@ Recovery rule:
 
 - committed WAL transactions are replayed;
 - incomplete transactions are ignored;
+- every WAL frame header carries a CRC-32c checksum for crash-corruption
+  detection before replay;
+- checksum failure aborts recovery instead of silently skipping the frame;
+- encrypted realms may add a keyed MAC over each frame when vault keys are
+  available;
 - missing indexes are rebuilt;
 - aliases must point to existing immutable states.

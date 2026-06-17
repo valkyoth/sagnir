@@ -96,6 +96,9 @@ dependencies = [
 [[package]]
 name = "sagnir-store"
 version = "0.1.0"
+dependencies = [
+ "sagnir-core",
+]
 
 [[package]]
 name = "sagnir-sync"

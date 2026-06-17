@@ -29,6 +29,12 @@ and state-root references use typed ID wrappers, parsed object headers expose
 named `header`, `body`, and `rest` fields, and the hash migration path is
 documented before any second hash algorithm is admitted.
 
+The first v0.7.0 pentest pass also tightened constant-time comparison
+composition, sanitized signature envelope invariants, hybrid signature component
+framing, worktree path proof types, policy obligation checks, WAL frame checksum
+metadata, redacted object ID display, parser fuzz coverage, and supply-chain
+tooling notes.
+
 ## Verification
 
 Required local verification for this implementation stop:
@@ -78,3 +84,11 @@ Pentest task:
   construction.
 - Security tool archive extraction rejects absolute names and directory
   overwrite behavior.
+- Composed equality paths keep `subtle::Choice` until the final boolean
+  boundary.
+- `OwnedSignature::as_envelope` rejects sanitized signatures.
+- `HybridSignatureEnvelope` separates classical and post-quantum components.
+- `ObjectId::redacted()` hides plaintext digests for sealed private contexts.
+- WAL frame metadata includes CRC-32c integrity scaffolding.
+- `scripts/validate-pentest-pass.sh` strictly requires `Status: PASS`, exact
+  commit, tester, scope, and date before tagging.
