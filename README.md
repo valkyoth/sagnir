@@ -159,8 +159,9 @@ scripts/release_0_8_gate.sh
 
 ## Current Release Line
 
-The repository is past `v0.7.0` and is currently working through `v0.8.0`,
-the in-memory object graph baseline.
+The repository is past `v0.7.0` and `v0.8.0` is release-ready pending GitHub
+CI and explicit maintainer tagging instruction. The v0.8.0 line is the
+in-memory object graph baseline.
 
 Current release discipline:
 

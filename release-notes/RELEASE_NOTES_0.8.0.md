@@ -33,8 +33,9 @@ cargo check --manifest-path fuzz/Cargo.toml --bins
 scripts/release_0_8_gate.sh
 ```
 
-`scripts/release_0_8_gate.sh` must fail until
-`security/pentest/v0.8.0.md` is completed with `Status: PASS`.
+`scripts/release_0_8_gate.sh` requires
+`security/pentest/v0.8.0.md` to be completed with `Status: PASS` before
+tagging.
 
 Tag stop:
 

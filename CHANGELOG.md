@@ -6,7 +6,7 @@ All notable Sagnir changes are recorded here.
 
 ## 0.8.0
 
-Status: implementation stop.
+Status: release-ready in-memory object graph release.
 
 - Added a fixed-capacity, `no_std` in-memory object graph table.
 - Added typed object references that bind the expected target object kind.
