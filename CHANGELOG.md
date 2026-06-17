@@ -23,6 +23,8 @@ Status: implementation stop.
 - Documented that hybrid signature parsing is length admission only and added a
   compile-time stack-budget guard for owned signatures.
 - Added ObjectId keyed-hasher policy guidance for attacker-influenced maps.
+- Addressed the second v0.8.0 pentest findings by reporting defensive graph
+  invariant failures as invalid entries instead of false cycles.
 - Split graph tests from production code to preserve the 500-line modularity
   policy.
 - Added v0.8.0 release notes, pentest placeholder, and release gate.

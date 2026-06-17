@@ -18,6 +18,9 @@ graph capacity constants document the admitted budget, graph fuzz targets are
 wired into the release gate, WAL CRC-32C metadata now binds frame kind and
 transaction ID in addition to payload bytes, and crypto/object identity
 documentation now calls out non-verification and hashing boundaries explicitly.
+The second v0.8.0 pentest findings are also closed: defensive graph invariant
+failures now report `InvalidEntry` instead of presenting impossible structural
+breakage as a cycle.
 
 ## Verification
 
@@ -51,6 +54,7 @@ Pentest task:
 - review iterative traversal and graph capacity constants;
 - review graph fuzz target coverage;
 - review WAL checksum metadata binding and the remaining MAC requirement;
+- review that graph invariant guards report invalid entries, not false cycles;
 - write temporary findings to root `PENTEST.md`;
 - fix or document every release-blocking finding;
 - remove root `PENTEST.md`;

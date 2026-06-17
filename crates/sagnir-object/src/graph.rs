@@ -250,7 +250,9 @@ impl<const N: usize, const R: usize> ObjectGraph<N, R> {
             VisitState::Unseen => {}
         }
 
-        let start_id = self.entry_id(index).ok_or(VisitError::InvalidEntry)?;
+        if self.entry_id(index).is_none() {
+            return Err(VisitError::InvalidEntry);
+        }
         let mut stack = [(0_usize, 0_usize); N];
         let mut depth = 1;
         stack[0] = (index, 0);
@@ -259,9 +261,7 @@ impl<const N: usize, const R: usize> ObjectGraph<N, R> {
         while depth > 0 {
             let frame_index = depth - 1;
             let (node_index, mut reference_index) = stack[frame_index];
-            let source = self
-                .entry_id(node_index)
-                .ok_or(VisitError::Cycle(start_id))?;
+            let source = self.entry_id(node_index).ok_or(VisitError::InvalidEntry)?;
             let mut advanced = false;
 
             while reference_index < self.reference_len {
@@ -279,7 +279,7 @@ impl<const N: usize, const R: usize> ObjectGraph<N, R> {
                         VisitState::Done => {}
                         VisitState::Unseen => {
                             if depth >= N {
-                                return Err(VisitError::Cycle(reference.target()));
+                                return Err(VisitError::InvalidEntry);
                             }
                             states[target_index] = VisitState::Visiting;
                             stack[depth] = (target_index, 0);
