@@ -92,6 +92,12 @@ Plain object ID display is for open-mode canonical text. Sealed private mode
 must use redacted object ID display or keyed storage IDs so plaintext digest
 membership is not exposed.
 
+Object graph verification before disk persistence is in-memory and
+fixed-capacity. Each graph entry is an `ObjectId`, and each reference binds the
+source ID, target ID, and expected target object kind. Graph verification fails
+closed on missing targets and cycles. Blob objects are leaf data and must not
+act as reference sources.
+
 Decode rule: length-prefixed decoding must use `read_len_prefixed` or an
 equivalent bounded API that validates the declared length against a
 caller-provided maximum before returning a payload slice. Malicious object and

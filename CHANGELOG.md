@@ -4,6 +4,20 @@ All notable Sagnir changes are recorded here.
 
 ## Unreleased
 
+## 0.8.0
+
+Status: implementation stop.
+
+- Added a fixed-capacity, `no_std` in-memory object graph table.
+- Added typed object references that bind the expected target object kind.
+- Added missing-reference detection with the exact unresolved reference in the
+  verification report.
+- Added an acyclic graph policy for pre-persistence object relationships.
+- Added graph traversal tests proving reachable and unreachable object paths.
+- Split graph tests from production code to preserve the 500-line modularity
+  policy.
+- Added v0.8.0 release notes, pentest placeholder, and release gate.
+
 ## 0.7.0
 
 Status: tagged domain-separated object identity release.

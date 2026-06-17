@@ -12,7 +12,7 @@ Status: baseline control map
 | Unsafe code | Forbidden in trusted scaffold | Active | crate roots and `scripts/validate-security-policy.sh` |
 | Hardcoded credentials | Targeted scan rejects common credential, token, key, PEM private key, and JWT literal patterns | Active | `scripts/validate-security-policy.sh` |
 | Modularity | Focused crates and file-size gate | Active | `docs/modularity-policy.md` |
-| Canonical identity | Object type is part of identity metadata | Scaffolded | `sagnir-object` |
+| Canonical identity | Object type is part of identity metadata and object graph references are checked before persistence | Scaffolded | `sagnir-object` |
 | Local store | `.saga/` layout, WAL frame kinds, and WAL checksum metadata | Scaffolded | `sagnir-store` |
 | Worktree safety | Control paths, traversal, separators, unsafe path bytes, and unverified symlink boundaries are rejected before source-state I/O | Scaffolded | `sagnir-worktree` |
 | Policy | Aggregate policy decision type | Scaffolded | `sagnir-policy` |

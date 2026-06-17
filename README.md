@@ -78,7 +78,7 @@ Sagnir is licensed under the European Union Public Licence 1.2.
 | --- | --- | --- |
 | Core IDs and bounds | Active | Typed ID wrappers, bounded names, explicit format-version admission, case-folded `.saga` control-path rejection, redacted ID debug output, and timing-hardened equality APIs for sensitive IDs. |
 | Canonical codec | Active | Fixed-width integer readers and writers, byte-string encoding, bounded list-length encoding, fail-closed buffer writes, and malformed scalar tests. |
-| Object identity and headers | Active | Domain-separated object types, fail-closed hash algorithm parsing, canonical object ID display and parse, fixed object headers, parser-enforced body availability, flags admission, and malformed header tests. |
+| Object identity, headers, and graph | Active | Domain-separated object types, fail-closed hash algorithm parsing, canonical object ID display and parse, fixed object headers, in-memory object graph verification, parser-enforced body availability, flags admission, and malformed header tests. |
 | Local store metadata | Scaffolded | `.saga/` layout and WAL frame kind scaffolds. |
 | Worktree path rules | Scaffolded | Control-path exclusion, non-control dotfile rejection, path traversal rejection, control-character rejection, separator policy, and symlink-boundary proof types for future filesystem I/O. |
 | Policy metadata | Scaffolded | Policy results, validated obligation bitmasks, and named obligation checks. |
@@ -151,16 +151,16 @@ Run the rootless Podman smoke path:
 scripts/podman_smoke.sh
 ```
 
-Run the latest completed release gate:
+Run the current release gate:
 
 ```bash
-scripts/release_0_7_gate.sh
+scripts/release_0_8_gate.sh
 ```
 
 ## Current Release Line
 
-The repository is at the `v0.7.0` release stop. The next planned line is
-`v0.8.0`, the in-memory object graph baseline.
+The repository is past `v0.7.0` and is currently working through `v0.8.0`,
+the in-memory object graph baseline.
 
 Current release discipline:
 
