@@ -1781,7 +1781,34 @@ Exit criteria:
 
 ## Phase 11: Hardening And Portability
 
-### v0.72.0 - Malicious Corpus
+### v0.72.0 - Verifiable Archive Pack Concept
+
+Goal: keep a future path for disk-space relief without making deletion part of
+the early trust model.
+
+Deliverables:
+
+- `.saga/archival/` planning document;
+- compressed archive pack concept;
+- archive manifest concept;
+- archive receipt and root commitment concept;
+- rehydrate/restore concept;
+- receipt-only downstream clone concept;
+- policy notes for disabling archival in regulated realms.
+
+Verification:
+
+- documentation review;
+- threat-model update.
+
+Exit criteria:
+
+- Sagnir has a documented future path to compress cold history while retaining
+  verifiable receipts.
+- Archive receipts cannot be treated as proof that missing archive bodies are
+  available or valid.
+
+### v0.73.0 - Malicious Corpus
 
 Goal: make hostile input testing part of normal development.
 
@@ -1802,7 +1829,7 @@ Exit criteria:
 
 - Known malicious bytes stay rejected across releases.
 
-### v0.73.0 - Expanded Fuzz And Model Test Scaffold
+### v0.74.0 - Expanded Fuzz And Model Test Scaffold
 
 Goal: expand fuzz and model testing beyond the parser scaffolds added earlier.
 
@@ -1824,7 +1851,7 @@ Exit criteria:
 
 - New parsers have a standard place to add fuzz coverage.
 
-### v0.74.0 - Cross-Platform Build Gate
+### v0.75.0 - Cross-Platform Build Gate
 
 Goal: keep Sagnir portable from day one.
 
@@ -1847,7 +1874,7 @@ Exit criteria:
 
 - Platform assumptions are explicit and tested where practical.
 
-### v0.75.0 - Rootless Podman Gate
+### v0.76.0 - Rootless Podman Gate
 
 Goal: make `saga` usable from a rootless container.
 
@@ -1869,7 +1896,7 @@ Exit criteria:
 - A user can run the CLI in rootless Podman.
 - Release images do not use mutable base image tags.
 
-### v0.76.0 - Release Evidence
+### v0.77.0 - Release Evidence
 
 Goal: make release outputs auditable.
 
@@ -1891,7 +1918,7 @@ Exit criteria:
 
 - A release candidate produces auditable local evidence.
 
-### v0.77.0 - 1.0 Release Candidate Gate
+### v0.78.0 - 1.0 Release Candidate Gate
 
 Goal: freeze the 1.0 feature set and reject incomplete production behavior.
 

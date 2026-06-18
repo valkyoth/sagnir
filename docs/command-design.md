@@ -30,6 +30,7 @@ saga lock
 saga vault
 saga bundle
 saga sync
+saga archive
 ```
 
 Developer model:
@@ -119,6 +120,20 @@ saga vault recipient add
 saga vault rekey
 saga bundle create --encrypted
 ```
+
+Future archival commands:
+
+```text
+saga archive create
+saga archive verify
+saga archive restore
+saga archive list
+```
+
+Archive commands are a future cold-storage idea. They should create compressed
+verifiable archive packs and hot archive receipts, not silently erase history.
+Strict policies may disable archive pruning or require full archive bodies to
+remain available.
 
 Planned memory and explanation commands:
 

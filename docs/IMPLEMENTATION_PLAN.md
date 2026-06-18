@@ -445,6 +445,29 @@ Sync rule:
 - local work never requires network access;
 - remote acceptance can allow, deny, quarantine, or ask for more evidence.
 
+## Future Archival And Retention Idea
+
+Sagnir should not rush into pruning immutable history, but it should leave room
+for verifiable cold storage if `.saga/` growth becomes a real problem. The
+preferred direction is compressed archive packs plus immutable archive receipts,
+not silent deletion.
+
+Potential model:
+
+- granular history, events, facts, explanations, and proof caches can be moved
+  into compressed `.saga/archival/` packs;
+- each archive pack has a manifest and cryptographic commitment;
+- an archive receipt remains hot and proves which objects, facts, operations,
+  and summaries were archived;
+- archive packs can be verified and rehydrated when full detail is required;
+- downstream clones may choose current state only, receipt-only history, or
+  full archive packs;
+- strict policies can require full archive retention and disable local pruning.
+
+Archival must never let a project pretend history did not exist. If a receipt
+claims an archive exists, Sagnir must detect missing, corrupted, or substituted
+archive bodies.
+
 ## Phase 10: Production Hardening
 
 Build the 1.0 security and portability gates.
