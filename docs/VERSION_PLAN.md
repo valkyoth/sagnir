@@ -39,6 +39,32 @@ Every release should prefer:
 - policy-aware APIs even when enforcement is still simple;
 - explicit unsupported behavior over silent compatibility promises.
 
+## UX And Policy Principles
+
+Sagnir is strict by default. A new realm must start with strict integrity,
+canonical object validation, append-only history, safe worktree rules, and
+policy-aware state transitions. Convenience commands must not bypass configured
+policy.
+
+Daily-use ergonomics are still mandatory. The CLI should offer high-level
+commands for common local workflows so normal developers do not need to think
+about every primitive object, proof, or world transition for simple work.
+
+Planned profile shape:
+
+- `standard`: default strict integrity with simple local workflow commands;
+- `solo`: explicit opt-in profile with fewer evidence, review, and signature
+  requirements for private local work;
+- `team`: profile for signatures, reviews, and protected worlds;
+- `regulated`: strict signatures, evidence, audit, and promotion policy for
+  healthcare, sovereign, and other high-assurance environments.
+
+`saga save "message"` is planned as secure workflow sugar. It composes native
+Sagnir operations such as intent creation, source-state transition building,
+sealing, operation recording, local proof evaluation, and current-world update.
+It is not a Git commit clone and must fail when the active profile or world
+policy requires more evidence.
+
 ## Clean Stop And Pentest Rule
 
 Each version has a deliberate clean stop. When implementation criteria are done,
@@ -308,6 +334,8 @@ Deliverables:
 
 - `.saga/realm.toml`;
 - `.saga/config.toml`;
+- default `standard` profile metadata;
+- explicit profile parser for `standard`, `solo`, `team`, and `regulated`;
 - realm ID validation;
 - config read/write;
 - invalid config tests.
@@ -319,6 +347,8 @@ Verification:
 Exit criteria:
 
 - Sagnir can distinguish a valid local store from an unrelated directory.
+- A new realm records a strict default profile without weakening the security
+  model.
 
 ### v0.11.0 - WAL Frame Format
 
@@ -729,17 +759,23 @@ Exit criteria:
 
 - `saga seal` creates immutable source-state history.
 
-### v0.30.0 - Amend And Log
+### v0.30.0 - Save, Amend, And Log
 
-Goal: update a logical change through a new immutable revision.
+Goal: support both explicit change evolution and a simple secure local save
+workflow.
 
 Deliverables:
 
+- `saga save "message"`;
+- auto-create local intent when no active change exists;
+- policy check before world update;
+- operation record for the save workflow;
+- clear denial output when policy requires more evidence;
 - `saga change amend`;
 - revision parent tracking;
 - `saga log`;
 - `saga log --change`;
-- tests for amend chains.
+- tests for save workflow, policy denial, and amend chains.
 
 Verification:
 
@@ -748,6 +784,9 @@ Verification:
 
 Exit criteria:
 
+- `saga save` creates native Sagnir changes and sealed revisions without
+  exposing every primitive step to normal users.
+- `saga save` never bypasses the active profile or world policy.
 - A logical change can evolve without deleting prior sealed revisions.
 
 ### v0.31.0 - Operation Ledger
@@ -865,6 +904,7 @@ Goal: load local policy requirements without hosted infrastructure.
 Deliverables:
 
 - policy file format;
+- profile-to-policy defaults for `standard`, `solo`, `team`, and `regulated`;
 - world policy sections;
 - seal requirements;
 - promotion requirements;
@@ -877,6 +917,8 @@ Verification:
 Exit criteria:
 
 - Draft, review, staging, and production policies can differ locally.
+- Relaxed behavior is explicit through profile selection; strict environments
+  can require signatures, evidence, review, and promotion checks.
 
 ### v0.37.0 - Promotion Preflight
 

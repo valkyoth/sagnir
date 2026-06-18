@@ -24,6 +24,41 @@ proof-carrying bundles, native encrypted realms, causal impact traversal,
 cryptographic agility, capability-scoped automation metadata, and strict local
 verification.
 
+## UX And Policy Position
+
+Sagnir must be strict by default without forcing unnecessary ceremony for daily
+local work. The storage model, object checks, append-only history, path safety,
+and policy engine stay native Sagnir concepts from the first usable workflows.
+User-facing commands may still provide high-level workflows that compose those
+concepts safely.
+
+Default initialization should create a strict integrity posture:
+
+- canonical object and graph checks are required;
+- unsafe worktree paths are rejected;
+- immutable history is not rewritten;
+- world updates are transaction-backed;
+- configured policy is never bypassed by convenience commands.
+
+Normal-user ergonomics should come from workflow commands, not from weakening
+the engine. `saga save "message"` is planned as a secure convenience command
+that creates or reuses local intent, builds the source-state transition, seals
+an immutable revision, records the operation, and updates the current local
+world only when policy allows it.
+
+Relaxed project behavior must be explicit. Profiles may tune requirements for
+solo, open-source, team, or regulated use, but they must not silently downgrade
+security:
+
+- `standard`: default strict integrity with simple local workflow commands;
+- `solo`: opt-in fewer evidence/review requirements for private local work;
+- `team`: signatures, reviews, and protected worlds are available locally;
+- `regulated`: strict signatures, evidence, audit, and promotion policy.
+
+The CLI may be simple; the model must remain Sagnir. High-level commands are
+aliases over native objects, proofs, policy decisions, and world transitions,
+not a Git compatibility layer.
+
 ## Non-Negotiable Engineering Rules
 
 - Rust stable `1.96.0`, edition 2024, workspace resolver `3`.
@@ -110,6 +145,7 @@ Required work:
 - `saga world switch`;
 - `saga change begin`;
 - `saga seal`;
+- `saga save` as a high-level secure local workflow;
 - `saga change amend`;
 - `saga log`.
 
@@ -118,6 +154,8 @@ Design rule:
 - a change is logical intent;
 - a sealed revision is immutable evidence for one exact change version;
 - a world is policy-bound state, not just a mutable branch pointer.
+- `saga save` must never bypass configured policy; it only reduces manual CLI
+  steps when the same transition would be allowed through primitive commands.
 
 ## Phase 3: Proofs, Policy, And Promotion
 
