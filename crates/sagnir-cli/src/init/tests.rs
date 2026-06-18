@@ -1,4 +1,6 @@
-use super::{FORMAT_FILE_CONTENT, FORMAT_TEMP_FILE, INIT_DIRECTORIES, INIT_LOCK_FILE};
+use super::{
+    FORMAT_FILE_CONTENT, FORMAT_TEMP_FILE, INIT_DIRECTORIES, INIT_LOCK_FILE, INIT_LOCK_PREFIX,
+};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -94,6 +96,22 @@ fn init_recovers_from_malformed_stale_init_lock() -> std::io::Result<()> {
     let root = TempRoot::new("stale-lock")?;
     create_dir(root.path().join(".saga"))?;
     write_file(root.path().join(INIT_LOCK_FILE), b"stale")?;
+
+    let output = crate::dispatch_at(["init"], root.path());
+
+    assert_eq!(output.code, 0);
+    assert!(!root.path().join(INIT_LOCK_FILE).exists());
+    assert_format_file(root.path())?;
+    Ok(())
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn init_recovers_from_dead_pid_init_lock() -> std::io::Result<()> {
+    let root = TempRoot::new("dead-pid-lock")?;
+    create_dir(root.path().join(".saga"))?;
+    let lock = format!("{INIT_LOCK_PREFIX}{}\n", u32::MAX);
+    write_file(root.path().join(INIT_LOCK_FILE), lock.as_bytes())?;
 
     let output = crate::dispatch_at(["init"], root.path());
 
