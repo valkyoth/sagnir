@@ -4,9 +4,22 @@ All notable Sagnir changes are recorded here.
 
 ## Unreleased
 
+## 0.9.0
+
+Status: implementation stop.
+
+- Added `saga init` as the first stateful local command.
+- Added `saga init --dry-run` to show the planned `.saga/` layout without
+  writing files.
+- Added stable `.saga/FORMAT` content and initialization layout constants in
+  `sagnir-store`.
+- Added idempotent init behavior for existing valid stores.
+- Added cleanup for stale `.saga/FORMAT.tmp` files left by interrupted init.
+- Added v0.9.0 release notes, pentest placeholder, and release gate.
+
 ## 0.8.0
 
-Status: release-ready in-memory object graph release.
+Status: tagged in-memory object graph release.
 
 - Added a fixed-capacity, `no_std` in-memory object graph table.
 - Added typed object references that bind the expected target object kind.

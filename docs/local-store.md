@@ -25,6 +25,17 @@ Planned layout:
   locks/
 ```
 
+Initialization:
+
+- `saga init --dry-run` prints the planned layout and writes nothing;
+- `saga init` creates `.saga/` and required subdirectories;
+- `.saga/FORMAT` contains `sagnir-format = 1`;
+- `.saga/FORMAT` is written through `.saga/FORMAT.tmp` and rename;
+- stale `.saga/FORMAT.tmp` files are removed so interrupted init can be
+  retried;
+- running init again against a valid layout is allowed;
+- unexpected existing `.saga/FORMAT` content fails closed.
+
 Recovery rule:
 
 - committed WAL transactions are replayed;

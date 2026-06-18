@@ -4,7 +4,25 @@
 
 pub const STORE_DIR: &str = ".saga";
 pub const FORMAT_FILE: &str = ".saga/FORMAT";
+pub const FORMAT_TEMP_FILE: &str = ".saga/FORMAT.tmp";
+pub const FORMAT_FILE_CONTENT: &str = "sagnir-format = 1\n";
 pub const CONFIG_FILE: &str = ".saga/config.toml";
+
+pub const INIT_DIRECTORIES: [&str; 13] = [
+    ".saga",
+    ".saga/objects",
+    ".saga/wal",
+    ".saga/indexes",
+    ".saga/worlds",
+    ".saga/changes",
+    ".saga/facts",
+    ".saga/ops",
+    ".saga/keys",
+    ".saga/policies",
+    ".saga/projections",
+    ".saga/tmp",
+    ".saga/locks",
+];
 
 pub const REQUIRED_DIRS: [&str; 12] = [
     ".saga/objects",
@@ -131,6 +149,11 @@ pub fn is_required_store_dir(path: &str) -> bool {
     REQUIRED_DIRS.contains(&path)
 }
 
+#[must_use]
+pub fn is_init_directory(path: &str) -> bool {
+    INIT_DIRECTORIES.contains(&path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -144,6 +167,20 @@ mod tests {
     fn required_dirs_include_objects_and_wal() {
         assert!(is_required_store_dir(".saga/objects"));
         assert!(is_required_store_dir(".saga/wal"));
+    }
+
+    #[test]
+    fn init_directories_include_root_and_required_dirs() {
+        assert!(is_init_directory(STORE_DIR));
+        for dir in REQUIRED_DIRS {
+            assert!(is_init_directory(dir));
+        }
+    }
+
+    #[test]
+    fn format_file_content_is_stable() {
+        assert_eq!(FORMAT_FILE_CONTENT, "sagnir-format = 1\n");
+        assert_eq!(FORMAT_TEMP_FILE, ".saga/FORMAT.tmp");
     }
 
     #[test]

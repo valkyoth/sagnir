@@ -98,12 +98,14 @@ The early scaffold supports:
 
 ```bash
 saga help
+saga init --dry-run
 saga version
 ```
 
 It also has stable command-line usage behavior:
 
 - successful commands return exit code `0`;
+- runtime failures return exit code `1`;
 - unknown commands return exit code `2`;
 - unexpected extra arguments return exit code `2`;
 - help and version output are pinned by golden tests.

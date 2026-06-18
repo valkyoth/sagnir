@@ -53,7 +53,7 @@ Sagnir is licensed under the European Union Public Licence 1.2.
 | --- | --- | --- |
 | Rust workspace | Active | Rust 2024 workspace pinned to Rust stable `1.96.0`. |
 | License baseline | Active | EUPL-1.2. |
-| CLI router | Active | `saga help`, `saga version`, unknown commands, and extra arguments have stable tested output. |
+| CLI router | Active | `saga help`, `saga version`, `saga init --dry-run`, unknown commands, and extra arguments have stable tested output. |
 | Focused crates | Active | Core, codec, object, store, worktree, change, world, fact, policy, crypto, proof, sync, CLI, and daemon scaffolds. |
 | `no_std` trusted crates | Active | Core library scaffolds use `#![no_std]` where practical. |
 | Unsafe policy | Active | Trusted crates forbid unsafe Rust. |
@@ -79,7 +79,8 @@ Sagnir is licensed under the European Union Public Licence 1.2.
 | Core IDs and bounds | Active | Typed ID wrappers, bounded names, explicit format-version admission, case-folded `.saga` control-path rejection, redacted ID debug output, and timing-hardened equality APIs for sensitive IDs. |
 | Canonical codec | Active | Fixed-width integer readers and writers, byte-string encoding, bounded list-length encoding, fail-closed buffer writes, and malformed scalar tests. |
 | Object identity, headers, and graph | Active | Domain-separated object types, fail-closed hash algorithm parsing, canonical object ID display and parse, fixed object headers, bounded in-memory object graph verification, iterative graph traversal, graph fuzz targets, parser-enforced body availability, flags admission, and malformed header tests. |
-| Local store metadata | Scaffolded | `.saga/` layout, WAL frame kind scaffolds, and CRC-32C crash-corruption checks bound to frame kind, transaction ID, and payload. |
+| Local store layout | Active | `saga init`, `saga init --dry-run`, `.saga/FORMAT`, required directory creation, idempotent init behavior, and interrupted-init temp cleanup. |
+| Local store metadata | Scaffolded | WAL frame kind scaffolds and CRC-32C crash-corruption checks bound to frame kind, transaction ID, and payload. |
 | Worktree path rules | Scaffolded | Control-path exclusion, non-control dotfile rejection, path traversal rejection, control-character rejection, separator policy, and symlink-boundary proof types for future filesystem I/O. |
 | Policy metadata | Scaffolded | Policy results, validated obligation bitmasks, and named obligation checks. |
 | Crypto envelope metadata | Scaffolded | Algorithm admission, algorithm-specific signature bounds, hybrid signature binding policy, `subtle`-backed equality, `sanitization`-backed owned signature clearing, and redacted debug output. |
@@ -154,14 +155,13 @@ scripts/podman_smoke.sh
 Run the current release gate:
 
 ```bash
-scripts/release_0_8_gate.sh
+scripts/release_0_9_gate.sh
 ```
 
 ## Current Release Line
 
-The repository is past `v0.7.0` and `v0.8.0` is release-ready pending GitHub
-CI and explicit maintainer tagging instruction. The v0.8.0 line is the
-in-memory object graph baseline.
+The repository is past `v0.8.0` and is currently working through `v0.9.0`, the
+`.saga/` directory creation baseline.
 
 Current release discipline:
 
