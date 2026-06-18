@@ -53,6 +53,13 @@ grep -q 'Sagnir' README.md
 
 workspace_version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)
 
+for manifest in crates/*/Cargo.toml tools/*/Cargo.toml; do
+    grep -q '^version.workspace = true$' "$manifest" || {
+        echo "$manifest must inherit workspace package version $workspace_version" >&2
+        exit 1
+    }
+done
+
 if grep -R 'path = "../sagnir' crates tools --include Cargo.toml |
     grep -v "version = \"$workspace_version\"" >/dev/null 2>&1; then
     echo "internal path dependencies must include explicit version = \"$workspace_version\"" >&2
