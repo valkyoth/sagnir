@@ -18,6 +18,9 @@ Status: implementation stop.
 - Hardened first filesystem I/O after pentest review with owner-only Unix
   permissions, bounded format reads, sanitized path output, init locking,
   system-directory refusal, and secure release-gate temporary files.
+- Recovered malformed or dead Linux init locks without weakening active
+  concurrent init protection, tightened exact `.saga/FORMAT` reads, and
+  expanded system-directory refusal for common macOS roots.
 - Aligned workspace crate versions with the `v0.9.0` release line.
 - Tightened object graph stack-budget enforcement and cycle diagnostics.
 - Documented that proof verification and WAL authentication remain scaffolded

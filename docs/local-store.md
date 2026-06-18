@@ -34,6 +34,8 @@ Initialization:
 - `.saga/` directories are owner-only on Unix systems;
 - `.saga/FORMAT` is read with a bounded fixed-size buffer;
 - `.saga/init.lock` serializes concurrent initialization attempts;
+- malformed init locks and Linux locks whose owner process is gone are treated
+  as stale and recovered during initialization;
 - stale `.saga/FORMAT.tmp` files are removed so interrupted init can be
   retried;
 - running init again against a valid layout is allowed;

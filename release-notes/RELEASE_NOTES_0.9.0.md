@@ -44,6 +44,7 @@ Pentest task:
 - review bounded `.saga/FORMAT` reads for malformed or oversized files;
 - review idempotent init behavior;
 - review concurrent init lock behavior;
+- review stale init-lock recovery behavior;
 - review stale `.saga/FORMAT.tmp` cleanup;
 - review refusal behavior when an existing `.saga/FORMAT` is unexpected;
 - write temporary findings to root `PENTEST.md`;
@@ -65,8 +66,13 @@ Pentest task:
   `.saga/FORMAT` is forced to owner read-write mode.
 - Existing `.saga/FORMAT` is read through a bounded fixed-size buffer.
 - Init refuses known system roots instead of creating an accidental store in
-  privileged operating-system directories.
+  privileged operating-system directories, including common Linux and macOS
+  roots.
 - `.saga/init.lock` serializes concurrent initialization attempts.
+- Malformed init locks and Linux init locks whose owner process is gone are
+  treated as stale and recovered during initialization.
+- Existing `.saga/FORMAT` reads require exact admitted content and reject both
+  short and trailing-byte files.
 - `.saga/FORMAT` is written through `.saga/FORMAT.tmp` and rename.
 - Stale `.saga/FORMAT.tmp` files are removed during init so interrupted init can
   be retried.
