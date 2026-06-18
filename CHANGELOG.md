@@ -15,6 +15,13 @@ Status: implementation stop.
   `sagnir-store`.
 - Added idempotent init behavior for existing valid stores.
 - Added cleanup for stale `.saga/FORMAT.tmp` files left by interrupted init.
+- Hardened first filesystem I/O after pentest review with owner-only Unix
+  permissions, bounded format reads, sanitized path output, init locking,
+  system-directory refusal, and secure release-gate temporary files.
+- Aligned workspace crate versions with the `v0.9.0` release line.
+- Tightened object graph stack-budget enforcement and cycle diagnostics.
+- Documented that proof verification and WAL authentication remain scaffolded
+  and must not be treated as live security gates yet.
 - Added v0.9.0 release notes, pentest placeholder, and release gate.
 
 ## 0.8.0

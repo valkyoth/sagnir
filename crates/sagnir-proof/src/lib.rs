@@ -8,11 +8,21 @@ use sagnir_policy::PolicyResult;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub enum ProofStatus {
+    /// Reserved for the live verifier.
+    ///
+    /// Production code cannot construct this status through `ProofReport::new`.
+    /// Until the verifier is implemented, only tests can mint the token needed
+    /// by `ProofReport::verified`.
     Verified,
     MissingEvidence,
     Invalid,
 }
 
+/// Opaque capability proving that the live verifier accepted a proof report.
+///
+/// This token has no production constructor in the current scaffold. It keeps
+/// call sites honest by preventing ordinary code from marking a report as
+/// verified before the verifier exists.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct VerificationToken {
     _private: (),
@@ -39,6 +49,10 @@ impl ProofReport {
         }
     }
 
+    /// Build a verified report after the live verifier has minted a token.
+    ///
+    /// In the current scaffold, this is reachable only from tests because
+    /// `VerificationToken` has no production constructor.
     #[must_use]
     pub const fn verified(_token: VerificationToken, policy: PolicyResult) -> Self {
         Self {

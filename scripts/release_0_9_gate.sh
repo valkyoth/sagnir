@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-tmp="${TMPDIR:-/tmp}/sagnir-init-dry-run.$$"
+tmp=$(mktemp "${TMPDIR:-/tmp}/sagnir-init-dry-run.XXXXXXXXXX")
 trap 'rm -f "$tmp"' EXIT
 
 scripts/checks.sh
@@ -13,5 +13,6 @@ rg '^  \.saga$' "$tmp" >/dev/null
 rg '^  \.saga/FORMAT$' "$tmp" >/dev/null
 rg '^No changes written\.$' "$tmp" >/dev/null
 scripts/validate-release-notes.sh 0.9.0
+rg '^version = "0\.9\.0"$' Cargo.toml >/dev/null
 scripts/validate-pentest-report.sh v0.9.0
 scripts/validate-pentest-pass.sh v0.9.0

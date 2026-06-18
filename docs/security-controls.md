@@ -17,8 +17,9 @@ Status: baseline control map
 | Remote trust preflight | Clone, bundle import, and sync compare remote verification requirements with local budgets before trust or materialization | Planned | `docs/IMPLEMENTATION_PLAN.md`, `docs/VERSION_PLAN.md` |
 | Verifiable archival | Future compressed archive packs retain immutable receipts and root commitments before any cold-history pruning | Planned | `docs/IMPLEMENTATION_PLAN.md`, `docs/VERSION_PLAN.md` |
 | Object ID hashing | `TypedId` and `ObjectId` map users must keep Rust's randomized default hasher or an audited keyed hasher for attacker-influenced sets | Policy | `sagnir-core`, `sagnir-object` |
-| Local store init | `.saga/` layout creation, dry-run planning, idempotent init, and interrupted-init temp cleanup | Active | `sagnir-store`, `sagnir-cli` |
+| Local store init | `.saga/` layout creation, dry-run planning, owner-only Unix permissions, bounded format reads, idempotent init, init locking, and interrupted-init temp cleanup | Active | `sagnir-store`, `sagnir-cli` |
 | Local store | WAL frame kinds and WAL CRC-32C metadata bound to frame kind, transaction ID, and payload for crash-corruption detection | Scaffolded | `sagnir-store` |
+| WAL authentication | WAL data must not gate security decisions, network sync, or trusted replay until keyed frame authentication or encrypted frame authentication is implemented | Planned | `sagnir-store`, `docs/local-store.md` |
 | Worktree safety | Control paths, traversal, separators, unsafe path bytes, and unverified symlink boundaries are rejected before source-state I/O | Scaffolded | `sagnir-worktree` |
 | Policy | Aggregate policy decision type | Scaffolded | `sagnir-policy` |
 | Proof | Verification report type | Scaffolded | `sagnir-proof` |

@@ -51,8 +51,10 @@ grep -q '1.96.0' rust-toolchain.toml
 grep -q 'EUPL-1.2' Cargo.toml
 grep -q 'Sagnir' README.md
 
+workspace_version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)
+
 if grep -R 'path = "../sagnir' crates tools --include Cargo.toml |
-    grep -v 'version = "0.1.0"' >/dev/null 2>&1; then
-    echo "internal path dependencies must include explicit version = \"0.1.0\"" >&2
+    grep -v "version = \"$workspace_version\"" >/dev/null 2>&1; then
+    echo "internal path dependencies must include explicit version = \"$workspace_version\"" >&2
     exit 1
 fi

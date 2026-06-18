@@ -6,6 +6,7 @@ pub const STORE_DIR: &str = ".saga";
 pub const FORMAT_FILE: &str = ".saga/FORMAT";
 pub const FORMAT_TEMP_FILE: &str = ".saga/FORMAT.tmp";
 pub const FORMAT_FILE_CONTENT: &str = "sagnir-format = 1\n";
+pub const INIT_LOCK_FILE: &str = ".saga/init.lock";
 pub const CONFIG_FILE: &str = ".saga/config.toml";
 
 pub const INIT_DIRECTORIES: [&str; 13] = [
@@ -171,8 +172,11 @@ mod tests {
 
     #[test]
     fn init_directories_include_root_and_required_dirs() {
+        assert_eq!(INIT_DIRECTORIES.len(), REQUIRED_DIRS.len() + 1);
         assert!(is_init_directory(STORE_DIR));
-        for dir in REQUIRED_DIRS {
+        assert_eq!(INIT_DIRECTORIES[0], STORE_DIR);
+        for (index, dir) in REQUIRED_DIRS.into_iter().enumerate() {
+            assert_eq!(INIT_DIRECTORIES[index + 1], dir);
             assert!(is_init_directory(dir));
         }
     }
@@ -181,6 +185,7 @@ mod tests {
     fn format_file_content_is_stable() {
         assert_eq!(FORMAT_FILE_CONTENT, "sagnir-format = 1\n");
         assert_eq!(FORMAT_TEMP_FILE, ".saga/FORMAT.tmp");
+        assert_eq!(INIT_LOCK_FILE, ".saga/init.lock");
     }
 
     #[test]

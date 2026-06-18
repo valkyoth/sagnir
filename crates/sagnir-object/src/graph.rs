@@ -104,8 +104,14 @@ pub struct ObjectGraph<const N: usize, const R: usize> {
 }
 
 impl<const N: usize, const R: usize> ObjectGraph<N, R> {
+    const STACK_GUARD: () = assert!(
+        N <= OBJECT_GRAPH_ENTRIES_MAX && R <= OBJECT_GRAPH_REFS_MAX,
+        "ObjectGraph exceeds admitted stack budget"
+    );
+
     #[must_use]
     pub const fn new() -> Self {
+        let () = Self::STACK_GUARD;
         Self {
             entries: [None; N],
             references: [None; R],
@@ -272,9 +278,10 @@ impl<const N: usize, const R: usize> ObjectGraph<N, R> {
                 {
                     match states[target_index] {
                         VisitState::Visiting => {
-                            return Err(VisitError::Cycle(
-                                self.entry_id(target_index).unwrap_or(source),
-                            ));
+                            let id = self
+                                .entry_id(target_index)
+                                .ok_or(VisitError::InvalidEntry)?;
+                            return Err(VisitError::Cycle(id));
                         }
                         VisitState::Done => {}
                         VisitState::Unseen => {

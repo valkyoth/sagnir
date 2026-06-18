@@ -8,8 +8,8 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-sagnir-core = { path = "../sagnir-core", version = "0.1.0" }
-sagnir-policy = { path = "../sagnir-policy", version = "0.1.0" }
+sagnir-core = { path = "../sagnir-core", version = "0.9.0" }
+sagnir-policy = { path = "../sagnir-policy", version = "0.9.0" }
 
 [lib]
 path = "src/lib.rs"

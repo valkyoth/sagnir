@@ -31,6 +31,9 @@ Initialization:
 - `saga init` creates `.saga/` and required subdirectories;
 - `.saga/FORMAT` contains `sagnir-format = 1`;
 - `.saga/FORMAT` is written through `.saga/FORMAT.tmp` and rename;
+- `.saga/` directories are owner-only on Unix systems;
+- `.saga/FORMAT` is read with a bounded fixed-size buffer;
+- `.saga/init.lock` serializes concurrent initialization attempts;
 - stale `.saga/FORMAT.tmp` files are removed so interrupted init can be
   retried;
 - running init again against a valid layout is allowed;
