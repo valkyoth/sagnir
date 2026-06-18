@@ -59,6 +59,44 @@ The CLI may be simple; the model must remain Sagnir. High-level commands are
 aliases over native objects, proofs, policy decisions, and world transitions,
 not a Git compatibility layer.
 
+## Verification Scale Position
+
+Sagnir must keep hostile-input admission bounded while still scaling to large
+repositories. Fixed-capacity graph verification is an admission primitive for a
+single chunk, bundle, transaction, or parser boundary. It is not the maximum
+size of a Sagnir realm.
+
+Repository-scale verification uses explicit modes:
+
+- `bounded-batch`: verify one bounded object/reference batch before ingest;
+- `lazy-cone`: verify the touched source-state cone for normal local work;
+- `full-world`: verify a whole world when policy or operator choice requires
+  high-assurance coverage.
+
+Large worlds must be handled through chunked cryptographic verification,
+rebuildable indexes, changed-cone traversal, and proof caching. A seal that
+touches one file should be able to reuse unchanged tree, object, and world
+proofs instead of re-verifying every object in the realm.
+
+Full-world verification is allowed, but it is never unbounded. It must be
+resource-budgeted and configured before allocation:
+
+```toml
+[verification]
+mode = "full-world"
+memory_budget = "96GiB"
+parallelism = 32
+```
+
+If only a memory budget is configured, Sagnir should derive safe internal
+entry/reference chunk sizes from that budget. If only parallelism is configured,
+Sagnir should schedule work within default memory limits. Explicit entry and
+reference caps may still be used by strict operators who want exact ceilings.
+
+Strict profiles or protected worlds may require full-world proofs for promotion
+or release. Normal saves should prefer lazy-cone verification plus cached proofs
+unless policy asks for more.
+
 ## Non-Negotiable Engineering Rules
 
 - Rust stable `1.96.0`, edition 2024, workspace resolver `3`.

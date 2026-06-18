@@ -13,6 +13,7 @@ Status: baseline control map
 | Hardcoded credentials | Targeted scan rejects common credential, token, key, PEM private key, and JWT literal patterns | Active | `scripts/validate-security-policy.sh` |
 | Modularity | Focused crates and file-size gate | Active | `docs/modularity-policy.md` |
 | Canonical identity | Object type is part of identity metadata and object graph references are checked before persistence with bounded iterative traversal | Scaffolded | `sagnir-object` |
+| Verification scale | Large-world verification uses bounded chunks, changed-cone traversal, cached proofs, and explicit resource budgets for full-world mode | Planned | `docs/IMPLEMENTATION_PLAN.md`, `docs/VERSION_PLAN.md` |
 | Object ID hashing | `TypedId` and `ObjectId` map users must keep Rust's randomized default hasher or an audited keyed hasher for attacker-influenced sets | Policy | `sagnir-core`, `sagnir-object` |
 | Local store | `.saga/` layout, WAL frame kinds, and WAL CRC-32C metadata bound to frame kind, transaction ID, and payload for crash-corruption detection | Scaffolded | `sagnir-store` |
 | Worktree safety | Control paths, traversal, separators, unsafe path bytes, and unverified symlink boundaries are rejected before source-state I/O | Scaffolded | `sagnir-worktree` |

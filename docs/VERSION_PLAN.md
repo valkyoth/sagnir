@@ -65,6 +65,28 @@ sealing, operation recording, local proof evaluation, and current-world update.
 It is not a Git commit clone and must fail when the active profile or world
 policy requires more evidence.
 
+## Verification Scale Principles
+
+Bounded verification is a security boundary, not a repository-size promise.
+`OBJECT_GRAPH_ENTRIES_MAX` and `OBJECT_GRAPH_REFS_MAX` are per-batch admission
+budgets. Large repositories must use chunked verification, changed-cone
+verification, rebuildable indexes, and cached proofs so a small save does not
+require reloading an entire world.
+
+Planned verification modes:
+
+- `bounded-batch`: fixed-capacity admission for one object/reference batch;
+- `lazy-cone`: default scalable mode for daily work, verifying only the touched
+  source-state cone plus required boundary proofs;
+- `full-world`: explicit high-assurance mode that verifies a whole world within
+  configured resource budgets.
+
+Configuration should be ergonomic and safe. If a user sets only
+`memory_budget`, Sagnir should derive safe chunk sizes and graph limits from
+that budget. If a user sets only `parallelism`, Sagnir should schedule work
+within default memory limits. If exact `max_entries` or `max_refs` are set, they
+act as hard ceilings.
+
 ## Clean Stop And Pentest Rule
 
 Each version has a deliberate clean stop. When implementation criteria are done,
@@ -336,6 +358,8 @@ Deliverables:
 - `.saga/config.toml`;
 - default `standard` profile metadata;
 - explicit profile parser for `standard`, `solo`, `team`, and `regulated`;
+- verification config parser for mode, memory budget, parallelism, max entries,
+  and max refs;
 - realm ID validation;
 - config read/write;
 - invalid config tests.
@@ -349,6 +373,8 @@ Exit criteria:
 - Sagnir can distinguish a valid local store from an unrelated directory.
 - A new realm records a strict default profile without weakening the security
   model.
+- A realm can record verification budgets without requiring users to calculate
+  every low-level graph limit manually.
 
 ### v0.11.0 - WAL Frame Format
 
@@ -412,13 +438,19 @@ Exit criteria:
 
 - Loose objects are immutable and corruption is detected before indexing.
 
-### v0.14.0 - Local Fsck
+### v0.14.0 - Local Fsck And Verification Modes
 
-Goal: verify local store structure and loose objects.
+Goal: verify local store structure and loose objects through explicit resource
+budgets.
 
 Deliverables:
 
 - `saga fsck`;
+- `saga fsck --mode bounded-batch`;
+- `saga fsck --mode lazy-cone`;
+- `saga fsck --mode full-world`;
+- memory-budget admission and derived chunk sizing;
+- parallelism admission and bounded scheduler plan;
 - format file check;
 - realm file check;
 - object graph check;
@@ -433,6 +465,10 @@ Verification:
 Exit criteria:
 
 - A user can run a local integrity check without network access.
+- High-resource users can request full-world verification without making that
+  unbounded or mandatory for normal machines.
+- If only memory or parallelism is configured, Sagnir derives conservative
+  internal limits from the available budget.
 
 ## Phase 3: Worktree And Source State
 
@@ -841,6 +877,10 @@ Deliverables:
 
 - proof target model;
 - object graph verifier;
+- chunk proof model;
+- changed-cone proof model;
+- full-world proof mode;
+- proof cache reuse for unchanged subtrees;
 - missing object diagnostics;
 - wrong object type diagnostics;
 - `saga prove` integrity checks.
@@ -853,6 +893,9 @@ Verification:
 Exit criteria:
 
 - Sagnir can prove local object integrity offline.
+- Large worlds can be proven by composing bounded chunk proofs instead of
+  loading every object into one graph.
+- Protected worlds can require full-world proofs when policy demands it.
 
 ### v0.34.0 - Actor Identity Metadata
 

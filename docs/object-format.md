@@ -101,6 +101,13 @@ recursive. Production callers should stay at or below
 `OBJECT_GRAPH_ENTRIES_MAX` entries and `OBJECT_GRAPH_REFS_MAX` references unless
 a release gate explicitly admits a larger budget.
 
+Those constants are per-batch admission limits, not maximum repository size.
+Large worlds must be verified through bounded chunks, changed-cone traversal,
+rebuildable indexes, and proof caching. Operators may opt into resource-budgeted
+full-world verification for high-assurance environments, but full-world mode
+must still declare memory, entry, reference, and parallelism budgets before
+allocation.
+
 Decode rule: length-prefixed decoding must use `read_len_prefixed` or an
 equivalent bounded API that validates the declared length against a
 caller-provided maximum before returning a payload slice. Malicious object and
