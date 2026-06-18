@@ -97,6 +97,24 @@ Strict profiles or protected worlds may require full-world proofs for promotion
 or release. Normal saves should prefer lazy-cone verification plus cached proofs
 unless policy asks for more.
 
+Clone, bundle import, and sync must perform a safety preflight before trusting
+or materializing remote state. Sagnir should inspect lightweight metadata first:
+format version, object/ref count estimates, chunk manifest, required policy
+profile, minimum verification mode, and estimated memory/time. It then compares
+that metadata with local verification settings.
+
+The default behavior is:
+
+- proceed when the remote requirements fit local budgets;
+- warn and use `lazy-cone` or bounded chunk verification only when policy allows
+  fallback;
+- refuse trust or worktree materialization when upstream policy requires
+  stronger verification than local resources allow;
+- allow quarantine or `--no-worktree` fetch for inspection without trust.
+
+Fetching bytes is not the same as trusting bytes. Importing a bundle is not the
+same as materializing a world.
+
 ## Non-Negotiable Engineering Rules
 
 - Rust stable `1.96.0`, edition 2024, workspace resolver `3`.

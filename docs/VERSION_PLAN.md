@@ -87,6 +87,14 @@ that budget. If a user sets only `parallelism`, Sagnir should schedule work
 within default memory limits. If exact `max_entries` or `max_refs` are set, they
 act as hard ceilings.
 
+Remote state must be preflighted before trust. `saga clone`, bundle import, and
+sync should inspect lightweight metadata first: object/ref estimates, chunk
+manifest, required profile, minimum verification mode, and estimated resource
+needs. Sagnir must refuse trust or worktree materialization when upstream policy
+requires stronger verification than local settings can satisfy. Quarantine and
+`--no-worktree` fetch are allowed inspection states; they are not trusted
+materialization.
+
 ## Clean Stop And Pentest Rule
 
 Each version has a deliberate clean stop. When implementation criteria are done,
@@ -1626,6 +1634,9 @@ Deliverables:
 - policy refs;
 - encrypted bundle marker;
 - visible versus encrypted metadata policy;
+- resource estimate metadata;
+- minimum verification mode metadata;
+- recommended verification profile metadata;
 - manifest validation tests.
 
 Verification:
@@ -1635,6 +1646,8 @@ Verification:
 Exit criteria:
 
 - Sagnir can describe what a bundle claims before loading bundle bodies.
+- Sagnir can estimate whether local verification settings are sufficient before
+  import or materialization.
 
 ### v0.67.0 - Bundle Create And Verify
 
@@ -1649,6 +1662,7 @@ Deliverables:
 - bundle signature footer placeholder;
 - missing object detection;
 - malicious bundle tests.
+- verification-budget preflight tests.
 
 Verification:
 
@@ -1659,6 +1673,8 @@ Exit criteria:
 
 - A bundle can be verified before import, and encrypted bundle metadata is
   checked before decrypt.
+- Bundle verification reports when local budgets cannot satisfy the bundle's
+  minimum verification mode.
 
 ### v0.68.0 - Bundle Import
 
@@ -1671,6 +1687,8 @@ Deliverables:
 - fact deduplication;
 - decrypt-before-import policy;
 - world alias import policy;
+- resource-budget comparison before trust;
+- refusal when bundle policy requires stronger verification than local config;
 - quarantine-on-policy-failure behavior.
 
 Verification:
@@ -1681,6 +1699,8 @@ Verification:
 Exit criteria:
 
 - Import cannot overwrite local world aliases without explicit policy.
+- Import can place data in quarantine for inspection without trusting or
+  materializing it.
 
 ### v0.69.0 - Sync Negotiation
 
@@ -1693,6 +1713,8 @@ Deliverables:
 - missing fact response;
 - protocol version negotiation;
 - encrypted realm mode negotiation;
+- remote resource estimate exchange;
+- minimum verification mode negotiation;
 - replay rejection metadata.
 
 Verification:
@@ -1702,6 +1724,8 @@ Verification:
 Exit criteria:
 
 - Sync can determine the smallest required bundle for a remote.
+- Sync can determine whether local verification budgets satisfy remote trust
+  requirements before transfer.
 
 ### v0.70.0 - Sync Transfer
 
@@ -1710,9 +1734,12 @@ Goal: transfer proof-carrying bundles to a remote endpoint.
 Deliverables:
 
 - `saga sync`;
+- `saga clone`;
+- `saga clone --no-worktree`;
 - accepted response;
 - denied response;
 - quarantined response;
+- local-budget-insufficient response;
 - blind remote response;
 - split-trust remote response;
 - local sync result fact;
@@ -1727,6 +1754,8 @@ Exit criteria:
 
 - Local work can sync without requiring a hosted product, including encrypted
   blind-storage workflows.
+- Clone and sync do not silently downgrade verification; they either satisfy
+  remote requirements, quarantine fetched state, or refuse trust/materialization.
 
 ### v0.71.0 - Minimal Daemon
 
