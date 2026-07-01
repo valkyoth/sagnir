@@ -51,7 +51,7 @@ Sagnir is licensed under the European Union Public Licence 1.2.
 
 | Capability | Status | Notes |
 | --- | --- | --- |
-| Rust workspace | Active | Rust 2024 workspace pinned to Rust stable `1.96.0`. |
+| Rust workspace | Active | Rust 2024 workspace pinned to Rust stable `1.96.1`. |
 | License baseline | Active | EUPL-1.2. |
 | CLI router | Active | `saga help`, `saga version`, `saga init --dry-run`, unknown commands, and extra arguments have stable tested output. |
 | Focused crates | Active | Core, codec, object, store, worktree, change, world, fact, policy, crypto, proof, sync, CLI, and daemon scaffolds. |

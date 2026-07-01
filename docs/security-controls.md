@@ -4,7 +4,7 @@ Status: baseline control map
 
 | Area | Control | Current Status | Evidence |
 | --- | --- | --- | --- |
-| Toolchain | Rust stable `1.96.0` pinned | Active | `rust-toolchain.toml` |
+| Toolchain | Rust stable `1.96.1` pinned | Active | `rust-toolchain.toml` |
 | Release arithmetic | Release profile keeps overflow checks enabled | Active | `Cargo.toml` |
 | Core runtime | Trusted library crates are `no_std` where practical | Active | crate roots |
 | Dependency policy | License, source, wildcard, and advisory checks | Configured | `deny.toml` |

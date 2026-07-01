@@ -2,7 +2,7 @@
 
 Status: policy
 
-Sagnir currently pins Rust stable `1.96.0`.
+Sagnir currently pins Rust stable `1.96.1`.
 
 ## Update Rule
 

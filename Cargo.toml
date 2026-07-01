@@ -22,7 +22,7 @@ members = [
 [workspace.package]
 version = "0.9.0"
 edition = "2024"
-rust-version = "1.96.0"
+rust-version = "1.96.1"
 license = "EUPL-1.2"
 repository = "https://github.com/sagnir/sagnir"
 homepage = "https://github.com/sagnir/sagnir"

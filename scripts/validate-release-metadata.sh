@@ -47,7 +47,7 @@ scripts/validate-pentest-report.sh v0.7.0
 scripts/validate-pentest-report.sh v0.8.0
 scripts/validate-pentest-report.sh v0.9.0
 
-grep -q '1.96.0' rust-toolchain.toml
+grep -q '1.96.1' rust-toolchain.toml
 grep -q 'EUPL-1.2' Cargo.toml
 grep -q 'Sagnir' README.md
 
