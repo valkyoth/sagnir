@@ -370,7 +370,10 @@ Deliverables:
   and max refs;
 - realm ID validation;
 - config read/write;
-- invalid config tests.
+- invalid config tests;
+- owner-checked, handle-relative Unix initialization;
+- fail-closed stateful initialization on platforms without an admitted native
+  handle-relative backend.
 
 Admitted v0.10.0 defaults:
 
@@ -396,6 +399,37 @@ Exit criteria:
   model.
 - A realm can record verification budgets without requiring users to calculate
   every low-level graph limit manually.
+- Unix initialization rejects store detachment, foreign ownership, and
+  temporary-file substitution before reporting success.
+- Unsupported stateful backends refuse initialization before creating
+  `.saga/`.
+
+### v0.10.1 - Native Windows Store Initialization
+
+Goal: restore stateful Windows initialization without path-based race windows.
+
+Deliverables:
+
+- retained Windows root and `.saga/` directory handles;
+- component-by-component reparse-point refusal;
+- handle-relative directory and file operations;
+- Windows file-ID verification around metadata commits;
+- owner and access-control admission policy;
+- hosted Windows junction, symlink, namespace replacement, and temp-file race
+  tests;
+- removal of the non-Unix `Unsupported` stop only after those tests pass.
+
+Verification:
+
+- hosted `windows-latest` `cargo test -p sagnir-cli`;
+- independent Windows filesystem pentest.
+
+Exit criteria:
+
+- Windows `saga init` cannot be redirected through a junction, symlink,
+  reparse point, namespace replacement, or temporary-file substitution.
+- Windows initialization has the same fail-closed attachment and commit
+  guarantees as the Unix backend.
 
 ### v0.11.0 - WAL Frame Format
 

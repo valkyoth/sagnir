@@ -29,6 +29,15 @@ canonicalized before admission, bounded metadata reads tolerate short reads
 without accepting prefixes, and non-Unicode CLI arguments return a controlled
 usage error instead of panicking.
 
+The third pentest pass found that Unix attachment and ownership still needed
+explicit verification and that the non-Unix path backend retained the original
+race. Unix initialization now retains both root and store handles, requires
+effective-user ownership, verifies the visible store identity around
+operations and before success, and keeps temporary files open while checking
+their identity before and after rename. Non-Unix stateful initialization now
+fails closed before creating `.saga`; a native Windows backend is assigned to
+v0.10.1 and Windows-hosted CI tests the temporary `Unsupported` boundary.
+
 Rust is updated to 1.97.0 and `sanitization` to 1.2.4. `getrandom` 0.4.3 is
 admitted only at the CLI boundary to obtain cross-platform operating-system
 entropy for realm IDs.
@@ -71,7 +80,12 @@ Pentest task:
   ordering, atomic rename, stale temp cleanup, metadata symlink refusal, and
   root/nested store-directory symlink refusal;
 - race the visible `.saga/` namespace after its handle is opened and confirm
-  directory and file writes remain anchored to the original store;
+  initialization detects detachment and cannot report success;
+- replace a temporary metadata entry before commit and confirm its open file
+  identity prevents rename;
+- test foreign-owned Unix store, directory, and metadata refusal;
+- run the hosted Windows fail-closed test and confirm no `.saga/` directory is
+  created on an unsupported stateful backend;
 - test lexical restricted-root aliases, repeated short metadata reads, and
   invalid non-Unicode operating-system arguments;
 - review operating-system init-lock exclusivity, crash release, persistent
@@ -107,8 +121,12 @@ Pentest task:
 - Store directories must be real directories. Root and nested directory
   symlinks fail before writes can reach their targets.
 - Unix store operations remain relative to retained no-follow directory
-  handles, so namespace replacement cannot split locking and writes across
-  different `.saga/` directories.
+  handles. Root/store identity checks reject namespace detachment before
+  success, and foreign-owned stores, directories, and files are refused.
+- Temporary metadata files remain open through commit. Their device/inode
+  identities must match the visible temporary name and final committed name.
+- Non-Unix stateful initialization returns `Unsupported` before creating
+  `.saga/`; portable CLI routing and init dry-run remain available.
 - Bounded metadata reads continue through short reads and probe for one byte
   beyond the admitted limit before parsing.
 - Non-Unicode command-line arguments fail with usage exit code `2` and do not

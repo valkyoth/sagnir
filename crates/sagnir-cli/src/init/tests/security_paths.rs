@@ -1,5 +1,4 @@
 use std::fs;
-use std::io::Write;
 use std::os::unix::fs::symlink;
 
 use sagnir::store::{CONFIG_FILE, FORMAT_FILE, FORMAT_TEMP_FILE};
@@ -7,7 +6,7 @@ use sagnir::store::{CONFIG_FILE, FORMAT_FILE, FORMAT_TEMP_FILE};
 use super::{INIT_LOCK_FILE, TempRoot, create_dir, write_file};
 
 #[test]
-fn open_store_handle_survives_namespace_replacement() -> std::io::Result<()> {
+fn open_store_rejects_namespace_replacement() -> std::io::Result<()> {
     let root = TempRoot::new("store-namespace-replacement")?;
     let store = super::super::SecureStore::open(root.path())?;
     fs::rename(
@@ -16,17 +15,41 @@ fn open_store_handle_survives_namespace_replacement() -> std::io::Result<()> {
     )?;
     create_dir(root.path().join(".saga"))?;
 
-    store.ensure_directory(".saga/objects")?;
-    let mut temp = store.create_new_file(FORMAT_TEMP_FILE)?;
-    temp.write_all(b"anchored")?;
-    temp.sync_all()?;
+    let result = store.ensure_directory(".saga/objects");
+    assert!(result.is_err());
+    let Err(error) = result else { return Ok(()) };
 
-    assert!(root.path().join("original-store/objects").is_dir());
-    assert_eq!(
-        fs::read(root.path().join("original-store/FORMAT.tmp"))?,
-        b"anchored"
+    assert!(error.to_string().contains("namespace changed"));
+    assert!(
+        fs::read_dir(root.path().join("original-store"))?
+            .next()
+            .is_none()
     );
     assert!(fs::read_dir(root.path().join(".saga"))?.next().is_none());
+    Ok(())
+}
+
+#[test]
+fn store_rejects_replaced_temporary_file_before_commit() -> std::io::Result<()> {
+    let root = TempRoot::new("replaced-temporary-file")?;
+    let store = super::super::SecureStore::open(root.path())?;
+    let temp = store.create_new_file(FORMAT_TEMP_FILE)?;
+    fs::rename(
+        root.path().join(FORMAT_TEMP_FILE),
+        root.path().join(".saga/stolen-temp"),
+    )?;
+    write_file(root.path().join(FORMAT_TEMP_FILE), b"replacement")?;
+
+    let result = store.commit_file(&temp, FORMAT_TEMP_FILE, FORMAT_FILE);
+    assert!(result.is_err());
+    let Err(error) = result else { return Ok(()) };
+
+    assert!(error.to_string().contains("replaced before commit"));
+    assert!(!root.path().join(FORMAT_FILE).exists());
+    assert_eq!(
+        fs::read(root.path().join(FORMAT_TEMP_FILE))?,
+        b"replacement"
+    );
     Ok(())
 }
 

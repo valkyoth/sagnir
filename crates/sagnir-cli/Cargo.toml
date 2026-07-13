@@ -12,7 +12,7 @@ getrandom = { version = "0.4.3", default-features = false }
 sagnir = { path = "../sagnir", version = "0.10.0" }
 
 [target.'cfg(unix)'.dependencies]
-rustix = { version = "1.1.4", features = ["fs"] }
+rustix = { version = "1.1.4", features = ["fs", "process"] }
 
 [lib]
 path = "src/lib.rs"

@@ -1,106 +1,69 @@
-use std::ffi::OsStr;
 use std::fs;
 use std::io;
-use std::path::{Component, Path, PathBuf};
+use std::path::Path;
 
-use sagnir::store::STORE_DIR;
-
-pub(crate) struct SecureStore {
-    path: PathBuf,
-}
+pub(crate) struct SecureStore;
 
 impl SecureStore {
-    pub(crate) fn open(root: &Path) -> io::Result<Self> {
-        let path = root.join(STORE_DIR);
-        ensure_real_directory(&path)?;
-        Ok(Self { path })
+    pub(crate) fn open(_: &Path) -> io::Result<Self> {
+        Err(unsupported())
     }
 
-    pub(crate) fn ensure_directory(&self, store_path: &str) -> io::Result<()> {
-        ensure_real_directory(&self.path.join(store_entry_name(store_path)?))
+    pub(crate) fn ensure_directory(&self, _: &str) -> io::Result<()> {
+        Err(unsupported())
     }
 
-    pub(crate) fn create_new_file(&self, store_path: &str) -> io::Result<fs::File> {
-        let path = self.path.join(store_entry_name(store_path)?);
-        fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(path)
+    pub(crate) fn create_new_file(&self, _: &str) -> io::Result<fs::File> {
+        Err(unsupported())
     }
 
-    pub(crate) fn open_existing_file(
-        &self,
-        store_path: &str,
-        writable: bool,
-    ) -> io::Result<Option<fs::File>> {
-        let path = self.path.join(store_entry_name(store_path)?);
-        let metadata = match fs::symlink_metadata(&path) {
-            Ok(metadata) if metadata.file_type().is_file() => metadata,
-            Ok(_) => return Err(unsafe_file_error()),
-            Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
-            Err(error) => return Err(error),
+    pub(crate) fn open_existing_file(&self, _: &str, _: bool) -> io::Result<Option<fs::File>> {
+        Err(unsupported())
+    }
+
+    pub(crate) fn remove_file_if_exists(&self, _: &str) -> io::Result<()> {
+        Err(unsupported())
+    }
+
+    pub(crate) fn commit_file(&self, _: &fs::File, _: &str, _: &str) -> io::Result<()> {
+        Err(unsupported())
+    }
+
+    pub(crate) fn verify_attached(&self) -> io::Result<()> {
+        Err(unsupported())
+    }
+}
+
+fn unsupported() -> io::Error {
+    io::Error::new(
+        io::ErrorKind::Unsupported,
+        "secure store initialization requires a handle-relative platform backend",
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::io;
+
+    use sagnir::store::STORE_DIR;
+
+    #[test]
+    fn stateful_initialization_fails_closed_without_writing() -> io::Result<()> {
+        let root =
+            std::env::temp_dir().join(format!("sagnir-portable-init-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir(&root)?;
+
+        let result = super::SecureStore::open(&root);
+        assert!(result.is_err());
+        let Err(error) = result else {
+            return Ok(());
         };
-        let file = fs::OpenOptions::new()
-            .read(true)
-            .write(writable)
-            .open(&path)?;
-        if !file.metadata()?.is_file() || !metadata.is_file() {
-            return Err(unsafe_file_error());
-        }
-        Ok(Some(file))
-    }
-
-    pub(crate) fn remove_file_if_exists(&self, store_path: &str) -> io::Result<()> {
-        let path = self.path.join(store_entry_name(store_path)?);
-        match fs::remove_file(path) {
-            Ok(()) => Ok(()),
-            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
-            Err(error) => Err(error),
-        }
-    }
-
-    pub(crate) fn rename_file(&self, from: &str, to: &str) -> io::Result<()> {
-        fs::rename(
-            self.path.join(store_entry_name(from)?),
-            self.path.join(store_entry_name(to)?),
-        )
-    }
-
-    pub(crate) fn sync(&self) -> io::Result<()> {
+        assert_eq!(error.kind(), io::ErrorKind::Unsupported);
+        assert!(error.to_string().contains("handle-relative"));
+        assert!(!root.join(STORE_DIR).exists());
+        fs::remove_dir(root)?;
         Ok(())
     }
-}
-
-fn ensure_real_directory(path: &Path) -> io::Result<()> {
-    match fs::symlink_metadata(path) {
-        Ok(metadata) if metadata.file_type().is_dir() => Ok(()),
-        Ok(_) => Err(io::Error::new(
-            io::ErrorKind::AlreadyExists,
-            "refusing to initialize through a symlink or non-directory entry",
-        )),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => fs::create_dir(path),
-        Err(error) => Err(error),
-    }
-}
-
-fn store_entry_name(path: &str) -> io::Result<&OsStr> {
-    let mut components = Path::new(path).components();
-    match (components.next(), components.next(), components.next()) {
-        (Some(Component::Normal(store)), Some(Component::Normal(name)), None)
-            if store == OsStr::new(STORE_DIR) =>
-        {
-            Ok(name)
-        }
-        _ => Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "Sagnir store operation requires one fixed relative entry",
-        )),
-    }
-}
-
-fn unsafe_file_error() -> io::Error {
-    io::Error::new(
-        io::ErrorKind::InvalidData,
-        "Sagnir store entry is not a regular file",
-    )
 }

@@ -28,7 +28,11 @@ Planned layout:
 Initialization:
 
 - `saga init --dry-run` prints the planned layout and writes nothing;
-- `saga init` creates `.saga/` and required subdirectories;
+- on Unix, `saga init` creates `.saga/` and required subdirectories through
+  the admitted handle-relative backend;
+- on non-Unix targets, stateful `saga init` fails with `Unsupported` before
+  creating `.saga/`; `saga init --dry-run` remains available while the native
+  Windows backend is completed;
 - `.saga/FORMAT` contains `sagnir-format = 1`;
 - `.saga/realm.toml` contains a cryptographically random, nonzero, 256-bit realm
   ID in canonical lowercase text form;
@@ -57,9 +61,15 @@ Initialization:
   resolves directory creation, file opens, cleanup, permission changes,
   renames, and directory sync relative to that handle;
 - replacing the visible `.saga/` path after it is opened cannot redirect the
-  active initialization transaction to the replacement namespace;
+  active initialization transaction, and attachment verification prevents the
+  detached transaction from reporting success;
+- existing Unix store directories and files must be owned by the effective
+  user running `saga init`;
+- each temporary metadata file remains open through rename, and its device and
+  inode identity must match both the visible temporary entry and committed
+  destination;
 - `.saga/init.lock` uses a non-blocking operating-system file lock to serialize
-  concurrent initialization on supported platforms;
+  concurrent initialization on the admitted Unix backend;
 - a newly created lock file records diagnostic PID metadata, but existing
   content is never rewritten and does not determine ownership; closing the
   process file handle releases the lock after normal exit or a crash;

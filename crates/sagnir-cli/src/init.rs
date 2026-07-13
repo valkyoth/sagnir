@@ -117,11 +117,13 @@ fn create_store_layout(cwd: &Path) -> io::Result<StoreInitStatus> {
 
     if already_initialized {
         metadata::ensure_store_metadata(&store)?;
+        store.verify_attached()?;
         return Ok(StoreInitStatus::AlreadyInitialized);
     }
 
     write_format_file(&store)?;
     metadata::ensure_store_metadata(&store)?;
+    store.verify_attached()?;
     Ok(StoreInitStatus::Created)
 }
 
@@ -171,13 +173,11 @@ fn write_format_file(store: &SecureStore) -> io::Result<()> {
         let _ = store.remove_file_if_exists(FORMAT_TEMP_FILE);
         return Err(error);
     }
-    drop(temp_file);
-
-    if let Err(error) = store.rename_file(FORMAT_TEMP_FILE, FORMAT_FILE) {
+    if let Err(error) = store.commit_file(&temp_file, FORMAT_TEMP_FILE, FORMAT_FILE) {
         let _ = store.remove_file_if_exists(FORMAT_TEMP_FILE);
         return Err(error);
     }
-    store.sync()
+    Ok(())
 }
 
 struct InitLock {
@@ -280,5 +280,5 @@ fn write_init_lock_content(file: &mut fs::File) -> io::Result<()> {
     file.sync_all()
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod tests;

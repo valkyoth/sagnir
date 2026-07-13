@@ -171,6 +171,8 @@ Required work:
 - algorithm-agile object identity metadata;
 - canonical binary encoding rules;
 - `.saga/` layout;
+- native handle-relative local-store backends with fail-closed behavior on
+  platforms whose backend is not yet admitted;
 - append-only operation log model;
 - WAL transaction frame model;
 - immutable object placement rules;

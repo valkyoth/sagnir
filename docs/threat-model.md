@@ -74,6 +74,11 @@ exposure.
 - canonical restricted-root checks and handle-relative, no-follow Unix store
   initialization prevent `.saga/` namespace replacement from redirecting an
   active initialization transaction;
+- effective-user ownership checks, retained root/store identities, attachment
+  checks, and temporary/committed file identity checks prevent detached or
+  substituted Unix initialization from reporting success;
+- non-Unix stateful initialization fails closed until a native
+  handle-relative backend has hosted security tests;
 - future filesystem APIs must use a verified worktree-path type so symlink
   boundary checks are enforced before source-state I/O;
 - bounded signature envelopes;

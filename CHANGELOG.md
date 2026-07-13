@@ -27,6 +27,12 @@ Status: implementation stop.
   non-Unicode CLI arguments without panicking.
 - Admitted `rustix` 1.1.4 only for safe handle-relative Unix initialization;
   its dependency graph passes the no-duplicate crate policy.
+- Closed the third v0.10.0 pentest pass by rejecting foreign-owned Unix stores,
+  retaining and rechecking root/store identities, verifying temporary-file
+  identity through commit, and refusing detached initialization success.
+- Disabled stateful non-Unix initialization until the native Windows
+  handle-relative backend and hosted race tests are complete; portable dry-run
+  behavior remains available and Windows CI verifies the fail-closed boundary.
 - Documented backup-first metadata recovery and planned non-mutating fsck repair
   output without allowing silent realm-ID or profile replacement.
 - Added idempotent metadata preservation and upgrades for valid v0.9.0

@@ -109,12 +109,11 @@ fn write_metadata_file(
         let _ = store.remove_file_if_exists(temp_path);
         return Err(error);
     }
-    drop(temp);
-    if let Err(error) = store.rename_file(temp_path, path) {
+    if let Err(error) = store.commit_file(&temp, temp_path, path) {
         let _ = store.remove_file_if_exists(temp_path);
         return Err(error);
     }
-    store.sync()
+    Ok(())
 }
 
 fn random_realm_bytes() -> io::Result<[u8; ID_BYTES]> {
