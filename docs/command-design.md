@@ -108,6 +108,8 @@ It also has stable command-line usage behavior:
 - runtime failures return exit code `1`;
 - unknown commands return exit code `2`;
 - unexpected extra arguments return exit code `2`;
+- non-Unicode operating-system arguments are rejected with exit code `2`
+  without panicking or echoing raw argument bytes;
 - help and version output are pinned by golden tests.
 
 Planned vault commands:

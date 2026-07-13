@@ -29,5 +29,7 @@ Before adding a third-party crate:
 
 Current third-party dependencies are kept narrow. `getrandom` is admitted only
 at the CLI filesystem boundary to obtain cross-platform operating-system
-entropy for realm IDs. `subtle` provides timing-hardened equality and
-`sanitization` provides the project's `no_std` secret-clearing policy.
+entropy for realm IDs. `rustix` is admitted only on Unix targets so local-store
+initialization can use safe handle-relative filesystem operations. `subtle`
+provides timing-hardened equality and `sanitization` provides the project's
+`no_std` secret-clearing policy.

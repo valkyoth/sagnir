@@ -1,9 +1,34 @@
 use std::fs;
+use std::io::Write;
 use std::os::unix::fs::symlink;
 
-use sagnir::store::{CONFIG_FILE, FORMAT_FILE};
+use sagnir::store::{CONFIG_FILE, FORMAT_FILE, FORMAT_TEMP_FILE};
 
 use super::{INIT_LOCK_FILE, TempRoot, create_dir, write_file};
+
+#[test]
+fn open_store_handle_survives_namespace_replacement() -> std::io::Result<()> {
+    let root = TempRoot::new("store-namespace-replacement")?;
+    let store = super::super::SecureStore::open(root.path())?;
+    fs::rename(
+        root.path().join(".saga"),
+        root.path().join("original-store"),
+    )?;
+    create_dir(root.path().join(".saga"))?;
+
+    store.ensure_directory(".saga/objects")?;
+    let mut temp = store.create_new_file(FORMAT_TEMP_FILE)?;
+    temp.write_all(b"anchored")?;
+    temp.sync_all()?;
+
+    assert!(root.path().join("original-store/objects").is_dir());
+    assert_eq!(
+        fs::read(root.path().join("original-store/FORMAT.tmp"))?,
+        b"anchored"
+    );
+    assert!(fs::read_dir(root.path().join(".saga"))?.next().is_none());
+    Ok(())
+}
 
 #[test]
 fn init_rejects_symlinked_metadata_files() -> std::io::Result<()> {
@@ -17,11 +42,7 @@ fn init_rejects_symlinked_metadata_files() -> std::io::Result<()> {
     let output = crate::dispatch_at(["init"], root.path());
 
     assert_eq!(output.code, 1);
-    assert!(
-        output
-            .stderr
-            .contains("metadata path is not a regular file")
-    );
+    assert!(output.stderr.contains("saga init failed"));
     assert_eq!(fs::read(outside)?, b"not trusted");
     Ok(())
 }
@@ -69,7 +90,7 @@ fn init_rejects_symlinked_lock_file() -> std::io::Result<()> {
     let output = crate::dispatch_at(["init"], root.path());
 
     assert_eq!(output.code, 1);
-    assert!(output.stderr.contains("refusing to use a symlink"));
+    assert!(output.stderr.contains("saga init failed"));
     assert_eq!(fs::read(redirected)?, b"not trusted");
     assert!(!root.path().join(FORMAT_FILE).exists());
     Ok(())
@@ -86,7 +107,7 @@ fn init_rejects_multiply_linked_lock_file() -> std::io::Result<()> {
     let output = crate::dispatch_at(["init"], root.path());
 
     assert_eq!(output.code, 1);
-    assert!(output.stderr.contains("multiply linked init lock"));
+    assert!(output.stderr.contains("multiply linked Sagnir store file"));
     assert_eq!(fs::read(redirected)?, b"not trusted");
     assert!(!root.path().join(FORMAT_FILE).exists());
     Ok(())

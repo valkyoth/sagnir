@@ -46,11 +46,18 @@ Initialization:
   synchronized, renamed atomically, and followed by a Unix directory sync;
 - `.saga/` directories are owner-only on Unix systems;
 - `.saga/FORMAT`, realm metadata, and config metadata are read with bounded
-  fixed-size buffers;
+  fixed-size buffers that continue across short reads and reject trailing
+  bytes beyond the admitted limit;
 - every existing store directory must be a real directory; symlinks and other
   file types fail closed before Sagnir writes through them;
 - realm, config, and init-lock paths must be regular files; symlinks and other
   file types fail closed;
+- Unix initialization canonicalizes the root, opens each root component with
+  no-follow semantics, retains the opened `.saga/` directory handle, and
+  resolves directory creation, file opens, cleanup, permission changes,
+  renames, and directory sync relative to that handle;
+- replacing the visible `.saga/` path after it is opened cannot redirect the
+  active initialization transaction to the replacement namespace;
 - `.saga/init.lock` uses a non-blocking operating-system file lock to serialize
   concurrent initialization on supported platforms;
 - a newly created lock file records diagnostic PID metadata, but existing

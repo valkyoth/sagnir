@@ -1,6 +1,4 @@
-use std::fs;
 use std::io::{self, Read, Write};
-use std::path::Path;
 
 use sagnir::core::{ID_BYTES, RealmId};
 use sagnir::store::{
@@ -9,41 +7,39 @@ use sagnir::store::{
     write_realm_toml,
 };
 
-use super::{remove_stale_temp, secure_new_file};
+use super::secure_store::SecureStore;
 
-pub(super) fn ensure_store_metadata(cwd: &Path) -> io::Result<()> {
-    let realm_exists = read_realm(&cwd.join(REALM_FILE))?.is_some();
-    let config_exists = read_config(&cwd.join(CONFIG_FILE))?.is_some();
-    remove_stale_temp(&cwd.join(REALM_TEMP_FILE))?;
-    remove_stale_temp(&cwd.join(CONFIG_TEMP_FILE))?;
+pub(super) fn ensure_store_metadata(store: &SecureStore) -> io::Result<()> {
+    let realm_exists = read_realm(store)?.is_some();
+    let config_exists = read_config(store)?.is_some();
+    store.remove_file_if_exists(REALM_TEMP_FILE)?;
+    store.remove_file_if_exists(CONFIG_TEMP_FILE)?;
 
     if !realm_exists {
-        write_new_realm(cwd)?;
+        write_new_realm(store)?;
     }
     if !config_exists {
-        write_default_config(cwd)?;
+        write_default_config(store)?;
     }
     Ok(())
 }
 
-fn write_new_realm(cwd: &Path) -> io::Result<()> {
-    let path = cwd.join(REALM_FILE);
+fn write_new_realm(store: &SecureStore) -> io::Result<()> {
     let metadata =
         RealmMetadata::new(RealmId::new(random_realm_bytes()?)).map_err(metadata_error)?;
     let mut output = [0_u8; REALM_FILE_MAX];
     let len = write_realm_toml(metadata, &mut output).map_err(metadata_error)?;
-    write_metadata_file(&path, &cwd.join(REALM_TEMP_FILE), &output[..len])
+    write_metadata_file(store, REALM_FILE, REALM_TEMP_FILE, &output[..len])
 }
 
-fn write_default_config(cwd: &Path) -> io::Result<()> {
-    let path = cwd.join(CONFIG_FILE);
+fn write_default_config(store: &SecureStore) -> io::Result<()> {
     let mut output = [0_u8; CONFIG_FILE_MAX];
     let len = write_config_toml(RealmConfig::default(), &mut output).map_err(metadata_error)?;
-    write_metadata_file(&path, &cwd.join(CONFIG_TEMP_FILE), &output[..len])
+    write_metadata_file(store, CONFIG_FILE, CONFIG_TEMP_FILE, &output[..len])
 }
 
-fn read_realm(path: &Path) -> io::Result<Option<()>> {
-    let Some((buffer, len)) = read_bounded::<REALM_FILE_MAX>(path)? else {
+fn read_realm(store: &SecureStore) -> io::Result<Option<()>> {
+    let Some((buffer, len)) = read_bounded::<REALM_FILE_MAX>(store, REALM_FILE)? else {
         return Ok(None);
     };
     let content = std::str::from_utf8(&buffer[..len])
@@ -53,8 +49,8 @@ fn read_realm(path: &Path) -> io::Result<Option<()>> {
         .map_err(|error| invalid_data(&format!("invalid .saga/realm.toml: {error}")))
 }
 
-fn read_config(path: &Path) -> io::Result<Option<()>> {
-    let Some((buffer, len)) = read_bounded::<CONFIG_FILE_MAX>(path)? else {
+fn read_config(store: &SecureStore) -> io::Result<Option<()>> {
+    let Some((buffer, len)) = read_bounded::<CONFIG_FILE_MAX>(store, CONFIG_FILE)? else {
         return Ok(None);
     };
     let content = std::str::from_utf8(&buffer[..len])
@@ -64,50 +60,61 @@ fn read_config(path: &Path) -> io::Result<Option<()>> {
         .map_err(|error| invalid_data(&format!("invalid .saga/config.toml: {error}")))
 }
 
-fn read_bounded<const N: usize>(path: &Path) -> io::Result<Option<([u8; N], usize)>> {
-    let metadata = match fs::symlink_metadata(path) {
-        Ok(metadata) => metadata,
-        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
-        Err(error) => return Err(error),
+fn read_bounded<const N: usize>(
+    store: &SecureStore,
+    path: &str,
+) -> io::Result<Option<([u8; N], usize)>> {
+    let Some(file) = store.open_existing_file(path, false)? else {
+        return Ok(None);
     };
-    if !metadata.file_type().is_file() {
-        return Err(invalid_data("Sagnir metadata path is not a regular file"));
-    }
-    let mut file = fs::File::open(path)?;
-    let mut buffer = [0_u8; N];
-    let len = file.read(&mut buffer)?;
-    let mut trailing = [0_u8; 1];
-    if len == N && file.read(&mut trailing)? != 0 {
-        return Err(invalid_data("Sagnir metadata file exceeds its size limit"));
-    }
-    Ok(Some((buffer, len)))
+    read_bounded_reader(file).map(Some)
 }
 
-fn write_metadata_file(path: &Path, temp_path: &Path, content: &[u8]) -> io::Result<()> {
-    remove_stale_temp(temp_path)?;
-    let mut temp = secure_new_file(temp_path)?;
+fn read_bounded_reader<const N: usize, R: Read>(mut reader: R) -> io::Result<([u8; N], usize)> {
+    let mut buffer = [0_u8; N];
+    let mut len = 0;
+    while len < N {
+        let read = read_retry(&mut reader, &mut buffer[len..])?;
+        if read == 0 {
+            return Ok((buffer, len));
+        }
+        len += read;
+    }
+
+    let mut trailing = [0_u8; 1];
+    if read_retry(&mut reader, &mut trailing)? != 0 {
+        return Err(invalid_data("Sagnir metadata file exceeds its size limit"));
+    }
+    Ok((buffer, len))
+}
+
+fn read_retry<R: Read>(reader: &mut R, output: &mut [u8]) -> io::Result<usize> {
+    loop {
+        match reader.read(output) {
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
+            result => return result,
+        }
+    }
+}
+
+fn write_metadata_file(
+    store: &SecureStore,
+    path: &str,
+    temp_path: &str,
+    content: &[u8],
+) -> io::Result<()> {
+    store.remove_file_if_exists(temp_path)?;
+    let mut temp = store.create_new_file(temp_path)?;
     if let Err(error) = temp.write_all(content).and_then(|()| temp.sync_all()) {
-        let _ = remove_stale_temp(temp_path);
+        let _ = store.remove_file_if_exists(temp_path);
         return Err(error);
     }
     drop(temp);
-    if let Err(error) = fs::rename(temp_path, path) {
-        let _ = remove_stale_temp(temp_path);
+    if let Err(error) = store.rename_file(temp_path, path) {
+        let _ = store.remove_file_if_exists(temp_path);
         return Err(error);
     }
-    sync_metadata_directory(path)?;
-    Ok(())
-}
-
-fn sync_metadata_directory(path: &Path) -> io::Result<()> {
-    #[cfg(unix)]
-    {
-        let parent = path
-            .parent()
-            .ok_or_else(|| io::Error::other("Sagnir metadata path has no parent"))?;
-        fs::File::open(parent)?.sync_all()?;
-    }
-    Ok(())
+    store.sync()
 }
 
 fn random_realm_bytes() -> io::Result<[u8; ID_BYTES]> {
@@ -131,3 +138,6 @@ fn metadata_error(error: sagnir::store::StoreMetadataError) -> io::Error {
 fn invalid_data(message: &str) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, message)
 }
+
+#[cfg(test)]
+mod tests;

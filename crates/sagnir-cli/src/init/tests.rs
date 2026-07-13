@@ -273,8 +273,8 @@ fn init_recovers_from_unlocked_pid_marker() -> std::io::Result<()> {
 #[test]
 fn init_refuses_an_active_operating_system_lock() -> std::io::Result<()> {
     let root = TempRoot::new("active-os-lock")?;
-    create_dir(root.path().join(".saga"))?;
-    let lock = super::InitLock::acquire(root.path())?;
+    let store = super::SecureStore::open(root.path())?;
+    let lock = super::InitLock::acquire(&store)?;
 
     let blocked = crate::dispatch_at(["init"], root.path());
 
@@ -321,6 +321,21 @@ fn init_rejects_system_root() {
             .stderr
             .contains("refusing to initialize a system directory")
     );
+}
+
+#[cfg(unix)]
+#[test]
+fn init_rejects_lexical_aliases_of_system_roots() {
+    for path in ["/tmp/..", "/etc/.", "//"] {
+        let output = crate::dispatch_at(["init"], Path::new(path));
+        assert_eq!(output.code, 1, "{path}");
+        assert!(
+            output
+                .stderr
+                .contains("refusing to initialize a system directory"),
+            "{path}"
+        );
+    }
 }
 
 #[cfg(unix)]

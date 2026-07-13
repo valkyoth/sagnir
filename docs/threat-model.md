@@ -38,6 +38,7 @@ exposure.
 - alias rollback;
 - path traversal during worktree materialization;
 - symlink traversal outside the worktree or into `.saga/` control data;
+- concurrent namespace replacement during privileged local-store operations;
 - `.saga/` control data accidentally tracked as source;
 - forged facts or reviews;
 - forged or replayed command events;
@@ -70,6 +71,9 @@ exposure.
 - deterministic promotion preflight;
 - case-folded `.saga` control-path detection;
 - symlink resolution required before filesystem I/O accepts tracked candidates;
+- canonical restricted-root checks and handle-relative, no-follow Unix store
+  initialization prevent `.saga/` namespace replacement from redirecting an
+  active initialization transaction;
 - future filesystem APIs must use a verified worktree-path type so symlink
   boundary checks are enforced before source-state I/O;
 - bounded signature envelopes;

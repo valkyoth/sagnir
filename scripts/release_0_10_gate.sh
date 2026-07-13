@@ -23,5 +23,7 @@ rg '^sanitization = \{ version = "1\.2\.4", default-features = false \}$' \
     crates/sagnir-crypto/Cargo.toml >/dev/null
 rg '^getrandom = \{ version = "0\.4\.3", default-features = false \}$' \
     crates/sagnir-cli/Cargo.toml >/dev/null
+rg '^rustix = \{ version = "1\.1\.4", features = \["fs"\] \}$' \
+    crates/sagnir-cli/Cargo.toml >/dev/null
 scripts/validate-pentest-report.sh v0.10.0
 scripts/validate-pentest-pass.sh v0.10.0

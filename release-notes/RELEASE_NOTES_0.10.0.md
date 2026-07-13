@@ -21,9 +21,19 @@ creates to be a real directory. Init serialization now uses Rust's native
 operating-system file locks, which release on process exit or crash across
 supported platforms instead of relying on Linux `/proc` PID checks.
 
+The second pentest pass closed the remaining Unix namespace race by anchoring
+initialization to opened directory handles. Canonical root traversal, store
+directory creation, file opens, cleanup, permission changes, renames, and sync
+now use no-follow handle-relative operations. Restricted-root aliases are
+canonicalized before admission, bounded metadata reads tolerate short reads
+without accepting prefixes, and non-Unicode CLI arguments return a controlled
+usage error instead of panicking.
+
 Rust is updated to 1.97.0 and `sanitization` to 1.2.4. `getrandom` 0.4.3 is
 admitted only at the CLI boundary to obtain cross-platform operating-system
 entropy for realm IDs.
+`rustix` 1.1.4 is admitted only on Unix targets for safe handle-relative
+filesystem operations.
 The checksum-pinned CI installer is updated to `cargo-deny` 0.20.2.
 
 The Rust builder image is pinned as
@@ -60,13 +70,18 @@ Pentest task:
 - review bounded realm/config reads and writes, owner-only permissions, sync
   ordering, atomic rename, stale temp cleanup, metadata symlink refusal, and
   root/nested store-directory symlink refusal;
+- race the visible `.saga/` namespace after its handle is opened and confirm
+  directory and file writes remain anchored to the original store;
+- test lexical restricted-root aliases, repeated short metadata reads, and
+  invalid non-Unicode operating-system arguments;
 - review operating-system init-lock exclusivity, crash release, persistent
   diagnostic content, and lock-path symlink refusal;
 - test malformed UTF-8, oversized metadata, unknown and duplicate fields,
   invalid profiles and modes, invalid units, arithmetic overflow, and budget
   boundaries;
 - test v0.9.0 format-only store completion and partial metadata recovery;
-- review the `getrandom` 0.4.3 and `sanitization` 1.2.4 supply-chain changes;
+- review the `getrandom` 0.4.3, `rustix` 1.1.4, and `sanitization` 1.2.4
+  supply-chain changes;
 - confirm verification modes are documented as metadata, not active proof
   execution in this release;
 - write temporary findings to root `PENTEST.md`;
@@ -91,6 +106,13 @@ Pentest task:
 - Metadata paths must be regular files. Symlinks and other file types fail.
 - Store directories must be real directories. Root and nested directory
   symlinks fail before writes can reach their targets.
+- Unix store operations remain relative to retained no-follow directory
+  handles, so namespace replacement cannot split locking and writes across
+  different `.saga/` directories.
+- Bounded metadata reads continue through short reads and probe for one byte
+  beyond the admitted limit before parsing.
+- Non-Unicode command-line arguments fail with usage exit code `2` and do not
+  expose raw argument bytes.
 - `.saga/init.lock` is a persistent diagnostic file protected by an
   operating-system lock. Lock ownership is not inferred from PID text, and the
   lock is released when the process handle closes. Existing lock content is not

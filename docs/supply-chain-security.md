@@ -46,6 +46,9 @@ current, license-reviewed, and covered by release notes when they change.
 cross-platform operating-system entropy for new realm IDs. Realm identity
 creation must fail rather than fall back to timestamps, process IDs, or a
 pseudorandom generator when the operating-system source is unavailable.
+`rustix` is admitted only for the Unix CLI initialization boundary. It provides
+safe handle-relative filesystem wrappers without allowing unsafe code in
+Sagnir or admitting a larger capability stack.
 
 Highest-assurance deployments should build release tooling from a pinned,
 attested Rust distribution or compare installed `cargo deny` and `cargo audit`

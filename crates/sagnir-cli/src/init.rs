@@ -1,9 +1,6 @@
 use std::fs;
 use std::io::{self, Read, Seek, SeekFrom, Write};
-use std::path::Path;
-
-#[cfg(unix)]
-use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
+use std::path::{Path, PathBuf};
 
 use sagnir::store::{
     CONFIG_FILE, FORMAT_FILE, FORMAT_FILE_CONTENT, FORMAT_TEMP_FILE, INIT_DIRECTORIES,
@@ -16,6 +13,9 @@ const FORMAT_FILE_READ_MAX: usize = FORMAT_FILE_CONTENT.len() + 1;
 const INIT_LOCK_PREFIX: &str = "sagnir-init-lock-v1\npid=";
 
 mod metadata;
+mod secure_store;
+
+use secure_store::SecureStore;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum StoreInitStatus {
@@ -66,14 +66,20 @@ fn init_dry_run(cwd: &Path) -> CliOutput {
 }
 
 fn init_store(cwd: &Path) -> CliOutput {
-    if is_restricted_init_root(cwd) {
-        return runtime_error("saga init failed: refusing to initialize a system directory");
-    }
+    let root = match validated_root(cwd) {
+        Ok(root) => root,
+        Err(error) => {
+            return runtime_error(&format!(
+                "saga init failed: {}",
+                sanitize_for_display(&error.to_string())
+            ));
+        }
+    };
 
-    match create_store_layout(cwd) {
-        Ok(StoreInitStatus::Created) => init_success("Initialized Sagnir store", cwd),
+    match create_store_layout(&root) {
+        Ok(StoreInitStatus::Created) => init_success("Initialized Sagnir store", &root),
         Ok(StoreInitStatus::AlreadyInitialized) => {
-            init_success("Sagnir store already initialized", cwd)
+            init_success("Sagnir store already initialized", &root)
         }
         Err(error) => runtime_error(&format!(
             "saga init failed: {}",
@@ -96,34 +102,33 @@ fn init_success(message: &str, cwd: &Path) -> CliOutput {
 }
 
 fn create_store_layout(cwd: &Path) -> io::Result<StoreInitStatus> {
-    create_secure_dir(&cwd.join(STORE_DIR))?;
-    let _lock = InitLock::acquire(cwd)?;
+    let store = SecureStore::open(cwd)?;
+    let _lock = InitLock::acquire(&store)?;
 
-    let format_path = cwd.join(FORMAT_FILE);
-    let already_initialized = existing_format_is_valid(&format_path)?;
+    let already_initialized = existing_format_is_valid(&store)?;
 
     for dir in INIT_DIRECTORIES {
-        create_secure_dir(&cwd.join(dir))?;
+        if dir != STORE_DIR {
+            store.ensure_directory(dir)?;
+        }
     }
 
-    let temp_path = cwd.join(FORMAT_TEMP_FILE);
-    remove_stale_temp(&temp_path)?;
+    store.remove_file_if_exists(FORMAT_TEMP_FILE)?;
 
     if already_initialized {
-        metadata::ensure_store_metadata(cwd)?;
+        metadata::ensure_store_metadata(&store)?;
         return Ok(StoreInitStatus::AlreadyInitialized);
     }
 
-    write_format_file(&format_path, &temp_path)?;
-    metadata::ensure_store_metadata(cwd)?;
+    write_format_file(&store)?;
+    metadata::ensure_store_metadata(&store)?;
     Ok(StoreInitStatus::Created)
 }
 
-fn existing_format_is_valid(path: &Path) -> io::Result<bool> {
-    let mut file = match fs::File::open(path) {
-        Ok(file) => file,
-        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(false),
-        Err(error) => return Err(error),
+fn existing_format_is_valid(store: &SecureStore) -> io::Result<bool> {
+    let mut file = match store.open_existing_file(FORMAT_FILE, false)? {
+        Some(file) => file,
+        None => return Ok(false),
     };
 
     let mut buffer = [0_u8; FORMAT_FILE_CONTENT.len()];
@@ -150,19 +155,11 @@ fn unexpected_format<T>() -> io::Result<T> {
     ))
 }
 
-pub(super) fn remove_stale_temp(path: &Path) -> io::Result<()> {
-    match fs::remove_file(path) {
-        Ok(()) => Ok(()),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(error),
-    }
-}
-
-fn write_format_file(format_path: &Path, temp_path: &Path) -> io::Result<()> {
-    let mut temp_file = match secure_new_file(temp_path) {
+fn write_format_file(store: &SecureStore) -> io::Result<()> {
+    let mut temp_file = match store.create_new_file(FORMAT_TEMP_FILE) {
         Ok(file) => file,
         Err(error) => {
-            let _ = remove_stale_temp(temp_path);
+            let _ = store.remove_file_if_exists(FORMAT_TEMP_FILE);
             return Err(error);
         }
     };
@@ -171,63 +168,16 @@ fn write_format_file(format_path: &Path, temp_path: &Path) -> io::Result<()> {
         .write_all(FORMAT_FILE_CONTENT.as_bytes())
         .and_then(|()| temp_file.sync_all())
     {
-        let _ = remove_stale_temp(temp_path);
+        let _ = store.remove_file_if_exists(FORMAT_TEMP_FILE);
         return Err(error);
     }
     drop(temp_file);
 
-    if let Err(error) = fs::rename(temp_path, format_path) {
-        let _ = remove_stale_temp(temp_path);
+    if let Err(error) = store.rename_file(FORMAT_TEMP_FILE, FORMAT_FILE) {
+        let _ = store.remove_file_if_exists(FORMAT_TEMP_FILE);
         return Err(error);
     }
-
-    Ok(())
-}
-
-fn create_secure_dir(path: &Path) -> io::Result<()> {
-    match fs::symlink_metadata(path) {
-        Ok(metadata) if metadata.file_type().is_dir() => {}
-        Ok(_) => {
-            return Err(io::Error::new(
-                io::ErrorKind::AlreadyExists,
-                "refusing to initialize through a symlink or non-directory entry",
-            ));
-        }
-        Err(error) if error.kind() == io::ErrorKind::NotFound => {
-            #[cfg(unix)]
-            fs::DirBuilder::new().mode(0o700).create(path)?;
-
-            #[cfg(not(unix))]
-            fs::create_dir(path)?;
-        }
-        Err(error) => return Err(error),
-    }
-
-    #[cfg(unix)]
-    {
-        fs::set_permissions(path, fs::Permissions::from_mode(0o700))?;
-    }
-
-    Ok(())
-}
-
-pub(super) fn secure_new_file(path: &Path) -> io::Result<fs::File> {
-    let mut options = fs::OpenOptions::new();
-    options.write(true).create_new(true);
-
-    #[cfg(unix)]
-    {
-        options.mode(0o600);
-    }
-
-    let file = options.open(path)?;
-
-    #[cfg(unix)]
-    {
-        file.set_permissions(fs::Permissions::from_mode(0o600))?;
-    }
-
-    Ok(file)
+    store.sync()
 }
 
 struct InitLock {
@@ -235,9 +185,8 @@ struct InitLock {
 }
 
 impl InitLock {
-    fn acquire(cwd: &Path) -> io::Result<Self> {
-        let path = cwd.join(INIT_LOCK_FILE);
-        let (mut file, created) = open_init_lock(&path)?;
+    fn acquire(store: &SecureStore) -> io::Result<Self> {
+        let (mut file, created) = open_init_lock(store)?;
         match file.try_lock() {
             Ok(()) => {}
             Err(fs::TryLockError::WouldBlock) => {
@@ -253,6 +202,23 @@ impl InitLock {
         }
         Ok(Self { _file: file })
     }
+}
+
+fn validated_root(cwd: &Path) -> io::Result<PathBuf> {
+    if is_restricted_init_root(cwd) {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "refusing to initialize a system directory",
+        ));
+    }
+    let canonical = cwd.canonicalize()?;
+    if is_restricted_init_root(&canonical) {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "refusing to initialize a system directory",
+        ));
+    }
+    Ok(canonical)
 }
 
 fn is_restricted_init_root(cwd: &Path) -> bool {
@@ -296,68 +262,15 @@ fn sanitize_path(path: &Path) -> String {
     sanitize_for_display(&path.display().to_string())
 }
 
-fn create_init_lock(path: &Path) -> io::Result<fs::File> {
-    secure_new_file(path)
-}
-
-fn open_init_lock(path: &Path) -> io::Result<(fs::File, bool)> {
-    match fs::symlink_metadata(path) {
-        Ok(metadata) if metadata.file_type().is_file() => {
-            open_existing_init_lock(path).map(|file| (file, false))
-        }
-        Ok(_) => Err(io::Error::new(
-            io::ErrorKind::AlreadyExists,
-            "refusing to use a symlink or non-file init lock",
-        )),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => match create_init_lock(path) {
-            Ok(file) => Ok((file, true)),
-            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
-                open_existing_init_lock(path).map(|file| (file, false))
-            }
-            Err(error) => Err(error),
-        },
+fn open_init_lock(store: &SecureStore) -> io::Result<(fs::File, bool)> {
+    match store.create_new_file(INIT_LOCK_FILE) {
+        Ok(file) => Ok((file, true)),
+        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => store
+            .open_existing_file(INIT_LOCK_FILE, true)?
+            .map(|file| (file, false))
+            .ok_or_else(|| io::Error::other("init lock disappeared while opening")),
         Err(error) => Err(error),
     }
-}
-
-fn open_existing_init_lock(path: &Path) -> io::Result<fs::File> {
-    let before = fs::symlink_metadata(path)?;
-    if !before.file_type().is_file() {
-        return Err(io::Error::new(
-            io::ErrorKind::AlreadyExists,
-            "refusing to use a symlink or non-file init lock",
-        ));
-    }
-
-    #[cfg(unix)]
-    if before.nlink() != 1 {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "refusing to use a multiply linked init lock",
-        ));
-    }
-
-    let mut options = fs::OpenOptions::new();
-    options.read(true).write(true);
-    let file = options.open(path)?;
-    let opened = file.metadata()?;
-    let after = fs::symlink_metadata(path)?;
-    if !after.file_type().is_file() {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "init lock path changed while opening",
-        ));
-    }
-
-    #[cfg(unix)]
-    if opened.dev() != after.dev() || opened.ino() != after.ino() {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "init lock path changed while opening",
-        ));
-    }
-
-    Ok(file)
 }
 
 fn write_init_lock_content(file: &mut fs::File) -> io::Result<()> {

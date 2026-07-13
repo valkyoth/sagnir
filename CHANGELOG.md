@@ -21,6 +21,12 @@ Status: implementation stop.
   directories before writes and covering both root and nested redirection.
 - Replaced PID-liveness lock recovery with cross-platform operating-system file
   locks that release automatically when a process exits or crashes.
+- Closed the second v0.10.0 pentest pass by anchoring Unix initialization to
+  retained directory handles, rejecting normalized aliases of restricted
+  roots, completing bounded reads across short-read filesystems, and rejecting
+  non-Unicode CLI arguments without panicking.
+- Admitted `rustix` 1.1.4 only for safe handle-relative Unix initialization;
+  its dependency graph passes the no-duplicate crate policy.
 - Documented backup-first metadata recovery and planned non-mutating fsck repair
   output without allowing silent realm-ID or profile replacement.
 - Added idempotent metadata preservation and upgrades for valid v0.9.0
