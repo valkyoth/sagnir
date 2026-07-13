@@ -1,9 +1,9 @@
 use std::fs;
-use std::io::{self, Read, Write};
-use std::path::{Path, PathBuf};
+use std::io::{self, Read, Seek, SeekFrom, Write};
+use std::path::Path;
 
 #[cfg(unix)]
-use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
+use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
 
 use sagnir::store::{
     CONFIG_FILE, FORMAT_FILE, FORMAT_FILE_CONTENT, FORMAT_TEMP_FILE, INIT_DIRECTORIES,
@@ -14,7 +14,6 @@ use crate::{CliOutput, runtime_error, sanitize_for_display, unexpected_argument}
 
 const FORMAT_FILE_READ_MAX: usize = FORMAT_FILE_CONTENT.len() + 1;
 const INIT_LOCK_PREFIX: &str = "sagnir-init-lock-v1\npid=";
-const INIT_LOCK_READ_MAX: usize = 96;
 
 mod metadata;
 
@@ -186,18 +185,27 @@ fn write_format_file(format_path: &Path, temp_path: &Path) -> io::Result<()> {
 }
 
 fn create_secure_dir(path: &Path) -> io::Result<()> {
-    #[cfg(unix)]
-    {
-        fs::DirBuilder::new()
-            .recursive(true)
-            .mode(0o700)
-            .create(path)?;
-        fs::set_permissions(path, fs::Permissions::from_mode(0o700))?;
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.file_type().is_dir() => {}
+        Ok(_) => {
+            return Err(io::Error::new(
+                io::ErrorKind::AlreadyExists,
+                "refusing to initialize through a symlink or non-directory entry",
+            ));
+        }
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            #[cfg(unix)]
+            fs::DirBuilder::new().mode(0o700).create(path)?;
+
+            #[cfg(not(unix))]
+            fs::create_dir(path)?;
+        }
+        Err(error) => return Err(error),
     }
 
-    #[cfg(not(unix))]
+    #[cfg(unix)]
     {
-        fs::create_dir_all(path)?;
+        fs::set_permissions(path, fs::Permissions::from_mode(0o700))?;
     }
 
     Ok(())
@@ -223,38 +231,27 @@ pub(super) fn secure_new_file(path: &Path) -> io::Result<fs::File> {
 }
 
 struct InitLock {
-    path: PathBuf,
     _file: fs::File,
 }
 
 impl InitLock {
     fn acquire(cwd: &Path) -> io::Result<Self> {
         let path = cwd.join(INIT_LOCK_FILE);
-        let mut file = match create_init_lock(&path) {
-            Ok(file) => file,
-            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
-                remove_stale_init_lock(&path)?;
-                create_init_lock(&path).map_err(|retry_error| {
-                    if retry_error.kind() == io::ErrorKind::AlreadyExists {
-                        io::Error::new(
-                            io::ErrorKind::AlreadyExists,
-                            "another saga init is already running",
-                        )
-                    } else {
-                        retry_error
-                    }
-                })?
+        let (mut file, created) = open_init_lock(&path)?;
+        match file.try_lock() {
+            Ok(()) => {}
+            Err(fs::TryLockError::WouldBlock) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::AlreadyExists,
+                    "another saga init is already running",
+                ));
             }
-            Err(error) => return Err(error),
+            Err(fs::TryLockError::Error(error)) => return Err(error),
         };
-        write_init_lock_content(&mut file)?;
-        Ok(Self { path, _file: file })
-    }
-}
-
-impl Drop for InitLock {
-    fn drop(&mut self) {
-        let _ = fs::remove_file(&self.path);
+        if created {
+            write_init_lock_content(&mut file)?;
+        }
+        Ok(Self { _file: file })
     }
 }
 
@@ -303,49 +300,71 @@ fn create_init_lock(path: &Path) -> io::Result<fs::File> {
     secure_new_file(path)
 }
 
+fn open_init_lock(path: &Path) -> io::Result<(fs::File, bool)> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.file_type().is_file() => {
+            open_existing_init_lock(path).map(|file| (file, false))
+        }
+        Ok(_) => Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            "refusing to use a symlink or non-file init lock",
+        )),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => match create_init_lock(path) {
+            Ok(file) => Ok((file, true)),
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
+                open_existing_init_lock(path).map(|file| (file, false))
+            }
+            Err(error) => Err(error),
+        },
+        Err(error) => Err(error),
+    }
+}
+
+fn open_existing_init_lock(path: &Path) -> io::Result<fs::File> {
+    let before = fs::symlink_metadata(path)?;
+    if !before.file_type().is_file() {
+        return Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            "refusing to use a symlink or non-file init lock",
+        ));
+    }
+
+    #[cfg(unix)]
+    if before.nlink() != 1 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "refusing to use a multiply linked init lock",
+        ));
+    }
+
+    let mut options = fs::OpenOptions::new();
+    options.read(true).write(true);
+    let file = options.open(path)?;
+    let opened = file.metadata()?;
+    let after = fs::symlink_metadata(path)?;
+    if !after.file_type().is_file() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "init lock path changed while opening",
+        ));
+    }
+
+    #[cfg(unix)]
+    if opened.dev() != after.dev() || opened.ino() != after.ino() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "init lock path changed while opening",
+        ));
+    }
+
+    Ok(file)
+}
+
 fn write_init_lock_content(file: &mut fs::File) -> io::Result<()> {
+    file.set_len(0)?;
+    file.seek(SeekFrom::Start(0))?;
     writeln!(file, "{}{}", INIT_LOCK_PREFIX, std::process::id())?;
     file.sync_all()
-}
-
-fn remove_stale_init_lock(path: &Path) -> io::Result<()> {
-    if init_lock_is_stale(path)? {
-        remove_stale_temp(path)?;
-    }
-    Ok(())
-}
-
-fn init_lock_is_stale(path: &Path) -> io::Result<bool> {
-    let mut file = fs::File::open(path)?;
-    let mut buffer = [0_u8; INIT_LOCK_READ_MAX];
-    let read = file.read(&mut buffer)?;
-    let content = match std::str::from_utf8(&buffer[..read]) {
-        Ok(content) => content,
-        Err(_) => return Ok(true),
-    };
-    let Some(pid_text) = content.strip_prefix(INIT_LOCK_PREFIX) else {
-        return Ok(true);
-    };
-    let Ok(pid) = pid_text.trim().parse::<u32>() else {
-        return Ok(true);
-    };
-    Ok(!process_may_exist(pid))
-}
-
-fn process_may_exist(pid: u32) -> bool {
-    if pid == std::process::id() {
-        return true;
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        Path::new("/proc").join(pid.to_string()).exists()
-    }
-
-    #[cfg(not(target_os = "linux"))]
-    {
-        true
-    }
 }
 
 #[cfg(test)]

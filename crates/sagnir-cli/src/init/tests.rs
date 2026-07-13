@@ -11,8 +11,9 @@ use sagnir::store::{
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
+
 #[cfg(unix)]
-use std::os::unix::fs::symlink;
+mod security_paths;
 
 #[test]
 fn init_dry_run_lists_layout_without_writing() -> std::io::Result<()> {
@@ -68,6 +69,7 @@ fn init_creates_owner_only_store_permissions() -> std::io::Result<()> {
     assert_mode(root.path().join(".saga/keys"), 0o700)?;
     assert_mode(root.path().join(".saga/policies"), 0o700)?;
     assert_mode(root.path().join(".saga/FORMAT"), 0o600)?;
+    assert_mode(root.path().join(INIT_LOCK_FILE), 0o600)?;
     assert_mode(root.path().join(REALM_FILE), 0o600)?;
     assert_mode(root.path().join(CONFIG_FILE), 0o600)?;
     Ok(())
@@ -210,28 +212,6 @@ fn init_rejects_non_utf8_realm_and_config_metadata() -> std::io::Result<()> {
     Ok(())
 }
 
-#[cfg(unix)]
-#[test]
-fn init_rejects_symlinked_metadata_files() -> std::io::Result<()> {
-    let root = TempRoot::new("symlinked-metadata")?;
-    assert_eq!(crate::dispatch_at(["init"], root.path()).code, 0);
-    let outside = root.path().join("outside-config");
-    write_file(&outside, b"not trusted")?;
-    fs::remove_file(root.path().join(CONFIG_FILE))?;
-    symlink(&outside, root.path().join(CONFIG_FILE))?;
-
-    let output = crate::dispatch_at(["init"], root.path());
-
-    assert_eq!(output.code, 1);
-    assert!(
-        output
-            .stderr
-            .contains("metadata path is not a regular file")
-    );
-    assert_eq!(fs::read(outside)?, b"not trusted");
-    Ok(())
-}
-
 #[test]
 fn init_removes_stale_format_temp_file() -> std::io::Result<()> {
     let root = TempRoot::new("stale-temp")?;
@@ -270,15 +250,14 @@ fn init_recovers_from_malformed_stale_init_lock() -> std::io::Result<()> {
     let output = crate::dispatch_at(["init"], root.path());
 
     assert_eq!(output.code, 0);
-    assert!(!root.path().join(INIT_LOCK_FILE).exists());
+    assert_eq!(fs::read(root.path().join(INIT_LOCK_FILE))?, b"stale");
     assert_format_file(root.path())?;
     Ok(())
 }
 
-#[cfg(target_os = "linux")]
 #[test]
-fn init_recovers_from_dead_pid_init_lock() -> std::io::Result<()> {
-    let root = TempRoot::new("dead-pid-lock")?;
+fn init_recovers_from_unlocked_pid_marker() -> std::io::Result<()> {
+    let root = TempRoot::new("unlocked-pid-marker")?;
     create_dir(root.path().join(".saga"))?;
     let lock = format!("{INIT_LOCK_PREFIX}{}\n", u32::MAX);
     write_file(root.path().join(INIT_LOCK_FILE), lock.as_bytes())?;
@@ -286,9 +265,30 @@ fn init_recovers_from_dead_pid_init_lock() -> std::io::Result<()> {
     let output = crate::dispatch_at(["init"], root.path());
 
     assert_eq!(output.code, 0);
-    assert!(!root.path().join(INIT_LOCK_FILE).exists());
+    assert_eq!(fs::read(root.path().join(INIT_LOCK_FILE))?, lock.as_bytes());
     assert_format_file(root.path())?;
     Ok(())
+}
+
+#[test]
+fn init_refuses_an_active_operating_system_lock() -> std::io::Result<()> {
+    let root = TempRoot::new("active-os-lock")?;
+    create_dir(root.path().join(".saga"))?;
+    let lock = super::InitLock::acquire(root.path())?;
+
+    let blocked = crate::dispatch_at(["init"], root.path());
+
+    assert_eq!(blocked.code, 1);
+    assert!(
+        blocked
+            .stderr
+            .contains("another saga init is already running")
+    );
+    drop(lock);
+
+    let retried = crate::dispatch_at(["init"], root.path());
+    assert_eq!(retried.code, 0);
+    assert_format_file(root.path())
 }
 
 #[test]

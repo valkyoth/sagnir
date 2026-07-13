@@ -17,6 +17,12 @@ Status: implementation stop.
   `512MiB` memory budget.
 - Added atomic owner-only metadata writes, bounded reads, Unix directory sync,
   symlink refusal, malformed metadata rejection, and interrupted temp cleanup.
+- Closed the first v0.10.0 pentest finding by rejecting symlinked store
+  directories before writes and covering both root and nested redirection.
+- Replaced PID-liveness lock recovery with cross-platform operating-system file
+  locks that release automatically when a process exits or crashes.
+- Documented backup-first metadata recovery and planned non-mutating fsck repair
+  output without allowing silent realm-ID or profile replacement.
 - Added idempotent metadata preservation and upgrades for valid v0.9.0
   format-only stores.
 - Updated the workspace to Rust 1.97.0 and `sanitization` 1.2.4.

@@ -474,6 +474,7 @@ Deliverables:
 - parallelism admission and bounded scheduler plan;
 - format file check;
 - realm file check;
+- non-mutating realm/config repair plan output;
 - object graph check;
 - WAL replay check;
 - clear failure output.
@@ -486,6 +487,8 @@ Verification:
 Exit criteria:
 
 - A user can run a local integrity check without network access.
+- Corrupt metadata produces a backup-first repair plan without silently
+  replacing realm identity or profile metadata.
 - High-resource users can request full-world verification without making that
   unbounded or mandatory for normal machines.
 - If only memory or parallelism is configured, Sagnir derives conservative

@@ -15,6 +15,12 @@ for all admitted profiles and verification modes. Memory, parallelism, entry,
 and reference controls are checked before use. Existing valid v0.9.0 stores can
 be completed by rerunning `saga init`; existing realm IDs are never regenerated.
 
+The first pentest pass closed directory redirection through pre-existing
+symlinked `.saga/` paths. Initialization now requires every store path it
+creates to be a real directory. Init serialization now uses Rust's native
+operating-system file locks, which release on process exit or crash across
+supported platforms instead of relying on Linux `/proc` PID checks.
+
 Rust is updated to 1.97.0 and `sanitization` to 1.2.4. `getrandom` 0.4.3 is
 admitted only at the CLI boundary to obtain cross-platform operating-system
 entropy for realm IDs.
@@ -52,7 +58,10 @@ Pentest task:
 - review realm ID entropy acquisition, nonzero validation, canonical encoding,
   and preservation across repeated initialization;
 - review bounded realm/config reads and writes, owner-only permissions, sync
-  ordering, atomic rename, stale temp cleanup, and symlink refusal;
+  ordering, atomic rename, stale temp cleanup, metadata symlink refusal, and
+  root/nested store-directory symlink refusal;
+- review operating-system init-lock exclusivity, crash release, persistent
+  diagnostic content, and lock-path symlink refusal;
 - test malformed UTF-8, oversized metadata, unknown and duplicate fields,
   invalid profiles and modes, invalid units, arithmetic overflow, and budget
   boundaries;
@@ -80,6 +89,12 @@ Pentest task:
 - Unknown tables, unknown fields, duplicate fields, invalid values, and missing
   required fields fail closed.
 - Metadata paths must be regular files. Symlinks and other file types fail.
+- Store directories must be real directories. Root and nested directory
+  symlinks fail before writes can reach their targets.
+- `.saga/init.lock` is a persistent diagnostic file protected by an
+  operating-system lock. Lock ownership is not inferred from PID text, and the
+  lock is released when the process handle closes. Existing lock content is not
+  rewritten, and multiply linked Unix lock files are rejected.
 - Metadata writes use owner-only temp files, file sync, atomic rename, and Unix
   parent-directory sync.
 - The default profile metadata remains `standard`; relaxed profile metadata
@@ -91,3 +106,6 @@ Pentest task:
   profile-to-policy enforcement remains planned for v0.36.0.
 - v0.10.0 does not create source objects, worlds, changes, facts, keys, or
   policies.
+- Existing malformed realm or config metadata blocks initialization. Recovery
+  is backup-first and must preserve realm identity and configured posture; see
+  `docs/local-store.md`.
