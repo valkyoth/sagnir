@@ -2,12 +2,26 @@
 #![forbid(unsafe_code)]
 #![deny(unused_must_use)]
 
+mod config;
+mod metadata;
+mod realm;
+
+pub use config::{
+    CONFIG_FILE, CONFIG_FILE_MAX, CONFIG_TEMP_FILE, MEMORY_BUDGET_MAX, MEMORY_BUDGET_MIN,
+    MemoryBudget, PARALLELISM_MAX, Profile, RealmConfig, VerificationConfig, VerificationMode,
+    parse_config_toml, write_config_toml,
+};
+pub use metadata::StoreMetadataError;
+pub use realm::{
+    REALM_FILE, REALM_FILE_MAX, REALM_ID_PREFIX, REALM_TEMP_FILE, RealmMetadata, parse_realm_id,
+    parse_realm_toml, write_realm_toml,
+};
+
 pub const STORE_DIR: &str = ".saga";
 pub const FORMAT_FILE: &str = ".saga/FORMAT";
 pub const FORMAT_TEMP_FILE: &str = ".saga/FORMAT.tmp";
 pub const FORMAT_FILE_CONTENT: &str = "sagnir-format = 1\n";
 pub const INIT_LOCK_FILE: &str = ".saga/init.lock";
-pub const CONFIG_FILE: &str = ".saga/config.toml";
 
 pub const INIT_DIRECTORIES: [&str; 13] = [
     ".saga",

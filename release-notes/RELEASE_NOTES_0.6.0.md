@@ -46,7 +46,7 @@ scripts/checks.sh
 scripts/release_0_6_gate.sh
 cargo test -p sagnir-crypto
 cargo check --manifest-path fuzz/Cargo.toml --bins
-cargo deny --manifest-path fuzz/Cargo.toml check --config fuzz/deny.toml
+cargo deny --manifest-path fuzz/Cargo.toml --config fuzz/deny.toml check
 ```
 
 `scripts/release_0_6_gate.sh` must fail until

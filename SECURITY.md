@@ -40,7 +40,7 @@ tooling stay outside the stable root workspace. Its dependency tree must be
 reviewed during pentest handoff and checked manually with:
 
 ```bash
-cargo deny --manifest-path fuzz/Cargo.toml check --config fuzz/deny.toml
+cargo deny --manifest-path fuzz/Cargo.toml --config fuzz/deny.toml check
 ```
 
 ## Release Supply-Chain Evidence

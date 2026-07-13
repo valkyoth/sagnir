@@ -117,7 +117,7 @@ same as materializing a world.
 
 ## Non-Negotiable Engineering Rules
 
-- Rust stable `1.96.1`, edition 2024, workspace resolver `3`.
+- Rust stable `1.97.0`, edition 2024, workspace resolver `3`.
 - Latest stable Rust, crate versions, CI actions, and tooling are re-checked
   before dependency, toolchain, or release changes.
 - Core library crates use `#![no_std]` where practical.

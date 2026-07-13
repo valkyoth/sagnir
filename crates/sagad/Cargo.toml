@@ -8,7 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-sagnir = { path = "../sagnir", version = "0.9.0" }
+sagnir = { path = "../sagnir", version = "0.10.0" }
 
 [[bin]]
 name = "sagad"

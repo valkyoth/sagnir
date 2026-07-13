@@ -148,7 +148,7 @@ Goal: initialize the serious Rust workspace and policy baseline.
 
 Deliverables:
 
-- Rust stable `1.96.1` pinned.
+- Rust stable `1.97.0` pinned.
 - Focused workspace crates.
 - `saga` CLI scaffold.
 - `scripts/checks.sh`.
@@ -372,9 +372,22 @@ Deliverables:
 - config read/write;
 - invalid config tests.
 
+Admitted v0.10.0 defaults:
+
+- `profile = "standard"`;
+- `mode = "lazy-cone"`;
+- `memory_budget = "512MiB"`;
+- parallelism, max entries, and max refs remain optional hard controls.
+
+The profile and mode are persisted metadata in this release. Repository-scale
+graph execution and derived scheduling remain assigned to v0.14.0, while
+profile-to-policy enforcement remains assigned to v0.36.0.
+
 Verification:
 
 - `cargo test -p sagnir-store`
+- `cargo test -p sagnir-cli`
+- `cargo run -p sagnir-cli --bin saga -- init --dry-run`
 
 Exit criteria:
 

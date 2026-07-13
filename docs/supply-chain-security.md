@@ -42,6 +42,10 @@ obviously non-production.
 
 Current admitted third-party Rust dependencies must remain narrowly scoped,
 current, license-reviewed, and covered by release notes when they change.
+`getrandom` is admitted in `sagnir-cli` for one purpose: obtaining
+cross-platform operating-system entropy for new realm IDs. Realm identity
+creation must fail rather than fall back to timestamps, process IDs, or a
+pseudorandom generator when the operating-system source is unavailable.
 
 Highest-assurance deployments should build release tooling from a pinned,
 attested Rust distribution or compare installed `cargo deny` and `cargo audit`

@@ -4,7 +4,7 @@ Status: baseline control map
 
 | Area | Control | Current Status | Evidence |
 | --- | --- | --- | --- |
-| Toolchain | Rust stable `1.96.1` pinned | Active | `rust-toolchain.toml` |
+| Toolchain | Rust stable `1.97.0` pinned | Active | `rust-toolchain.toml` |
 | Release arithmetic | Release profile keeps overflow checks enabled | Active | `Cargo.toml` |
 | Core runtime | Trusted library crates are `no_std` where practical | Active | crate roots |
 | Dependency policy | License, source, wildcard, and advisory checks | Configured | `deny.toml` |
@@ -18,6 +18,9 @@ Status: baseline control map
 | Verifiable archival | Future compressed archive packs retain immutable receipts and root commitments before any cold-history pruning | Planned | `docs/IMPLEMENTATION_PLAN.md`, `docs/VERSION_PLAN.md` |
 | Object ID hashing | `TypedId` and `ObjectId` map users must keep Rust's randomized default hasher or an audited keyed hasher for attacker-influenced sets | Policy | `sagnir-core`, `sagnir-object` |
 | Local store init | `.saga/` layout creation, dry-run planning, owner-only Unix permissions, bounded format reads, idempotent init, init locking, and interrupted-init temp cleanup | Active | `sagnir-store`, `sagnir-cli` |
+| Realm identity | Nonzero 256-bit realm IDs come from the operating-system random source and use strict lowercase canonical encoding | Active | `sagnir-store`, `sagnir-cli` |
+| Local configuration | Allocation-free bounded parsing rejects unknown, duplicate, malformed, oversized, and out-of-range realm/config metadata | Active | `sagnir-store` |
+| Metadata persistence | Owner-only temporary files, file sync, atomic rename, Unix directory sync, and regular-file checks protect realm/config writes | Active | `sagnir-cli` |
 | Local store | WAL frame kinds and WAL CRC-32C metadata bound to frame kind, transaction ID, and payload for crash-corruption detection | Scaffolded | `sagnir-store` |
 | WAL authentication | WAL data must not gate security decisions, network sync, or trusted replay until keyed frame authentication or encrypted frame authentication is implemented | Planned | `sagnir-store`, `docs/local-store.md` |
 | Worktree safety | Control paths, traversal, separators, unsafe path bytes, and unverified symlink boundaries are rejected before source-state I/O | Scaffolded | `sagnir-worktree` |

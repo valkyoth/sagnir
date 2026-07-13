@@ -4,8 +4,15 @@ use super::{
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use sagnir::store::{
+    CONFIG_FILE, CONFIG_TEMP_FILE, FORMAT_FILE, Profile, REALM_FILE, REALM_TEMP_FILE, RealmConfig,
+    parse_config_toml, parse_realm_toml,
+};
+
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
+#[cfg(unix)]
+use std::os::unix::fs::symlink;
 
 #[test]
 fn init_dry_run_lists_layout_without_writing() -> std::io::Result<()> {
@@ -17,6 +24,8 @@ fn init_dry_run_lists_layout_without_writing() -> std::io::Result<()> {
     assert!(output.stdout.contains("  .saga\n"));
     assert!(output.stdout.contains("  .saga/objects\n"));
     assert!(output.stdout.contains("  .saga/FORMAT\n"));
+    assert!(output.stdout.contains("  .saga/realm.toml\n"));
+    assert!(output.stdout.contains("  .saga/config.toml\n"));
     assert!(output.stdout.contains("No changes written.\n"));
     assert_eq!(output.stderr, "");
     assert!(!root.path().join(".saga").exists());
@@ -41,6 +50,7 @@ fn init_creates_store_layout() -> std::io::Result<()> {
     assert_eq!(output.code, 0);
     assert!(output.stdout.contains("Initialized Sagnir store\nRoot: "));
     assert_format_file(root.path())?;
+    assert_valid_metadata(root.path())?;
     for dir in INIT_DIRECTORIES {
         assert!(root.path().join(dir).is_dir(), "missing {dir}");
     }
@@ -58,6 +68,8 @@ fn init_creates_owner_only_store_permissions() -> std::io::Result<()> {
     assert_mode(root.path().join(".saga/keys"), 0o700)?;
     assert_mode(root.path().join(".saga/policies"), 0o700)?;
     assert_mode(root.path().join(".saga/FORMAT"), 0o600)?;
+    assert_mode(root.path().join(REALM_FILE), 0o600)?;
+    assert_mode(root.path().join(CONFIG_FILE), 0o600)?;
     Ok(())
 }
 
@@ -66,6 +78,7 @@ fn init_is_idempotent() -> std::io::Result<()> {
     let root = TempRoot::new("idempotent")?;
     assert_eq!(crate::dispatch_at(["init"], root.path()).code, 0);
 
+    let original_realm = fs::read(root.path().join(REALM_FILE))?;
     let output = crate::dispatch_at(["init"], root.path());
 
     assert_eq!(output.code, 0);
@@ -74,6 +87,148 @@ fn init_is_idempotent() -> std::io::Result<()> {
             .stdout
             .contains("Sagnir store already initialized\nRoot: ")
     );
+    assert_eq!(fs::read(root.path().join(REALM_FILE))?, original_realm);
+    Ok(())
+}
+
+#[test]
+fn init_upgrades_format_only_store_with_metadata() -> std::io::Result<()> {
+    let root = TempRoot::new("metadata-upgrade")?;
+    create_dir(root.path().join(".saga"))?;
+    write_file(
+        root.path().join(FORMAT_FILE),
+        FORMAT_FILE_CONTENT.as_bytes(),
+    )?;
+
+    let output = crate::dispatch_at(["init"], root.path());
+
+    assert_eq!(output.code, 0);
+    assert!(output.stdout.contains("Sagnir store already initialized"));
+    assert_valid_metadata(root.path())
+}
+
+#[test]
+fn init_rejects_malformed_existing_realm_metadata() -> std::io::Result<()> {
+    let root = TempRoot::new("malformed-realm")?;
+    create_dir(root.path().join(".saga"))?;
+    write_file(
+        root.path().join(FORMAT_FILE),
+        FORMAT_FILE_CONTENT.as_bytes(),
+    )?;
+    write_file(
+        root.path().join(REALM_FILE),
+        b"format = 1\nrealm_id = \"forged\"\n",
+    )?;
+
+    let output = crate::dispatch_at(["init"], root.path());
+
+    assert_eq!(output.code, 1);
+    assert!(output.stderr.contains("invalid .saga/realm.toml"));
+    assert!(!root.path().join(CONFIG_FILE).exists());
+    Ok(())
+}
+
+#[test]
+fn init_rejects_malformed_existing_config_metadata() -> std::io::Result<()> {
+    let root = TempRoot::new("malformed-config")?;
+    create_dir(root.path().join(".saga"))?;
+    write_file(
+        root.path().join(FORMAT_FILE),
+        FORMAT_FILE_CONTENT.as_bytes(),
+    )?;
+    write_file(root.path().join(CONFIG_FILE), b"profile = \"solo\"\n")?;
+
+    let output = crate::dispatch_at(["init"], root.path());
+
+    assert_eq!(output.code, 1);
+    assert!(output.stderr.contains("invalid .saga/config.toml"));
+    assert!(!root.path().join(REALM_FILE).exists());
+    Ok(())
+}
+
+#[test]
+fn init_rejects_oversized_config_metadata() -> std::io::Result<()> {
+    let root = TempRoot::new("oversized-config")?;
+    assert_eq!(crate::dispatch_at(["init"], root.path()).code, 0);
+    write_file(root.path().join(CONFIG_FILE), &[b'x'; 2_049])?;
+
+    let output = crate::dispatch_at(["init"], root.path());
+
+    assert_eq!(output.code, 1);
+    assert!(
+        output
+            .stderr
+            .contains("metadata file exceeds its size limit")
+    );
+    Ok(())
+}
+
+#[test]
+fn init_rejects_oversized_realm_metadata() -> std::io::Result<()> {
+    let root = TempRoot::new("oversized-realm")?;
+    create_dir(root.path().join(".saga"))?;
+    write_file(
+        root.path().join(FORMAT_FILE),
+        FORMAT_FILE_CONTENT.as_bytes(),
+    )?;
+    write_file(root.path().join(REALM_FILE), &[b'x'; 257])?;
+
+    let output = crate::dispatch_at(["init"], root.path());
+
+    assert_eq!(output.code, 1);
+    assert!(
+        output
+            .stderr
+            .contains("metadata file exceeds its size limit")
+    );
+    Ok(())
+}
+
+#[test]
+fn init_rejects_non_utf8_realm_and_config_metadata() -> std::io::Result<()> {
+    for (name, file, expected) in [
+        (
+            "non-utf8-realm",
+            REALM_FILE,
+            "realm.toml is not valid UTF-8",
+        ),
+        (
+            "non-utf8-config",
+            CONFIG_FILE,
+            "config.toml is not valid UTF-8",
+        ),
+    ] {
+        let root = TempRoot::new(name)?;
+        assert_eq!(crate::dispatch_at(["init"], root.path()).code, 0);
+        write_file(root.path().join(file), &[0xff])?;
+
+        let output = crate::dispatch_at(["init"], root.path());
+
+        assert_eq!(output.code, 1);
+        assert!(output.stderr.contains(expected));
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn init_rejects_symlinked_metadata_files() -> std::io::Result<()> {
+    let root = TempRoot::new("symlinked-metadata")?;
+    assert_eq!(crate::dispatch_at(["init"], root.path()).code, 0);
+    let outside = root.path().join("outside-config");
+    write_file(&outside, b"not trusted")?;
+    fs::remove_file(root.path().join(CONFIG_FILE))?;
+    symlink(&outside, root.path().join(CONFIG_FILE))?;
+
+    let output = crate::dispatch_at(["init"], root.path());
+
+    assert_eq!(output.code, 1);
+    assert!(
+        output
+            .stderr
+            .contains("metadata path is not a regular file")
+    );
+    assert_eq!(fs::read(outside)?, b"not trusted");
     Ok(())
 }
 
@@ -89,6 +244,21 @@ fn init_removes_stale_format_temp_file() -> std::io::Result<()> {
     assert!(!root.path().join(FORMAT_TEMP_FILE).exists());
     assert_format_file(root.path())?;
     Ok(())
+}
+
+#[test]
+fn init_removes_stale_metadata_temp_files() -> std::io::Result<()> {
+    let root = TempRoot::new("stale-metadata-temp")?;
+    assert_eq!(crate::dispatch_at(["init"], root.path()).code, 0);
+    write_file(root.path().join(REALM_TEMP_FILE), b"stale")?;
+    write_file(root.path().join(CONFIG_TEMP_FILE), b"stale")?;
+
+    let output = crate::dispatch_at(["init"], root.path());
+
+    assert_eq!(output.code, 0);
+    assert!(!root.path().join(REALM_TEMP_FILE).exists());
+    assert!(!root.path().join(CONFIG_TEMP_FILE).exists());
+    assert_valid_metadata(root.path())
 }
 
 #[test]
@@ -206,6 +376,21 @@ fn assert_format_file(root: &Path) -> std::io::Result<()> {
     let content = fs::read_to_string(root.join(".saga/FORMAT"))?;
     assert_eq!(content, FORMAT_FILE_CONTENT);
     Ok(())
+}
+
+fn assert_valid_metadata(root: &Path) -> std::io::Result<()> {
+    let realm = fs::read_to_string(root.join(REALM_FILE))?;
+    parse_realm_toml(&realm).map_err(metadata_test_error)?;
+
+    let config = fs::read_to_string(root.join(CONFIG_FILE))?;
+    let parsed = parse_config_toml(&config).map_err(metadata_test_error)?;
+    assert_eq!(parsed, RealmConfig::default());
+    assert_eq!(parsed.profile, Profile::Standard);
+    Ok(())
+}
+
+fn metadata_test_error(error: sagnir::store::StoreMetadataError) -> std::io::Error {
+    std::io::Error::other(error.to_string())
 }
 
 #[cfg(unix)]

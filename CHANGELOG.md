@@ -4,6 +4,28 @@ All notable Sagnir changes are recorded here.
 
 ## Unreleased
 
+## 0.10.0
+
+Status: implementation stop.
+
+- Added canonical `.saga/realm.toml` and `.saga/config.toml` metadata.
+- Added cryptographically random, nonzero, 256-bit realm identity creation
+  through the operating-system random source.
+- Added bounded allocation-free profile, verification mode, memory budget,
+  parallelism, graph-entry, and graph-reference parsing in `sagnir-store`.
+- Added the strict `standard` default profile with `lazy-cone` metadata and a
+  `512MiB` memory budget.
+- Added atomic owner-only metadata writes, bounded reads, Unix directory sync,
+  symlink refusal, malformed metadata rejection, and interrupted temp cleanup.
+- Added idempotent metadata preservation and upgrades for valid v0.9.0
+  format-only stores.
+- Updated the workspace to Rust 1.97.0 and `sanitization` 1.2.4.
+- Updated the checksum-pinned CI security tooling to `cargo-deny` 0.20.2.
+- Updated standalone fuzz dependency checks for the `cargo-deny` 0.20 CLI.
+- Admitted `getrandom` 0.4.3 only at the CLI entropy boundary.
+- Extended workspace-version drift checks to the standalone fuzz manifest.
+- Added v0.10.0 release notes, pentest placeholder, and release gate.
+
 ## 0.9.0
 
 Status: implementation stop.

@@ -2,7 +2,7 @@
 
 Status: policy
 
-Sagnir currently pins Rust stable `1.96.1`.
+Sagnir currently pins Rust stable `1.97.0`.
 
 ## Update Rule
 
@@ -27,4 +27,7 @@ Before adding a third-party crate:
 4. Add tests that cover behavior introduced by the crate.
 5. Run `cargo deny check` and `cargo audit`.
 
-The initial scaffold intentionally has no third-party Rust dependencies.
+Current third-party dependencies are kept narrow. `getrandom` is admitted only
+at the CLI filesystem boundary to obtain cross-platform operating-system
+entropy for realm IDs. `subtle` provides timing-hardened equality and
+`sanitization` provides the project's `no_std` secret-clearing policy.

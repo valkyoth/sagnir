@@ -5,7 +5,7 @@ Status: policy
 Container base images are supply-chain inputs.
 
 Release images must pin base images by digest. Mutable tags such as
-`debian:stable-slim` or `rust:1.96.1-bookworm` are acceptable only in local
+`debian:stable-slim` or `rust:1.97.0-bookworm` are acceptable only in local
 development scaffolds before the release image gate exists.
 
 Before any Sagnir container image is release-published:

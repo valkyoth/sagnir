@@ -6,7 +6,8 @@ use std::path::{Path, PathBuf};
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
 
 use sagnir::store::{
-    FORMAT_FILE, FORMAT_FILE_CONTENT, FORMAT_TEMP_FILE, INIT_DIRECTORIES, INIT_LOCK_FILE, STORE_DIR,
+    CONFIG_FILE, FORMAT_FILE, FORMAT_FILE_CONTENT, FORMAT_TEMP_FILE, INIT_DIRECTORIES,
+    INIT_LOCK_FILE, REALM_FILE, STORE_DIR,
 };
 
 use crate::{CliOutput, runtime_error, sanitize_for_display, unexpected_argument};
@@ -14,6 +15,8 @@ use crate::{CliOutput, runtime_error, sanitize_for_display, unexpected_argument}
 const FORMAT_FILE_READ_MAX: usize = FORMAT_FILE_CONTENT.len() + 1;
 const INIT_LOCK_PREFIX: &str = "sagnir-init-lock-v1\npid=";
 const INIT_LOCK_READ_MAX: usize = 96;
+
+mod metadata;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum StoreInitStatus {
@@ -48,9 +51,13 @@ fn init_dry_run(cwd: &Path) -> CliOutput {
         stdout.push_str(dir);
         stdout.push('\n');
     }
-    stdout.push_str("\nFiles:\n  ");
-    stdout.push_str(FORMAT_FILE);
-    stdout.push_str("\n\nNo changes written.\n");
+    stdout.push_str("\nFiles:\n");
+    for file in [FORMAT_FILE, REALM_FILE, CONFIG_FILE] {
+        stdout.push_str("  ");
+        stdout.push_str(file);
+        stdout.push('\n');
+    }
+    stdout.push_str("\nNo changes written.\n");
 
     CliOutput {
         code: 0,
@@ -104,10 +111,12 @@ fn create_store_layout(cwd: &Path) -> io::Result<StoreInitStatus> {
     remove_stale_temp(&temp_path)?;
 
     if already_initialized {
+        metadata::ensure_store_metadata(cwd)?;
         return Ok(StoreInitStatus::AlreadyInitialized);
     }
 
     write_format_file(&format_path, &temp_path)?;
+    metadata::ensure_store_metadata(cwd)?;
     Ok(StoreInitStatus::Created)
 }
 
@@ -142,7 +151,7 @@ fn unexpected_format<T>() -> io::Result<T> {
     ))
 }
 
-fn remove_stale_temp(path: &Path) -> io::Result<()> {
+pub(super) fn remove_stale_temp(path: &Path) -> io::Result<()> {
     match fs::remove_file(path) {
         Ok(()) => Ok(()),
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
@@ -194,7 +203,7 @@ fn create_secure_dir(path: &Path) -> io::Result<()> {
     Ok(())
 }
 
-fn secure_new_file(path: &Path) -> io::Result<fs::File> {
+pub(super) fn secure_new_file(path: &Path) -> io::Result<fs::File> {
     let mut options = fs::OpenOptions::new();
     options.write(true).create_new(true);
 

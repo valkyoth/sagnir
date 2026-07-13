@@ -2,7 +2,7 @@
 #
 # The fuzz package is a standalone workspace so nightly cargo-fuzz plumbing
 # stays outside the stable root workspace. Run this policy explicitly with:
-# cargo deny --manifest-path fuzz/Cargo.toml check --config fuzz/deny.toml
+# cargo deny --manifest-path fuzz/Cargo.toml --config fuzz/deny.toml check
 
 [graph]
 all-features = true

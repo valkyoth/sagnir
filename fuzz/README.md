@@ -20,3 +20,9 @@ The fuzz package is intentionally separate from the stable Rust workspace so
 normal release gates do not require nightly tooling. Parser release gates still
 validate the target path and unit tests; fuzz campaigns are pentest and
 hardening evidence until a dedicated fuzz CI budget is admitted.
+
+Check the standalone dependency graph with:
+
+```sh
+cargo deny --manifest-path fuzz/Cargo.toml --config fuzz/deny.toml check
+```

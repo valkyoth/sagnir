@@ -6,7 +6,7 @@ publish = false
 
 # This standalone workspace keeps cargo-fuzz/nightly plumbing outside the
 # stable root workspace. Its dependency tree is still checked manually with:
-# cargo deny --manifest-path fuzz/Cargo.toml check --config fuzz/deny.toml
+# cargo deny --manifest-path fuzz/Cargo.toml --config fuzz/deny.toml check
 [workspace]
 
 [package.metadata]
@@ -14,10 +14,10 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4.13"
-sagnir-codec = { path = "../crates/sagnir-codec", version = "0.1.0" }
-sagnir-core = { path = "../crates/sagnir-core", version = "0.1.0" }
-sagnir-object = { path = "../crates/sagnir-object", version = "0.1.0" }
-sagnir-worktree = { path = "../crates/sagnir-worktree", version = "0.1.0" }
+sagnir-codec = { path = "../crates/sagnir-codec", version = "0.10.0" }
+sagnir-core = { path = "../crates/sagnir-core", version = "0.10.0" }
+sagnir-object = { path = "../crates/sagnir-object", version = "0.10.0" }
+sagnir-worktree = { path = "../crates/sagnir-worktree", version = "0.10.0" }
 
 [[bin]]
 name = "object_header_parse"
