@@ -727,12 +727,9 @@ Required work:
 - SBOM generation;
 - release metadata validator;
 - independently developed projection evaluator and full-replay witness;
-- independent protocol-level cryptographic review over the exact candidate,
-  including domain separation, confidential identity, key hierarchy and
-  erasure, authenticated roots, time/revocation, thresholds, witnesses, and
-  provider side-channel boundaries;
-- immutable finding disposition and mandatory review reopening when a later
-  cryptographic or trust-protocol change invalidates scope;
+- pentest coverage for domain separation, confidential identity, key hierarchy
+  and erasure, authenticated roots, time/revocation, thresholds, witnesses, and
+  provider side-channel boundaries when those features enter the release;
 - vault leak-scan fixtures;
 - encrypted bundle malicious corpus;
 - Linux, Windows, BSD, MacOS, Android, and iOS build checks where practical;

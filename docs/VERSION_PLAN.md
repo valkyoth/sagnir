@@ -60,9 +60,10 @@ or bypass a later trust-boundary requirement recorded here.
 The numbered versions are public milestone candidates and inherit the release
 and pentest rules below. Model checks, format reviews, fault-injection stages,
 and internal implementation checkpoints inside one version are not separate
-tags. Independent pentest scope should be proportional to the change and should
-expand at phase boundaries, cryptographic trust boundaries, distributed-state
-boundaries, and release candidates.
+tags. The maintainer chooses pentest scope proportional to the change and may
+expand it at phase boundaries, cryptographic trust boundaries, distributed-
+state boundaries, and release candidates without creating another release
+ceremony or approval role.
 
 Sagnir keeps granular stops because small security changes are easier to review.
 The maintainer may combine only adjacent milestones before implementation starts
@@ -228,31 +229,63 @@ Later milestones inherit this rule automatically. A feature is not release-ready
 when its implementation exists but its boundary-specific threat model and
 control-map evidence are stale.
 
-## Clean Stop And Pentest Rule
+## Solo Maintainer Release Workflow
 
-Each version has a deliberate clean stop. When implementation criteria are done,
-work stops before tagging and the maintainer is told:
+Sagnir uses one simple release loop. Codex performs implementation, local
+verification, documentation, release-note, report, commit, and tag work. The
+maintainer performs the pentest, reports GitHub CI results, and explicitly
+authorizes tagging and pushing.
+
+### 1. Implementation Stop
+
+Codex completes the version, tests it, updates the required documentation and
+release notes, and commits the implementation as needed. When the version
+criteria and local gates are complete, work stops before tagging and the
+maintainer is told:
 
 ```text
 vX.Y.Z implementation stop reached. Run pentest for this exact commit.
 ```
 
-No tag is created at that point.
+No tag or push occurs at this point.
 
-Pentest flow:
+### 2. Pentest Loop
 
-1. Implementation reaches the version stop point.
-2. Local gates pass: `scripts/checks.sh`, `cargo deny check`, and `cargo audit`.
-3. The maintainer runs pentest and writes findings to root `PENTEST.md`.
-4. Findings are reviewed and fixed.
-5. `PENTEST.md` is removed after findings are handled.
-6. Local gates are run again.
-7. A permanent report is written at `security/pentest/<tag>.md` only when the
-   exact commit is ready to tag and the result is `Status: PASS`.
-8. Tagging and pushing tags happen only when explicitly requested.
+The maintainer runs the pentest and, when findings exist, writes them to root
+`PENTEST.md`.
 
-Root `PENTEST.md` is temporary scratch input. It must not be committed, and the
+There are only two outcomes:
+
+1. **Pentest is green.** Codex removes any scratch `PENTEST.md`, writes or
+   updates `security/pentest/<tag>.md` with `Status: PASS`, records the exact
+   tested commit, updates release documentation where needed, runs the release
+   gate, and commits the release record. The project then waits for GitHub CI.
+2. **Pentest reports issues.** Codex reads `PENTEST.md`, fixes the issues,
+   updates tests and documentation, removes the scratch file when addressed,
+   runs the local gates, and commits the fixes. Codex then calls for a retest.
+   This repeats until the maintainer reports a green pentest, after which
+   outcome 1 applies.
+
+Root `PENTEST.md` is temporary scratch input and must never be committed. The
 release metadata validator fails while it exists.
+
+### 3. GitHub CI Loop
+
+After the green pentest report and release record are committed, there are only
+two outcomes:
+
+1. **GitHub CI is green.** The maintainer reports green status and explicitly
+   instructs Codex to tag and push. Codex verifies the final release gate,
+   creates the tag, and pushes the requested commit and tag.
+2. **GitHub CI reports an issue.** The maintainer provides the failure. Codex
+   fixes it, records the CI finding and resolution in the permanent pentest
+   report, runs the local gates, and commits the correction. The project waits
+   for GitHub CI again. Codex handles any exact-commit report bookkeeping needed
+   by the validator; the maintainer does not perform an extra release ceremony.
+
+No tag is created while pentest or GitHub CI is unresolved. No external
+reviewer, committee, approval board, or separate sign-off is required by the
+ordinary per-version release workflow.
 
 ## Mandatory Per-Version Stop
 
@@ -265,13 +298,18 @@ vX.Y.Z implementation stop reached. Run pentest for this exact commit.
 Every version also inherits this pentest task:
 
 - run the local gates for the exact commit;
-- review security-sensitive changes in scope;
+- let the maintainer review security-sensitive changes in scope;
 - write temporary findings to root `PENTEST.md`;
-- fix or document every release-blocking finding;
+- have Codex fix and document every release-blocking finding;
+- repeat maintainer retesting until the pentest is green;
 - remove root `PENTEST.md`;
 - create or update `security/pentest/<tag>.md` with `Status: PASS`, exact
   `Commit:`, non-blank `Tester:`, non-blank `Scope:`, and `Date: YYYY-MM-DD`;
-- tag only after the maintainer explicitly requests tagging.
+- commit the green report and wait for GitHub CI;
+- when CI fails, have Codex fix it, append the finding and resolution to the
+  report, commit, and wait for CI again;
+- tag and push only after GitHub CI is green and the maintainer explicitly
+  requests it.
 
 ## Phase 0: Foundation
 
@@ -6560,76 +6598,6 @@ Exit criteria:
   checksums, OCI manifests and indexes, SBOMs, and provenance tied to the exact
   admitted source and gate result.
 
-### v0.135.1 - Independent Cryptographic Protocol Review Gate
-
-Goal: obtain protocol-level cryptographic review independent of implementation
-pentesting before the 1.0 release candidate is accepted.
-
-Deliverables:
-
-- review scope binds the exact source commit, normative documents, canonical
-  formats, algorithm/provider registry, feature set, threat model, security
-  controls, vectors, model artifacts, and intended 1.0 deployment profiles;
-- reviewers are independent of the design and implementation authors, disclose
-  conflicts and prior involvement, and have demonstrated protocol and applied
-  cryptography expertise appropriate to the reviewed constructions;
-- review of every domain separator, transcript, context binding, canonical
-  encoding dependency, algorithm/epoch transition, and cross-protocol replay
-  boundary;
-- review of confidential semantic commitments, private locators, compartment
-  handles, semantic-to-locator translation, ciphertext/storage identity,
-  membership-oracle resistance, and cross-compartment correlation claims;
-- review of the key hierarchy, OS-CSPRNG boundary, DEK/KEK generation and
-  wrapping, recipient slots, nonce allocation, rotation, compromise recovery,
-  private-locator epochs, erasure-unit ownership, wrapper destruction, and
-  cryptographic-erasure claims;
-- review of authenticated indexes, unique representation, semantic projection,
-  logical/realm root composition, replay and delta certificates, independent
-  evaluator/witness assurance, migration, and root-substitution resistance;
-- review of authoritative-time, revocation, key-transparency, invitation,
-  recovery, governance, threshold, witness, quota-right, checkpoint, and
-  anti-replay protocols;
-- review of production-provider side-channel profiles, constant-time assurance
-  boundaries, invalid-input behavior, hardware/software fallback equivalence,
-  secret copies, zeroization limitations, and explicit excluded adversaries;
-- reviewer reproduction or independent checking of security-critical canonical
-  and known-answer vectors, selected model properties, and claimed
-  implementation-independent projection results;
-- machine-readable finding register with severity, affected formats/versions/
-  profiles, exploit preconditions, remediation owner, disposition, retest
-  evidence, and release-blocking status;
-- every resolved finding links to the correcting commit and independent
-  reviewer confirmation; disputed, accepted, or deferred findings retain both
-  reviewer and maintainer rationale without editing the original report;
-- unresolved cryptographic risk requires explicit signed maintainer/governance
-  acceptance naming scope, affected profiles, expiry/review date, user-visible
-  limitation, and why 1.0 remains acceptable; release policy may prohibit
-  acceptance above a declared severity;
-- public review summary and finding dispositions, with narrowly redacted
-  sensitive exploit detail allowed only under the security-disclosure policy;
-- explicit statement that a general penetration test, dependency audit, formal
-  model, or internal design review does not substitute for this independent
-  cryptographic protocol review.
-
-Verification:
-
-- independent reviewer sign-off over the exact review bundle and final finding
-  register;
-- review-bundle digest and disposition validator;
-- rerun of all corrected vectors, models, side-channel fixtures, and release
-  gates named by findings;
-- maintainer verification that no reviewed critical format or provider changed
-  after sign-off without reopening the affected review scope.
-
-Exit criteria:
-
-- No unresolved release-blocking cryptographic finding remains.
-- Every reviewed construction has an explicit disposition and residual-risk
-  statement tied to the exact 1.0 candidate inputs.
-- Any post-review change to a cryptographic format, transcript, provider,
-  projection evaluator, key lifecycle, privacy assurance, or trust protocol
-  reopens the affected review before v0.136.0.
-
 ### v0.136.0 - 1.0 Release Candidate Gate
 
 Goal: freeze the 1.0 feature set and reject incomplete production behavior.
@@ -6657,10 +6625,6 @@ Deliverables:
   evaluator disagreement and signed bug-remediation/migration fixtures preserve
   historical evidence and fail closed;
 - canonical and cryptographic vectors pass independently;
-- v0.135.1 independent cryptographic protocol review is complete for the exact
-  candidate, every finding has a validated disposition, no prohibited-severity
-  risk remains accepted, and review scope has not been invalidated by later
-  changes;
 - production provider side-channel profiles, constant-time assurance boundaries,
   invalid-input response-shape tests, acceleration/fallback equivalence,
   timing-regression artifacts, secret-copy inventory, zeroization review, and
@@ -6810,8 +6774,6 @@ Deliverables:
 - signed release artifacts, checksums, OCI manifests and indexes, SBOM, and
   provenance attestation;
 - completed pentest report;
-- completed independent cryptographic protocol review and finding disposition
-  for the exact release candidate;
 - passing release gate.
 
 Verification:
@@ -6945,7 +6907,9 @@ Deliverables:
 Verification:
 
 - `cargo test -p sagnir-proof`
-- independent cryptographic review and vectors.
+- independent proof-system vectors and maintainer pentest coverage of the
+  admitted construction, setup assumptions, transcript binding, and resource
+  limits.
 
 Exit criteria:
 

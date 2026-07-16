@@ -105,7 +105,7 @@ Pentest task:
   tester, date, scope, and notes before tagging;
 - wait for GitHub CI to go green before tagging;
 - tag only after explicit maintainer instruction;
-- use a pentest reviewer independent from the implementation author.
+- use the maintainer pentest and Codex fix/retest loop from the release runbook.
 
 ## Security Notes
 

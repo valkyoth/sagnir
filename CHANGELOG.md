@@ -45,7 +45,10 @@ All notable Sagnir changes are recorded here.
   coverage, isolated admission prototypes, and measurable privacy profiles.
 - Added independent projection implementation diversity, evidence-preserving
   evaluator remediation, production-provider side-channel assurance, runtime
-  privacy-profile health, and an independent pre-1.0 cryptographic review gate.
+  privacy-profile health, and detailed cryptographic pentest coverage.
+- Restored the simple solo-maintainer release loop: Codex implements and fixes,
+  the maintainer pentests and reports CI status, and tagging waits for both to
+  be green plus explicit instruction.
 
 ## 0.10.0
 

@@ -65,7 +65,8 @@ Sagnir is licensed under the European Union Public Licence 1.2.
 | --- | --- | --- |
 | Local check gate | Active | `scripts/checks.sh` runs formatting, docs, metadata, modularity, security policy, dependency policy, lint, and tests. |
 | Dependency policy | Active | `cargo deny check` and `cargo audit` are required through `scripts/security_tool_gate.sh`. |
-| Pentest stop rule | Active | Release gates refuse to tag until the matching permanent pentest report is `Status: PASS`. |
+| Solo release loop | Active | Codex implements and fixes; the maintainer pentests and reports CI status; tagging waits for both to be green and explicit instruction. |
+| Pentest stop rule | Active | Release gates refuse to tag until the matching permanent maintainer pentest report is `Status: PASS`. |
 | Release notes validation | Active | Release notes must use the Sagnir release-note shape. |
 | Pentest report validation | Active | Permanent pentest reports must include status, commit, tester, date, scope, and notes. |
 | Container base pinning | Active | Rootless container build paths pin base images by digest. |
@@ -166,18 +167,23 @@ realm identity and bounded local configuration baseline.
 
 Current release discipline:
 
-- implementation reaches a clean version stop;
-- the exact commit is handed to pentest;
+- Codex implements, tests, documents, and reaches a clean version stop;
+- the exact implementation-stop commit is handed to maintainer pentest;
 - root `PENTEST.md` is scratch input only and must not be committed;
-- findings are fixed before tag;
-- permanent reports live under `security/pentest/`;
-- release gates require `Status: PASS` before tagging;
-- tags are created only after explicit maintainer instruction.
+- when findings exist, Codex fixes them and requests retesting until green;
+- when pentest is green, Codex commits the permanent `Status: PASS` report and
+  release documentation, then waits for GitHub CI;
+- when GitHub CI fails, Codex fixes it, records the resolution in the report,
+  commits, and waits for CI again;
+- when GitHub CI is green, Codex tags and pushes only after explicit maintainer
+  instruction;
+- ordinary releases require no external reviewer or separate approval ceremony.
 
 ## Documentation
 
 - [Implementation Plan](docs/IMPLEMENTATION_PLAN.md)
 - [Version Plan](docs/VERSION_PLAN.md)
+- [Release Runbook](docs/release-runbook.md)
 - [Architecture](docs/architecture.md)
 - [Command Design](docs/command-design.md)
 - [Causal Memory](docs/causal-memory.md)

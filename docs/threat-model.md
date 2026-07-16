@@ -296,9 +296,9 @@ exposure.
   monitoring, protected fail-closed operation, encrypted degraded intervals,
   recovery observation windows, non-retroactive assurance, and non-oracular
   status;
-- independent pre-1.0 cryptographic protocol review bound to the exact release
-  candidate, immutable finding dispositions, and mandatory scope reopening
-  after affected cryptographic or trust-protocol changes;
+- maintainer pentest scope that expands to cryptographic protocol boundaries
+  when those features enter a release, with findings and GitHub CI corrections
+  retained in the permanent release report;
 - expected-root representative compare-and-swap, explicit conflict heads,
   multi-parent resolution, and prohibition on randomness-derived winner
   selection;
