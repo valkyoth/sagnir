@@ -142,8 +142,9 @@ Pentest task:
 - The release metadata gate now keeps standalone fuzz path dependencies on the
   same Sagnir version as the main workspace.
 - Profile, verification mode, and resource values are metadata only in
-  v0.10.0. Live repository-scale verification remains planned for v0.14.0 and
-  profile-to-policy enforcement remains planned for v0.36.0.
+  v0.10.0. Live repository-scale verification remains planned for v0.32.0,
+  profile-to-policy enforcement remains planned for v0.34.0, and compound
+  protected-transition admission remains planned for v0.68.0.
 - v0.10.0 does not create source objects, worlds, changes, facts, keys, or
   policies.
 - Existing malformed realm or config metadata blocks initialization. Recovery
