@@ -26,6 +26,11 @@ All notable Sagnir changes are recorded here.
 - Added escrowed offline quota rights, canonical composite-key B+ tree identity
   layers, typed and chunked compartment-translation proofs, sparse/redacted
   translation refusal, and private destruction-evidence visibility rules.
+- Hardened the roadmap with stable logical-index leaves, history-independent
+  authenticated-index normalization, governed index-commitment keys, safe
+  offline-right retirement and non-retroactive quota ratification,
+  least-privilege translation disclosure, and typed compartment-neutral
+  commitments.
 
 ## 0.10.0
 

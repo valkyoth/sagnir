@@ -35,11 +35,12 @@ Encrypted bundles must be verified before decrypt or import.
 ## Private Identity Reconciliation
 
 Private locators are deterministic lookup values, not signed object identity.
-The 1.0 format freezes one persistent authenticated B+ tree keyed by
+The 1.0 candidate is one persistent authenticated B+ tree keyed by
 `(locator_epoch, private_locator, semantic_commitment)`. Every candidate is its
-own leaf key, so inclusion and absence remain logarithmic. Canonical ordering,
-node encoding, split/merge rules, and logical-root derivation are protocol
-formats rather than implementation choices.
+own leaf key, so inclusion and absence remain logarithmic. It freezes only after
+the unique-representation gate passes; canonical ordering, node encoding,
+split/merge rules, and logical-root derivation then become protocol formats
+rather than implementation choices.
 
 The deterministic keyed logical root is visible only to authorized peers.
 Randomized encrypted node envelopes authenticate that logical identity, and
@@ -47,11 +48,34 @@ blind stores address those envelopes by public ciphertext storage IDs. Equal
 logical entry sets converge to one private logical root without requiring equal
 ciphertext.
 
+Logical leaves contain stable candidate identity and object kind only.
+Ciphertext IDs, pack generations, receipts, and positions live in encrypted
+placement/reverse indexes. Re-encryption, repacking, receipt renewal, and
+relocation therefore change placement roots without changing the logical root.
+The logical tree is admitted only if its normalization is history-independent:
+all operation permutations for one canonical entry set produce one root within
+declared amplification bounds. Otherwise the format must use a reviewed uniquely
+represented structure before compatibility freezes.
+
+A dedicated domain- and epoch-bound index-commitment key computes logical node
+commitments. Root authority comes from a signed checkpointed manifest binding
+the logical root to semantic state, policy, membership, and structure version,
+not from possession of that key.
+
 Aggregate actor/device quotas use signed escrow rights assigned to replica
 incarnations. Offline replicas consume only locally held rights; rights transfer
 through causal compare-and-swap transitions. Merge detects double-spend or
 aggregate overdraw and keeps the candidate and dependent transitions in
 authenticated quota-conflict quarantine.
+
+Retirement reclaims remaining rights only from signed surrender, a stability
+acknowledgement committing the final spent-right root, or an explicit cutoff
+that rejects every unseen spend after the grace period. Otherwise the rights are
+burned. Governance cannot attest that a missing replica did not spend offline.
+A later quota increase creates a new ratification/admission transition and
+re-evaluates dependents; the original event remains evidence of its initial
+quarantine. Private quota topology and activity metadata remain encrypted from
+blind stores and ordinary diagnostics.
 
 Optional encrypted duplicate-equivalence evidence may guide future references,
 but it cannot rewrite historical signatures or collapse different plaintext
@@ -78,6 +102,13 @@ transformed metadata field; rewritten containers are not claimed byte-identical.
 Shared subgraphs translate once per compatible target-policy domain, and the
 target root proves that no source-compartment identity remains reachable.
 
+The complete bridge manifest is encrypted only to actors authorized for both
+compartments or a governed audit role. Target-only recipients receive a minimal
+target-scoped attestation without source identifiers or graph relationships;
+source-only recipients receive no target identifiers; blind stores receive
+neither mapping. Repeated translations cannot expose a stable public correlation
+handle.
+
 The transition compares and swaps the expected source frontier/root, target
 absence or admitted replacement, and target policy root. Stale source, occupied
 target, or policy change produces explicit multi-head conflict. The target
@@ -91,7 +122,8 @@ opening. Missing, unavailable, or redacted descendants cannot be treated as
 equivalent target content. Only an explicitly compartment-neutral typed opaque
 boundary may remain untranslated. Construction and verification are bounded,
 resumable, cancellable, GC-pinned, and authoritative only at the atomic final
-manifest/root commit.
+manifest/root commit. Neutral identity uses a separate commitment domain with
+allowlisted types, neutral-only references, and no compartment-bound metadata.
 
 ## Redaction Projection
 

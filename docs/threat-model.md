@@ -77,9 +77,19 @@ exposure.
   collectively overdrawing actor/device quota at merge;
 - replayed, overlapping, or double-spent escrow quota rights admitting
   dependent private identities across partitions;
+- governance redistributing rights from a missing replica that spent them
+  offline, or retroactively relabeling an overdrawn event as valid;
+- quota allocations, spent-right references, conflicts, replica topology, or
+  actor/device activity leaking through blind storage or diagnostics;
 - malformed authenticated search ranges, excessive tree height, adversarial
   splits, or amplification declarations causing unbounded locator-index reads,
   writes, proofs, or rebuilds;
+- valid but history-dependent B+ tree shapes producing different logical roots
+  for the same entry set;
+- mutable ciphertext placement in logical leaves causing re-encryption,
+  repacking, receipt renewal, or relocation to rewrite semantic lookup roots;
+- compromise or possession of an index-commitment key being treated as
+  authority to publish a new canonical logical root;
 - deterministic encrypted index nodes leaking equality, or randomized
   ciphertext/storage IDs being confused with the deterministic private logical
   root;
@@ -100,6 +110,11 @@ exposure.
   metadata;
 - sparse, unavailable, promised, or redacted descendants bypassing recursive
   translation, or partial chunked manifests becoming authoritative;
+- complete translation manifests exposing source/target membership, graph
+  structure, or shared-subgraph correlation to one-sided recipients or blind
+  stores;
+- malformed compartment-neutral objects bypassing ordinary compartment binding
+  or referencing compartment-bound descendants;
 - recipient removal being mistaken for retroactive access revocation.
 - replayed, duplicated, expired, revoked, superseded, or over-scoped
   invitations;
@@ -170,13 +185,21 @@ exposure.
   ledger;
 - compartment-keyed private locators and encrypted authenticated translation
   mappings separated from ciphertext storage IDs;
-- a frozen canonical persistent authenticated locator B+ tree with committed
+- a candidate canonical persistent authenticated locator B+ tree that freezes
+  only after unique-representation proof, with committed
   ranges, composite candidate keys, logarithmic proofs, deterministic
-  union/split, bounded amplification, separate logical/encrypted/storage
-  identity layers, signed escrow quota rights, per-replica and actor/device
-  aggregate quota continuity,
+  history-independent normalization, bounded amplification, stable logical
+  leaves separated from mutable placement, separate logical/encrypted/storage
+  identity layers, a dedicated index-commitment key, signed checkpointed root
+  manifests, signed escrow quota rights, per-replica and actor/device aggregate
+  quota continuity,
   duplicate-amplification detection, authenticated semantic reverse indexes,
   and duplicate-equivalence transitions that preserve old signed identities;
+- signed surrender, acknowledged final spent roots, explicit retirement
+  cutoffs, uncertain-right burning, and non-retroactive ratification transitions
+  for offline quota recovery;
+- encrypted scoped disclosure for private quota topology, allocations, spends,
+  conflicts, and actor/device activity;
 - expected-root representative compare-and-swap, explicit conflict heads,
   multi-parent resolution, and prohibition on randomness-derived winner
   selection;
@@ -195,6 +218,9 @@ exposure.
   source identity, source/target/policy CAS, explicit conflicts, new target
   commitments, locators, encryption instances, DEKs, selectors, and target-
   policy checks;
+- least-privilege translation disclosure with complete bridges limited to
+  cross-authorized/audit actors, minimal target attestations, no source-to-target
+  leakage, no blind-store mapping, and separately typed neutral commitments;
 - threshold-governed recovery ceremony with stale-authority invalidation;
 - signed redaction tombstones, distinct `RedactedBody` state, tombstone-first
   anti-entropy, and quarantine of stale ciphertext;

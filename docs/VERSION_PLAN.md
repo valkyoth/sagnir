@@ -173,6 +173,11 @@ to those commitments by authenticated encrypted indexes and scoped translation
 evidence.
 Rotating a private-locator key never rewrites or impersonates the originally
 signed semantic history.
+Private logical-index leaves contain no mutable ciphertext placement. A
+dedicated index-commitment key calculates logical roots, while signed
+checkpointed manifests grant root authority. Re-encryption, repacking, receipt
+renewal, and relocation change placement roots without changing semantic or
+locator logical roots.
 
 Protected transitions require one validated compound result:
 
@@ -1824,6 +1829,14 @@ Deliverables:
   unconsumed rights before crediting the receiver, binds expected allocation
   roots by compare-and-swap, and cannot be replayed or double-spent across
   partitions;
+- retirement may reclaim a replica's remaining rights only from a signed
+  surrender, a causal-stability acknowledgement that commits the replica's
+  final spent-right root, or an explicit retirement cutoff that invalidates
+  every unseen spend from that replica after the admission grace period;
+- when no surrender, final spent-right acknowledgement, or invalidating cutoff
+  is available, the replica's remaining rights are permanently burned rather
+  than redistributed; governance cannot infer that a missing replica left its
+  rights unused;
 - merge verifies disjoint consumed-right intervals or tokens; a candidate or
   dependent transition without valid unspent rights remains durably
   quarantined behind an explicit aggregate-quota conflict and never becomes
@@ -1832,10 +1845,21 @@ Deliverables:
 - governance may increase an aggregate budget or redistribute unused rights,
   but cannot retroactively manufacture rights for already overdrawn offline
   candidates without an explicit policy transition and conflict resolution;
+- resolving an overdraw through newly granted rights creates a new signed
+  ratification and admission transition at the new causal point; it never
+  rewrites the original event as valid at its earlier frontier;
+- the original overdrawn event remains immutable evidence of initial
+  quarantine, every dependent transition is re-evaluated under the ratification
+  result, and rejection preserves the signed event without admitting its state
+  effects;
 - governance enrollment and retirement transitions carry the aggregate quota
   identity, allocations, spent-right commitments, and unresolved conflicts
   forward; creating a new replica identity cannot reset limits or inherit
   unspent rights without an explicit policy-authorized transfer;
+- quota schemas support encrypted scoped disclosure: allocations, spent-right
+  references, conflicts, replica topology, and activity metadata are prohibited
+  from blind-store metadata, filenames, telemetry, ordinary logs, and locked
+  status in sealed-private realms;
 - tests proving compaction cannot erase an unseen concurrent head;
 - retirement, rejoin, stale replica, and malicious replica-fanout tests;
 - unseen concurrent head, missing acknowledgement, governance-quorum
@@ -1846,8 +1870,10 @@ Deliverables:
 - hidden higher-sequence stale-parent event, cloned device, restored replica,
   reused incarnation, two-process same-replica, partitioned quota consumption,
   double-spent rights, replayed transfer, overlapping allocation, offline
-  overdraw quarantine, governance increase, retirement with unused rights, and
-  rights-redistribution tests.
+  overdraw quarantine, governance increase and ratification, dependent
+  re-evaluation, signed surrender, final spent-root acknowledgement, retirement
+  cutoff, unseen pre-cutoff spend, burned rights, refused redistribution, and
+  private quota-metadata leakage tests.
 
 Verification:
 
@@ -1876,6 +1902,12 @@ Exit criteria:
 - Disconnected replicas cannot collectively exceed an aggregate quota using
   locally observed counters: authoritative admission consumes disjoint signed
   escrow rights, and overdraw remains explicit quarantined conflict.
+- Retirement never turns uncertainty about offline spending into reusable
+  capacity: rights are surrendered, fenced by acknowledged spent state,
+  invalidated by an explicit cutoff, or burned.
+- Later governance may ratify a quarantined operation through new signed
+  history, but cannot make the operation valid retroactively at its original
+  causal position.
 
 ## Phase 5: Changes And Sealing
 
@@ -2886,8 +2918,8 @@ Goal: define cryptographic key separation before encrypted bytes are written.
 
 Deliverables:
 
-- key-encryption-key, realm, compartment/world, private-locator, and erasure-unit
-  key hierarchy;
+- key-encryption-key, realm, compartment/world, private-locator, private-index
+  commitment, and erasure-unit key hierarchy;
 - explicit erasure-unit granularity: object, path group, compartment, epoch, or
   retention class;
 - an erasure unit owns one encryption instance and its DEK, not the immutable
@@ -2938,6 +2970,9 @@ Deliverables:
   proof-disclosure context;
 - private-locator key lifecycle separated from semantic commitments,
   encryption-key rotation, and data-key rotation;
+- private-index commitment keys are distinct from private-locator, encryption,
+  wrapping, signature, proof-disclosure, and erasure keys and have their own
+  governed epoch, compromise, rotation, retention, and retirement lifecycle;
 - ordinary rekeying does not require semantic commitment or private-locator
   changes;
 - key identifier and crypto epoch binding;
@@ -3042,20 +3077,33 @@ Deliverables:
 - ciphertext storage ID format;
 - distinct non-interchangeable types for semantic commitment, private locator,
   and ciphertext storage ID;
-- one frozen canonical persistent authenticated B+ tree structure for the 1.0
-  private locator index; alternative B-tree, trie, register, split, ordering, or
-  root algorithms are incompatible critical format versions rather than
+- one candidate canonical persistent authenticated B+ tree structure for the
+  1.0 private locator index; it freezes only after the unique-representation
+  gate passes, after which alternative B-tree, trie, register, split, ordering,
+  or root algorithms are incompatible critical format versions rather than
   implementation choices;
 - canonical composite key encoding
   `(locator_epoch, private_locator, semantic_commitment)` so every candidate is
   its own logarithmically searchable leaf entry rather than one linear
   multi-value register value;
-- canonical leaf value binds encryption instance, ciphertext record, logical
-  object kind, pack generation, and current private storage position;
+- canonical leaf value binds only stable candidate information: immutable
+  semantic commitment through the composite key, encryption-instance identity,
+  and logical object kind;
+- ciphertext storage IDs, ciphertext records, pack generations, storage
+  receipts, and current positions are prohibited from logical leaves and live
+  exclusively in the mutable encrypted placement and reverse indexes;
 - exact bytewise composite-key ordering, node fanout bounds, minimum occupancy,
   leaf/internal layouts, separator derivation, split point, merge/redistribution
   rule, empty root, node encoding, logical root derivation, and canonical bulk-
   build algorithm;
+- normative history-independent normalization algorithm making the logical root
+  a pure function of the complete canonical entry set, independent of insertion,
+  deletion, merge, split, union, rebalance, or bulk-build history;
+- compatibility freeze is blocked unless an independent proof or executable
+  model establishes unique representation for every permutation of one entry
+  set; if bounded path-copy B+ tree updates cannot satisfy that property,
+  v0.93.0 must select a reviewed uniquely represented trie or key-derived tree
+  before durable bytes are admitted;
 - internal and leaf logical nodes commit exact key ranges, child logical
   commitments, entry counts, tree height, locator epoch, and structure version;
 - inclusion, non-inclusion, range, and total-count proofs are logarithmic in the
@@ -3073,6 +3121,18 @@ Deliverables:
 - "same canonical entry set produces the same root" applies only to the private
   keyed logical root; randomized ciphertext roots and public storage IDs are not
   required or expected to converge byte-for-byte;
+- a dedicated private-index commitment key derives logical node commitments
+  under exact realm, compartment, structure-version, and commitment-key epoch
+  domains;
+- a signed and checkpointed private-index manifest binds the logical root,
+  semantic-state root, locator epoch, commitment-key epoch, structure version,
+  entry count, policy root, membership epoch, and governing authorization;
+- possession of the private-index commitment key permits verification and
+  commitment calculation but does not authorize publication or admission of a
+  new canonical index root;
+- historical manifests remain verifiable across commitment-key rotation, while
+  compromise triggers a governed new epoch and explicit root migration rather
+  than silent root replacement;
 - canonical per-replica duplicate-creation admission quotas by locator epoch,
   with quota parameters committed by realm policy so an authorized replica
   cannot consume every candidate slot for one locator while offline;
@@ -3104,6 +3164,10 @@ Deliverables:
   or quota states are presented;
 - updates use path copying and bounded rebalancing without rewriting unrelated
   immutable nodes;
+- normalization amplification is explicitly bounded and measured for insert,
+  delete, union, split, merge, and bulk-build; an algorithm whose
+  history-independent normalization requires unbounded or whole-index rewrite
+  amplification cannot pass this milestone;
 - format-level maximum read, write, node, proof, and rebalance amplification
   budgets are committed by structure version and cannot be raised by untrusted
   input;
@@ -3166,6 +3230,13 @@ Deliverables:
 - semantic commitments and translation mappings are prohibited from blind-store
   metadata, unauthenticated protocol fields, telemetry, diagnostics, logs,
   filenames, public proof summaries, and public storage receipts;
+- quota allocations, spent-right references, conflict roots, replica topology,
+  and actor/device activity are encrypted and scoped to authorized policy,
+  governance, or audit views and are prohibited from blind-store metadata,
+  telemetry, diagnostics, filenames, public receipts, and locked status;
+- ordinary re-encryption, envelope replacement, receipt renewal, repacking, and
+  ciphertext relocation may change placement roots but cannot change the
+  private locator logical root or its signed semantic-state binding;
 - substitution resistance proving a locator translation cannot map to different
   canonical plaintext;
 - verification recomputes the semantic commitment from canonical plaintext and
@@ -3182,9 +3253,13 @@ Deliverables:
   conflicting representative selection, representative grinding,
   different-plaintext locator collision, search-node truncation or fork,
   malformed range, non-logarithmic proof, union/split divergence, amplification
-  overflow, per-replica and aggregate quota replay, new-incarnation evasion,
-  locator-rotation quota reset, authorized-replica bucket exhaustion,
-  public-output leakage, and semantic-root preservation tests.
+  overflow, insertion/deletion/union/split/bulk-build permutation divergence,
+  normalization amplification, unauthorized root publication, commitment-key
+  compromise and rotation, historical-manifest verification, placement-only
+  re-encryption/repack/relocation, per-replica and aggregate quota replay,
+  new-incarnation evasion, locator-rotation quota reset, authorized-replica
+  bucket exhaustion, private quota-metadata leakage, public-output leakage, and
+  semantic-root preservation tests.
 
 Verification:
 
@@ -3193,6 +3268,8 @@ Verification:
 - independent commitment and locator vector validator.
 - independent canonical B+ tree node, split/merge, proof, logical-root,
   encrypted-envelope, and storage-ID vector validator.
+- independent history-independent representation and operation-permutation
+  validator.
 
 Exit criteria:
 
@@ -3213,6 +3290,13 @@ Exit criteria:
 - Deterministic convergence applies to the private logical root only; randomized
   encrypted node envelopes and blind-store ciphertext IDs reveal no equality
   requirement.
+- The admitted logical structure has one representation for one canonical entry
+  set under every construction and update history, or the B+ tree design is
+  replaced before compatibility freezes.
+- Re-encryption, repacking, relocation, and receipt renewal change only
+  placement projections; they do not alter the locator logical root.
+- A logical root is authoritative only through its signed checkpointed manifest,
+  never merely because an actor can compute keyed commitments.
 - Conflicting representative selections remain explicit multi-head state until
   an authorized resolution binds every admitted conflict parent.
 - Possession of blind-store metadata, logs, public proofs, storage receipts, or
@@ -3336,10 +3420,19 @@ Deliverables:
   one or more current ciphertext storage IDs and placements;
 - logical-root manifest visible only to authorized peers and a separate
   ciphertext placement root suitable for encrypted storage transactions;
+- logical leaves contain no ciphertext ID, pack generation, receipt, or storage
+  position; the encrypted placement and reverse indexes own all mutable
+  resolution from stable encryption-instance identity to current ciphertext;
+- signed checkpointed logical-root manifest validation is required before an
+  index root can become authoritative, and commitment-key possession alone
+  grants no write authority;
 - logarithmic inclusion, absence, range, and total-count proofs;
 - deterministic concurrent union, split, and path-copy update semantics that
   preserve every admitted candidate and converge to one private logical root for
   one canonical entry set without requiring identical ciphertext envelopes;
+- implementation of the v0.93.0 history-independent normalization algorithm,
+  including canonical rebuild after deletion and merge, with refusal of any
+  alternative valid-looking shape whose root differs for the same entry set;
 - maximum read, write, node, proof, and rebalance amplification budgets enforced
   before allocation or mutation;
 - authenticated encrypted reverse index from immutable semantic commitment to
@@ -3371,7 +3464,9 @@ Deliverables:
   split or separator, composite-key ordering mismatch, candidate-register linear
   scan regression, union/split divergence, logical/ciphertext root confusion,
   randomized-envelope root mismatch, local-budget interruption, amplification
-  overflow, million-object reverse lookup, and decompression-bomb tests.
+  overflow, operation-history permutation divergence, unauthorized manifest,
+  placement-only re-encryption/repack/receipt/relocation root stability,
+  million-object reverse lookup, and decompression-bomb tests.
 
 Verification:
 
@@ -3520,6 +3615,29 @@ Deliverables:
   descendant and proves the resulting target root has no reachable
   source-compartment commitment, locator, ciphertext selector, or
   compartment-bound reference;
+- complete bridge manifests are encrypted only to actors authorized for both
+  source and target compartments or to an explicitly governed cross-compartment
+  audit role;
+- target-only recipients receive the target state plus a minimal target-scoped
+  attestation that binds the admitted transition and target root without source
+  identifiers, source graph shape, shared-subgraph relationships, or source
+  history;
+- source-only recipients receive no target commitments, locators, selectors, or
+  graph mapping, and blind stores receive neither side of the translation
+  relationship;
+- translation attestations use audience-, purpose-, compartment-, transition-,
+  and epoch-bound encryption so repeated copy/move operations cannot become a
+  public source/target correlation oracle;
+- compartment-neutral objects use a separate typed random-blinded semantic
+  commitment domain that omits compartment identity by explicit format design,
+  never by reusing or truncating an ordinary compartment commitment;
+- neutral-object eligibility is an allowlisted canonical object type with no
+  compartment-bound path, recipient, policy, retention, legal-hold, encryption,
+  locator, or actor metadata and no reference to a compartment-bound object;
+- neutral objects may reference only admitted neutral objects under the same
+  neutral-domain version, and every ordinary compartment object references a
+  neutral boundary through an explicitly typed edge whose policy admits that
+  exact neutral object kind;
 - typed canonical transformation relation by object kind:
   - leaf/blob objects prove authenticated logical content and admitted metadata
     equality while receiving new compartment-bound commitments and encryption;
@@ -3576,8 +3694,11 @@ Deliverables:
   carryover refusal, wrong-target policy, stale source CAS, occupied target CAS,
   concurrent move, multi-head conflict, manifest chunk omission/reorder,
   oversized chunk, interrupted stream, resume-state substitution, cancellation,
-  temporary-pin loss, partial target, target-before-source, source-before-target,
-  copy, move, and move-plus-redaction tests.
+  temporary-pin loss, complete-manifest disclosure to target-only/source-only/
+  blind actors, repeated-translation correlation, forged minimal attestation,
+  neutral/compartment commitment confusion, prohibited neutral metadata,
+  neutral-to-compartment reference, partial target, target-before-source,
+  source-before-target, copy, move, and move-plus-redaction tests.
 
 Verification:
 
@@ -3595,6 +3716,11 @@ Exit criteria:
   encryption instance while preserving the original signed source identity.
 - A translated target graph contains no reachable source-compartment identity
   or selector, and source reviews or proofs do not silently authorize it.
+- Translation disclosure is least-privilege: only a cross-authorized actor can
+  inspect the complete bridge, while target-only, source-only, and blind actors
+  receive no unnecessary cross-compartment relationship.
+- Compartment-neutral identity is a separate constrained format, not an
+  exception that weakens ordinary compartment binding.
 - Translation proves leaf content equality and container structural isomorphism
   under an exact reference mapping; it never claims containers with rewritten
   child identities are byte-identical.
@@ -3751,7 +3877,12 @@ Deliverables:
 - `saga vault rekey`;
 - recipient and compartment rewrap plan;
 - encryption-key rotation independent from private-locator key rotation;
+- private-index commitment-key rotation independent from encryption-key and
+  private-locator rotation;
 - scheduled and compromise-triggered private-locator key rotation;
+- scheduled and compromise-triggered private-index commitment-key rotation with
+  exact old/new commitment epochs and no implicit write authority for either
+  key holder;
 - preservation of the original canonical object bodies, semantic commitments,
   signed graph roots, references, transitions, proofs, and signatures;
 - whole-index private-locator and ciphertext-placement rewriting without
@@ -3759,6 +3890,14 @@ Deliverables:
 - old and new private-locator epoch admission rules;
 - signed migration transition binding the unchanged semantic roots, old locator
   index root, new locator index root, and resulting ciphertext storage root;
+- index-commitment rotation transition binding the unchanged canonical locator
+  entry set and semantic-state root, old and new logical roots, old and new
+  signed checkpointed manifests, structure version, policy root, membership
+  epoch, and governing authorization;
+- authorized historical verification retains or retrieves the old
+  index-commitment key only through governed encrypted custody; new peers may
+  verify the admitted migration and current root without receiving authority to
+  publish either root;
 - authenticated quota carry-forward binding the old and new locator epochs,
   per-replica counters, replica-incarnation lineage, aggregate actor/device
   counters, governance quota identity, escrow-right allocation root, spent-right
@@ -3791,11 +3930,13 @@ Deliverables:
 - rollback and interrupted-rotation recovery;
 - invalid epoch, partial compartment, stale recipient, restored snapshot,
   interrupted locator rewrite, semantic-reference mutation, translation
-  substitution, public mapping leakage, mixed peer epoch, compromised-key reuse,
-  old-signature verification, new-peer verification, stale-pack, missing quota
-  carry-forward, counter rollback, new-incarnation quota evasion, actor/device
-  aggregation, escrow-right double-spend across epochs, unresolved conflict
-  carry-forward, and locator-epoch reset tests.
+  substitution, public mapping leakage, mixed peer epoch, compromised locator-
+  or index-commitment-key reuse, unauthorized logical-root publication,
+  historical logical-root verification, old-signature verification, new-peer
+  verification, stale-pack, missing quota carry-forward, counter rollback,
+  new-incarnation quota evasion, actor/device aggregation, escrow-right
+  double-spend across epochs, unresolved conflict carry-forward, and locator-
+  epoch reset tests.
 
 Verification:
 
@@ -3811,6 +3952,9 @@ Exit criteria:
 - Private-locator compromise has a complete migration protocol that replaces
   lookup and storage projections without changing any signed semantic object or
   reference.
+- Private-index commitment-key rotation produces new signed logical-root
+  manifests over the same canonical entry set; it neither rewrites semantic
+  history nor grants root-admission authority through key possession.
 - The migration transition is new signed history; rewritten locator projections
   are never represented as the originally signed graph.
 - Old signatures remain verifiable from retained canonical commitments and
@@ -4196,6 +4340,10 @@ Deliverables:
   compartment key/domain input, its boundary proof is complete, and target
   policy admits that exact opaque type; ordinary sealed-private trees,
   containers, blobs, or unknown object types are not opaque escape hatches;
+- compartment-neutral boundaries must verify the v0.100.0 neutral commitment
+  domain, allowlisted type, neutral-only reference closure, and prohibition on
+  compartment-bound metadata; a merely absent or stripped compartment field is
+  malformed rather than neutral;
 - a `RedactedBody` descendant remains a historical redacted reference and
   cannot produce a new equivalent target commitment or content-equality proof;
   copy/move refuses unless a separately specified target transition records a
@@ -4966,16 +5114,23 @@ Deliverables:
   partition models;
 - duplicate-equivalence representative CAS, conflict-head preservation,
   anti-grinding selection, replica/actor/device quota continuity, and persistent
-  authenticated B+ tree union/split models;
+  authenticated index union/split models;
 - escrowed bounded-counter model proving disjoint offline quota-right
   consumption, causal transfer, merge-time double-spend/overdraw quarantine,
-  governed redistribution, and migration without counter-only assumptions;
+  signed surrender, acknowledged final spent roots, retirement cutoffs,
+  uncertain-right burning, non-retroactive ratification, dependent
+  re-evaluation, and migration without counter-only assumptions;
 - logarithmic locator inclusion/absence proof, immutable path-copy update,
-  deterministic rebalance, bounded amplification, and locator-rotation quota
-  carry-forward invariants;
+  history-independent normalization across operation permutations, bounded
+  amplification, and locator-rotation quota carry-forward invariants;
 - private-index identity model separating deterministic keyed logical roots,
   randomized encrypted node envelopes, and public ciphertext storage IDs, with
   convergence required only for the logical root;
+- private-index authority model separating commitment-key possession from
+  signed checkpointed manifest admission, plus commitment-key rotation and
+  historical-root verification;
+- stable-leaf/placement model proving re-encryption, repacking, receipt renewal,
+  and relocation cannot change the logical root;
 - external key-destruction model covering durable intent before dispatch,
   provider success before local journal commit, ambiguous timeout, idempotent
   query, authenticated destruction-evidence admission, provider revocation or
@@ -4989,8 +5144,12 @@ Deliverables:
   explicit multi-head move conflicts;
 - typed leaf-equality and container-structural-isomorphism model, exact
   reference mapping, transformed-metadata rules, sparse/promised fetch
-  prerequisites, redacted/unavailable refusal, and admitted compartment-neutral
-  opaque boundaries;
+  prerequisites, redacted/unavailable refusal, separately typed
+  compartment-neutral commitment domains, and neutral-only reference closure;
+- translation-visibility model proving complete bridges reach only
+  cross-authorized/audit actors, target attestations disclose no source
+  identity or shape, source-only actors receive no target identity, and blind
+  stores receive neither side;
 - Merkle-chunked translation-manifest construction, bounded streaming
   verification, temporary GC pins, cancellation, crash resume, and atomic final
   root commit model;
@@ -5000,8 +5159,11 @@ Deliverables:
 - checked invariants for atomicity, no lost heads, no locator-based identity
   collapse, no silently discarded admitted bucket entry, no last-writer-wins or
   grindable duplicate representative, no offline aggregate quota overdraw
-  admitted, no logical/ciphertext index identity confusion, no false key-
-  destruction success, no private destruction-evidence leakage, no wrapper-
+  admitted, no unsafe retired-right redistribution, no retroactive quota
+  validity, no history-dependent logical root, no mutable-placement root drift,
+  no commitment-key authority escalation, no logical/ciphertext index identity
+  confusion, no private quota or translation relationship leakage, no false
+  key-destruction success, no private destruction-evidence leakage, no wrapper-
   deletion erasure claim, no false container byte-equality proof, no source-
   compartment reference in a translated target graph, no sparse or redacted
   descendant bypass, no partial manifest authority, no stale move overwrite or
@@ -5019,13 +5181,16 @@ Exit criteria:
 
 - Counterexamples for stale CAS, conflicting duplicate representatives, bucket
   exhaustion, linear-proof amplification, quota-right double-spend, offline
-  overdraw, quota-reset rotation, logical/ciphertext root confusion, partial or
-  forged destruction evidence, private evidence leakage, recoverable deleted
-  wrappers, permanently uncertain destruction, false typed translation,
-  sparse/redacted descendant bypass, manifest resume substitution, partial final
-  commit, recursive move leakage, stale compartment-move CAS, stale redaction
-  lineage, lost divergence, and replay are represented in executable models
-  rather than prose alone.
+  overdraw, unsafe rights reclamation, retroactive ratification,
+  operation-history root divergence, placement-root coupling, unauthorized
+  manifest publication, commitment-key rotation, quota/translation metadata
+  leakage, logical/ciphertext root confusion, partial or forged destruction
+  evidence, private evidence leakage, recoverable deleted wrappers, permanently
+  uncertain destruction, false typed translation, neutral-domain confusion,
+  sparse/redacted descendant bypass, manifest resume substitution, partial
+  final commit, recursive move leakage, stale compartment-move CAS, stale
+  redaction lineage, lost divergence, and replay are represented in executable
+  models rather than prose alone.
 - This release is full-system assurance, not the first time foundational
   formats are modeled.
 
@@ -5044,6 +5209,9 @@ Deliverables:
 - crash tests across private logical node commit, randomized envelope write,
   ciphertext storage-ID assignment, placement-root commit, and logical-root
   publication;
+- crash tests for signed logical-root manifest publication,
+  index-commitment-key rotation, history-independent normalization checkpoints,
+  and placement-only re-encryption, repack, receipt renewal, and relocation;
 - escrow-right allocation, transfer, spend, double-spend conflict, quota-
   conflict quarantine, locator migration, and governed resolution transaction
   tests;
@@ -5095,6 +5263,9 @@ Exit criteria:
 - No interruption publishes a logical B+ tree root whose canonical nodes lack
   authenticated encrypted envelopes/placements required by the transaction, or
   treats randomized ciphertext identity as the logical root.
+- No interruption makes a commitment-key holder authoritative, publishes an
+  unsigned logical root, changes the logical root for a placement-only mutation,
+  or leaves old/new commitment epochs ambiguously admitted.
 - Recovery is forward-only after `DestroyingKeys`; uncertain provider outcomes
   remain explicit and cannot be converted into success or failure by restart.
 - Permanently uncertain operations can compact into signed
@@ -5126,14 +5297,18 @@ Deliverables:
   evasion, locator-rotation carry-forward, new-incarnation evasion, concurrent
   search-tree union/split, and local operation-budget interruption;
 - partitioned escrow-right consumption, causal transfer races, double-spent
-  rights, aggregate overdraw quarantine, governance redistribution, and
-  dependent-transition quarantine propagation;
+  rights, aggregate overdraw quarantine, signed surrender, final spent-root
+  acknowledgement, retirement cutoff, unseen offline spend, uncertain-right
+  burning, non-retroactive governance ratification, and dependent-transition
+  quarantine/re-evaluation;
 - logarithmic inclusion and absence proof validation under adversarial fanout,
-  range, height, and amplification declarations;
+  range, height, operation-history permutations, and amplification declarations;
 - concurrent cross-compartment moves with changed source frontier, occupied
   target, changed target policy, overlapping recursive graphs, missing promised
   descendant, unavailable opening, redacted descendant, opaque-boundary
-  admission/refusal, chunked-manifest resume, and multi-head resolution;
+  admission/refusal, neutral-domain confusion, one-sided translation
+  disclosure, repeated-correlation attempts, chunked-manifest resume, and
+  multi-head resolution;
 - offline peer and blind store returning with pre-redaction ciphertext,
   receipts, wrappers, or pack positions;
 - valid concurrent events referencing a redacted instance, causally later stale
@@ -5164,8 +5339,17 @@ Exit criteria:
 - Partition merge never converts aggregate quota overdraw or a double-spent
   escrow right into authoritative state; dependent candidates remain explicit
   quarantine until governed resolution.
+- Missing-replica retirement cannot recycle possibly spent rights, and later
+  ratification creates new admission history instead of rewriting the original
+  causal decision.
+- Peers deriving the same canonical locator entry set through different
+  operation histories converge on one logical root; placement-only differences
+  and commitment-key possession do not create alternate authority.
 - Concurrent compartment moves preserve every contender and never leave a
   target graph that reaches source-compartment identities.
+- One-sided recipients and blind stores do not learn the complete
+  source-to-target relationship, and neutral boundaries cannot smuggle
+  compartment-bound references.
 - Concurrent historical references remain verifiable as `RedactedBody`, while
   stale ordering and repair cannot resurrect the erased encryption instance.
 - Hostile peers cannot force unbounded recursive expansion or partial trust.
@@ -5186,9 +5370,12 @@ Deliverables:
 - concurrent offline duplicate creation, locator candidate-set reconciliation,
   duplicate-equivalence admission, and future-reference selection benchmarks;
 - authenticated logarithmic inclusion/absence proofs, immutable path-copy
-  updates, deterministic union/split, logical-root computation, randomized node
-  encryption and placement, escrow-right allocation/transfer/spend,
-  quota-conflict merge and carry-forward, duplicate-amplification detection,
+  updates, history-independent normalization across insertion/deletion/union/
+  split/merge/bulk-build permutations, logical-root computation, signed manifest
+  admission, commitment-key rotation, randomized node encryption and placement,
+  placement-only re-encryption/repack/receipt/relocation, escrow-right
+  allocation/transfer/spend/surrender/burn, quota-conflict merge and
+  non-retroactive ratification, duplicate-amplification detection,
   conflict-head reconciliation, and multi-parent representative-resolution
   benchmarks;
 - wrapped-DEK creation, recipient rewrap, multi-wrapper enumeration, and
@@ -5207,8 +5394,8 @@ Deliverables:
 - p50/p95/p99 latency, memory, I/O amplification, and ciphertext-expansion
   budgets;
 - explicit locator-index maximum read, write, proof, node, path-copy, split,
-  rebalance, and concurrent-union amplification thresholds at small, million-
-  entry, and adversarial distributions;
+  normalization, rebalance, and concurrent-union amplification thresholds at
+  small, million-entry, and adversarial distributions;
 - CI regression thresholds where stable.
 
 Verification:
@@ -5394,18 +5581,22 @@ Deliverables:
   commitments, and metadata protection;
 - random-blinded confidential semantic commitments with explicit visibility
   rules and encrypted authenticated locator translation;
-- canonical composite-key private-locator B+ tree, logarithmic proofs,
-  deterministic keyed logical roots separated from randomized encrypted node
-  envelopes and public storage IDs, semantic reverse indexes, and immutable
-  offline duplicate identities;
+- canonical composite-key private-locator index, logarithmic proofs,
+  history-independent uniquely represented keyed logical roots with stable
+  leaves and signed checkpointed manifests, mutable placement separated from
+  randomized encrypted node envelopes and public storage IDs, semantic reverse
+  indexes, and immutable offline duplicate identities;
 - signed escrowed replica quota rights, actor/device aggregate limits,
-  merge-time overdraw/double-spend quarantine, locator-rotation carry-forward,
+  safe surrender/fencing/cutoff/burning on retirement, merge-time
+  overdraw/double-spend quarantine, non-retroactive ratification,
+  locator-rotation carry-forward, encrypted quota metadata,
   duplicate-amplification detection, and conflict-safe representatives;
 - signed Merkle-chunked recursive cross-compartment graph copy/move transitions
   with typed leaf-equality/container-isomorphism proofs, sparse/redacted
-  descendant handling, resumable bounded manifests, source/target/policy CAS,
-  new target identities and encryption instances, target-policy evaluation, and
-  explicit distributed conflicts;
+  descendant handling, typed neutral commitments, least-privilege bridge
+  disclosure, resumable bounded manifests, source/target/policy CAS, new target
+  identities and encryption instances, target-policy evaluation, and explicit
+  distributed conflicts;
 - authenticated key-transparency map semantics and split-view evidence;
 - no operational encryption mode before sealed-private prerequisites;
 - sealed-private migration and honest prior-leakage accounting;

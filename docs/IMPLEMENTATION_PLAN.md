@@ -387,18 +387,34 @@ Privacy rule:
 - sealed private mode uses random-blinded immutable semantic commitments inside
   the encrypted ledger, compartment-keyed private lookup locators, and
   randomized ciphertext storage IDs;
-- private locators use one frozen canonical persistent authenticated B+ tree
-  keyed by `(locator_epoch, private_locator, semantic_commitment)` so each
-  candidate has logarithmic inclusion and absence proofs;
+- private locators target one canonical persistent authenticated B+ tree keyed
+  by `(locator_epoch, private_locator, semantic_commitment)` so each candidate
+  has logarithmic inclusion and absence proofs; it freezes only after the
+  unique-representation gate passes;
+- logical leaves contain only stable candidate identity and object kind;
+  ciphertext IDs, packs, receipts, and positions live solely in mutable
+  encrypted placement/reverse indexes, so re-encryption and relocation do not
+  change the logical root;
 - private index identity has three layers: deterministic keyed logical node/root
   commitments for authorized peers, randomized encrypted node envelopes, and
   public ciphertext storage IDs for blind stores; convergence applies only to
   the logical root;
-- deterministic path-copy union/split semantics and declared read, write, proof,
-  and rebalance amplification budgets avoid linear page chains;
+- a dedicated governed index-commitment key and signed checkpointed manifest
+  bind each logical root to admitted semantic state; key possession alone is
+  not root-admission authority;
+- a history-independent normalization proof must show that insert, delete,
+  union, split, merge, and bulk-build permutations produce one root for one
+  entry set; otherwise a uniquely represented trie or key-derived tree replaces
+  the B+ tree before compatibility freezes;
+- deterministic path-copy updates and declared read, write, proof,
+  normalization, and rebalance amplification budgets avoid linear page chains;
 - aggregate actor/device quotas use signed escrow rights preallocated to replica
   incarnations; offline admission consumes only held rights, causal transfers
   cannot double-spend, and merge-time overdraw remains explicit quarantine;
+- retirement reclaims rights only through signed surrender, an acknowledged
+  final spent-right root, or an explicit cutoff invalidating unseen spends;
+  uncertain rights are burned, and later quota increases ratify through new
+  signed history rather than rewriting the original quarantined event;
 - duplicate-amplification detection and quota carry-forward prevent identity or
   locator rotation from exhausting candidate sets, while local limits may
   quarantine but never silently discard admitted history;
@@ -492,10 +508,17 @@ Compartment movement rule:
   subgraphs, bounded streaming verification, durable resume, cancellation,
   temporary GC pins, and atomic final commit while proving no
   source-compartment commitment remains reachable from the target;
+- the complete bridge is encrypted only to cross-authorized or governed audit
+  actors; target-only recipients receive a minimal target attestation,
+  source-only recipients receive no target identifiers, and blind stores receive
+  no mapping;
 - promised descendants and openings must be fetched and verified; unavailable
   or redacted descendants refuse translation unless an explicitly
   compartment-neutral opaque boundary or typed redacted placeholder is admitted
   without claiming content equality;
+- compartment-neutral identity uses a separate typed commitment domain with an
+  allowlisted object kind, neutral-only reference closure, and no
+  compartment-bound metadata;
 - source frontier, exact root, target absence/replacement, and target policy use
   compare-and-swap; concurrent changes become explicit conflict heads;
 - source-bound reviews, proofs, and approvals do not automatically authorize

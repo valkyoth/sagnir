@@ -140,12 +140,35 @@ encrypted envelopes that authenticate the logical commitment. Blind stores see
 only public ciphertext storage IDs for those envelopes. Re-encryption changes
 ciphertext identity without changing the private logical root.
 
+Logical leaves contain only stable candidate information: the composite key,
+encryption-instance identity, and logical object kind. Ciphertext IDs, pack
+generations, receipts, and positions exist only in encrypted placement and
+reverse indexes. Re-encryption, repacking, receipt renewal, and relocation may
+change placement roots but never the logical root.
+
+The logical structure must be history-independent: every insertion, deletion,
+union, split, merge, and bulk-build ordering for one canonical entry set
+produces one root. A dedicated index-commitment key is domain- and epoch-bound,
+but possession of it does not authorize a root. A signed checkpointed manifest
+binds the root to semantic state, policy, membership, and structure version. If
+the B+ tree cannot meet unique-representation and bounded-amplification
+requirements, Sagnir will select a uniquely represented structure before the
+format freezes.
+
 Aggregate actor/device quotas are escrowed into signed rights allocations for
 replica incarnations. Offline replicas consume only held rights, and causal
 transfers cannot double-spend. Merge-time overdraw or double-spend remains
 authenticated quota-conflict quarantine. Duplicate-amplification detection and
 quota carry-forward prevent new replicas or locator rotation from resetting
-limits.
+limits. Rights from a missing replica are surrendered, fenced by an acknowledged
+final spent-right root, invalidated through an explicit retirement cutoff, or
+burned. Governance cannot guess that offline rights were unused. A later quota
+increase admits a new signed ratification transition and does not rewrite the
+original quarantined event.
+
+In sealed-private realms, allocations, spent-right references, conflict roots,
+replica topology, and actor/device activity remain encrypted from blind stores,
+logs, telemetry, filenames, public receipts, and locked status.
 
 Optional private duplicate-equivalence evidence can guide future references but
 cannot rewrite historical signatures or references. Representative changes bind
@@ -175,6 +198,13 @@ Transformed metadata is explicit; rewritten container bytes are not claimed
 equal. Construction and verification are streaming, bounded, resumable,
 cancellable, temporarily GC-pinned, and committed atomically at the final root.
 
+The complete bridge manifest is disclosed only to actors authorized for both
+compartments or a governed audit role. Target-only recipients receive a
+target-scoped attestation without source identifiers or graph relationships.
+Source-only recipients receive no target identifiers, and blind stores receive
+neither side. Audience- and transition-bound disclosures prevent repeated
+translations from becoming a public correlation oracle.
+
 The transition compares and swaps the expected source frontier/root, expected
 target absence or replacement, and target policy root. Concurrency produces an
 explicit conflict rather than arrival-order overwrite. A copy preserves the
@@ -187,7 +217,10 @@ Sparse or partial clones fetch and verify every required promised descendant
 and commitment opening before translation. Missing, unavailable, or redacted
 descendants cause refusal unless a specifically typed compartment-neutral
 opaque boundary or redacted placeholder is admitted without claiming content
-equivalence.
+equivalence. A neutral boundary uses a separate typed commitment domain, an
+allowlisted object kind, neutral-only reference closure, and no
+compartment-bound metadata; omitting a compartment field from an ordinary
+commitment never makes it neutral.
 
 ## Redaction And Restore Projections
 
