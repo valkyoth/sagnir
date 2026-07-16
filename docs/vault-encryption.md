@@ -130,16 +130,39 @@ the storage ID identifies ciphertext placement.
 One private locator can map to multiple semantic commitments. Disconnected peers
 may independently create equal plaintext with different random blinding values,
 and both signed identities remain valid. The encrypted forward index therefore
-uses bounded candidate buckets, while an authenticated encrypted reverse index
-maps each semantic commitment directly to its locator epoch and ciphertext
-record. Optional private duplicate-equivalence evidence can guide future
-references but cannot rewrite historical signatures or references.
+uses bounded authenticated bucket pages, while an authenticated encrypted
+reverse index maps each semantic commitment directly to its locator epoch and
+ciphertext record. Per-replica canonical admission quotas and
+duplicate-amplification detection prevent one authorized offline replica from
+exhausting a locator. Local resource limits may quarantine unadmitted candidates
+but cannot discard admitted pages.
+
+Optional private duplicate-equivalence evidence can guide future references but
+cannot rewrite historical signatures or references. Representative changes bind
+the expected equivalence root and prior representative. Concurrent selections
+remain conflict heads until an authorized multi-parent resolution, and no
+blinding value, commitment, locator, ciphertext ID, or transition hash supplies
+an attacker-grindable priority.
 
 Blind stores receive neither semantic commitments nor private locators. For the
 1.0 design, locator translation uses an encrypted authenticated mapping and
 authenticated-index evidence, not a public zero-knowledge proof. This prevents
 outsiders from checking whether known plaintext appears in an encrypted realm
 by comparing public hashes or commitments.
+
+## Cross-Compartment Movement
+
+Because the compartment is an input to the semantic commitment and locator
+domain, a cross-compartment copy or move creates a new target semantic
+commitment, random blinding value, private locator, encryption instance, DEK,
+selector, and target-policy decision. A signed transition binds the original
+historical identity to the new target identity inside authorized encrypted
+views.
+
+A copy preserves the source. A move records source logical removal only after
+the target and both encrypted indexes are durable. Neither operation claims
+that historical source signatures covered the target identity. Destroying the
+source DEK requires a separate redaction operation.
 
 ## Redaction And Restore Projections
 
@@ -167,19 +190,35 @@ superseded backup copy undecryptable; metadata marking alone is insufficient.
 
 ## Erasure State
 
-The durable operation uses `Planned`, `Prepared`, `TombstoneCommitted`,
-`KeysDestroyed`, `StorageNoticesPending`, `ControlledCopiesCleared`,
-`Complete`, and `ResidualCopiesKnown`. `KeysDestroyed` is the irreversible
-point. Before it, a signed abort can record that destruction did not occur.
-After it, recovery is forward-only. Remote acknowledgements and controlled-copy
-clearance may finish in either order; the top-level state is derived from their
-monotonic component results rather than treating them as one reversible linear
-sequence.
+The durable encoding is a monotonic operation phase plus orthogonal recovery-
+path and cleanup results. The phases are `Planned`, `Prepared`,
+`TombstoneCommitted`, `DestroyingKeys`, and `KeysDestroyed`.
+`StorageNoticesPending`, `ControlledCopiesCleared`, `Complete`, and
+`ResidualCopiesKnown` are derived summaries, not exclusive phases.
+
+Before destructive dispatch, Sagnir durably records every wrapper and provider
+path, request precondition, and idempotency token. Once `DestroyingKeys` begins,
+abort is no longer safe. A KMS, HSM, filesystem, escrow, wrapper, or recovery-
+share request that may have succeeded without durable confirmation produces
+`DestructionUncertain`. Recovery queries the original provider operation and
+fails closed; it never guesses from timeout or local absence. `KeysDestroyed`
+requires durable admitted evidence for every enumerated path.
+
+Remote acknowledgements and controlled-copy clearance may finish in either
+order. The top-level status is derived from their monotonic component results
+rather than treating them as one reversible linear sequence.
 
 Status must report local cryptographic erasure, controlled-backup clearance,
 remote deletion acknowledgements, and uncontrolled residual copies separately.
 `Complete` means configured obligations are satisfied; it never means Sagnir
 recalled plaintext or keys copied beyond its control.
+
+Concurrent signed events may retain historical references to an erased
+encryption instance, but current resolution is `RedactedBody`. Event order,
+merge, replay, receipt, and repair cannot restore that instance. Legitimate
+reintroduction requires explicit authorization, a new encryption instance and
+DEK, new selectors, current policy evaluation, and a new semantic commitment
+when the old opening is unavailable.
 
 Mixed-content packs require either independently authenticated record deletion
 or replacement. Replacement is built and verified without redacted instances,

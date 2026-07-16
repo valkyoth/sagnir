@@ -2890,6 +2890,10 @@ Deliverables:
 - ordinary rekeying does not require semantic commitment or private-locator
   changes;
 - key identifier and crypto epoch binding;
+- key-destruction provider capability contract describing operation identity,
+  idempotency, post-crash status query, confirmation evidence, refusal,
+  unreachable and permanently ambiguous outcomes; no provider is used for an
+  erasure claim before v0.122.0 implements the durable operation;
 - bounded KDF and derivation parameter admission;
 - cross-purpose key-reuse rejection;
 - known-answer derivation and wrapping vectors;
@@ -2981,8 +2985,26 @@ Deliverables:
 - distinct non-interchangeable types for semantic commitment, private locator,
   and ciphertext storage ID;
 - encrypted authenticated locator mapping whose value is a bounded collision
-  bucket or multi-value register of semantic commitments and ciphertext
-  records, never an assumed one-to-one mapping;
+  bucket page or authenticated paged multi-value register of semantic
+  commitments and ciphertext records, never an assumed one-to-one mapping;
+- canonical per-replica duplicate-creation admission quotas by locator epoch,
+  with quota parameters committed by realm policy so an authorized replica
+  cannot consume every candidate slot for one locator while offline;
+- quota accounting binds replica identity, replica incarnation, locator epoch,
+  locator, admitted event sequence, and causal frontier, and cannot be reset by
+  replay, reconnect, process restart, or ordinary key rotation;
+- candidates exceeding canonical per-replica admission quotas are rejected
+  before becoming admitted history; locally configured tighter resource limits
+  may place otherwise valid unadmitted candidates in authenticated quarantine
+  but cannot silently discard or rewrite already admitted history;
+- authenticated overflow pages use bounded page sizes, authenticated
+  predecessor/successor links, total-count commitments, and bounded lazy
+  traversal so a large legitimate bucket does not require one unbounded
+  allocation;
+- duplicate-amplification detection reports repeated independently blinded
+  creation of byte-identical plaintext by one replica, actor, device, or
+  coordinated replica set without exposing the plaintext or duplicate relation
+  outside authorized encrypted views;
 - concurrent offline creation of equal canonical plaintext may produce one
   private locator and multiple independently blinded semantic commitments; all
   already signed identities and references remain valid and reconciliation
@@ -3000,13 +3022,29 @@ Deliverables:
   identities or selects one immutable representative for future references
   only; adding later duplicates requires a new signed equivalence transition and
   cannot silently change the selected representative;
+- every representative-selection transition binds the expected previous
+  equivalence-set root, expected prior representative or explicit absence,
+  every candidate semantic commitment, and the creating causal frontier as a
+  compare-and-swap precondition;
+- concurrent transitions that select different representatives create explicit
+  equivalence-conflict heads; Sagnir preserves each transition, refuses
+  last-writer-wins, and requires an authorized multi-parent resolution before
+  representative-based future deduplication resumes;
+- representative selection is an explicit policy-authorized decision and never
+  chooses the numerically lowest semantic commitment, blinding value, private
+  locator, ciphertext ID, signature, or transition hash; attacker-controlled
+  randomness cannot grind representative priority;
+- conflict resolution binds all known equivalence heads and cannot erase a
+  signed duplicate identity or make an old reference resolve to a different
+  commitment;
 - keyed-locator candidates are decrypted, authenticated, canonically decoded,
   and compared before equal-plaintext deduplication is accepted;
 - different plaintext values sharing one keyed locator are retained as distinct
   bucket entries, reported as a locator-collision security event, and never
   treated as equivalent;
-- bounded collision-bucket size, overflow refusal, and governed locator-key
-  rotation or incident handling for pathological collisions;
+- bounded page size, bounded per-operation traversal, canonical admission
+  quotas, authenticated overflow paging, and governed locator-key rotation or
+  incident handling for pathological collisions or duplicate amplification;
 - v1 translation evidence is the encrypted authenticated mapping plus
   authenticated-index inclusion and canonical-plaintext verification, not a
   publicly verifiable zero-knowledge proof;
@@ -3034,7 +3072,9 @@ Deliverables:
   cross-compartment and cross-realm correlation, formatting,
   identity-confusion, translation substitution, locator/ciphertext interchange,
   concurrent offline duplicate, duplicate-equivalence substitution,
-  different-plaintext locator collision, collision-bucket overflow,
+  conflicting representative selection, representative grinding,
+  different-plaintext locator collision, paged-bucket truncation or fork,
+  per-replica quota replay, authorized-replica bucket exhaustion,
   public-output leakage, and semantic-root preservation tests.
 
 Verification:
@@ -3052,6 +3092,10 @@ Exit criteria:
 - Equal private locators do not imply equal signed identity, and neither
   duplicate reconciliation nor deduplication mutates previously signed graph
   references.
+- Resource bounds refuse or quarantine new over-quota candidates before
+  admission and never silently discard an identity that is already admitted.
+- Conflicting representative selections remain explicit multi-head state until
+  an authorized resolution binds every admitted conflict parent.
 - Possession of blind-store metadata, logs, public proofs, storage receipts, or
   ciphertext IDs does not provide a semantic-commitment dictionary oracle.
 - Historical signatures and canonical graph references bind immutable semantic
@@ -3155,12 +3199,19 @@ Deliverables:
 - authenticated encrypted page or segment format;
 - encrypted manifest and index;
 - authenticated encrypted forward index from private locator and locator epoch
-  to a bounded candidate bucket;
+  to a bounded candidate page or authenticated paged bucket root;
+- authenticated overflow pages with bounded fanout, page count and traversal
+  budgets, total-count commitment, deterministic rebuild, and proof of absence
+  across the admitted page chain;
 - authenticated encrypted reverse index from immutable semantic commitment to
   private locator epoch, encryption instance, ciphertext record, pack
   generation, and current storage position;
 - forward and reverse indexes updated atomically with the same encrypted-ledger
   transaction and rebuildable from admitted canonical encrypted records;
+- admitted locator candidates that exceed an operator's local traversal budget
+  remain durable and discoverable through resumable paged verification; local
+  resource pressure cannot truncate the authenticated bucket or rewrite its
+  total-count commitment;
 - graph traversal and signature verification resolve semantic commitments
   through the reverse index and never scan every private locator;
 - signed pack/root commitment;
@@ -3174,7 +3225,8 @@ Deliverables:
 - ciphertext storage hash computed during encryption;
 - compression-oracle, cross-compartment base, random-read, substitution,
   truncation, forward/reverse mismatch, duplicate bucket corruption, stale pack
-  position, million-object reverse lookup, and decompression-bomb tests.
+  position, overflow-page omission, page-link fork, local-budget interruption,
+  million-object reverse lookup, and decompression-bomb tests.
 
 Verification:
 
@@ -3190,6 +3242,8 @@ Exit criteria:
   possible.
 - Reverse lookup remains bounded and authenticated when one locator has
   multiple independently signed semantic commitments.
+- Forward lookup scales through bounded authenticated pages without requiring
+  one unbounded allocation or silently dropping admitted candidates.
 - Unauthenticated ciphertext never reaches decompression or canonical parsing.
 
 ### v0.98.0 - Passphrase Unlock Baseline
@@ -3281,8 +3335,34 @@ Deliverables:
 - `saga vault protect`;
 - `saga vault unprotect`;
 - partial unlock metadata;
-- compartment, cross-compartment deduplication, and unauthorized derivation
-  tests.
+- cross-compartment copy and move are signed transitions, never ordinary
+  renames, because compartment identity is part of the semantic commitment;
+- the transition binds source compartment and immutable historical commitment,
+  target compartment, target policy epoch, operation kind, actor authority,
+  causal parents, and the newly created target semantic commitment, private
+  locator, encryption instance, DEK identifier, and ciphertext selector;
+- target creation uses a fresh OS-CSPRNG blinding value, independently random
+  DEK, target-compartment locator domain, and target-policy evaluation for
+  recipients, retention, legal hold, redaction, deduplication, and delta reuse;
+- authorized verification proves inside the encrypted boundary that the source
+  and target commitments open to the intended canonical plaintext without
+  making the two commitments publicly correlatable;
+- copy preserves the source object and source references; move records an
+  explicit source logical-removal transition after target durability, but does
+  not imply cryptographic erasure of the source encryption instance;
+- source cryptographic erasure, when requested, is a separate v0.122.0
+  redaction operation subject to all remaining references, retention, legal
+  hold, backup, receipt, and residual-copy rules;
+- crash-safe transaction ordering makes the target durable and verifiable
+  before source logical removal, and interruption cannot leave a signed move
+  whose target object or encrypted indexes are incomplete;
+- historical signatures and references continue to bind the source
+  compartment identity; the target is new signed history and never presented
+  as the object originally signed in the source compartment;
+- compartment, cross-compartment deduplication, unauthorized derivation,
+  rename-as-move rejection, wrong-target policy, stale source, partial target,
+  target-before-source, source-before-target, copy, move, and move-plus-
+  redaction tests.
 
 Verification:
 
@@ -3294,6 +3374,10 @@ Exit criteria:
 
 - A recipient authorized for one compartment cannot derive keys, deduplication
   identities, or delta bases for another compartment.
+- Moving content across compartments creates a new target identity and
+  encryption instance while preserving the original signed source identity.
+- A failed or interrupted move never removes the source before a complete,
+  policy-admitted target is durable.
 
 ### v0.101.0 - Sealed-Private Migration And Leakage Accounting
 
@@ -3766,11 +3850,17 @@ Deliverables:
   deterministic locator and multiple random-blinded semantic commitments;
 - duplicate-equivalence transitions and future-reference representative policy
   without rewriting old signed references;
+- representative-selection compare-and-swap over the expected equivalence root
+  and prior representative, explicit multi-head conflict preservation, and
+  authorized multi-parent conflict resolution;
+- representative choice independent of attacker-controlled blinding values,
+  locators, ciphertext IDs, signatures, and transition hashes;
 - checkpoint, policy epoch, evidence, and key-rotation interactions;
 - equivocation and bounded fork handling;
 - invariants for no lost heads, no lost duplicate identity, no locator-based
-  identity collapse, no stale admission, no partial trust, and eventual
-  convergence under documented assumptions;
+  identity collapse, no last-writer-wins representative selection, no
+  randomness-grindable representative priority, no stale admission, no partial
+  trust, and eventual convergence under documented assumptions;
 - bounded model-check command required by the release gate.
 
 Verification:
@@ -3782,7 +3872,8 @@ Exit criteria:
 
 - Sync transfer implementation begins only after no known model counterexample
   can discard an admitted head or duplicate semantic identity, rewrite a signed
-  reference through locator equivalence, or trust partial remote state.
+  reference through locator equivalence, resolve concurrent representative
+  transitions by arrival order, or trust partial remote state.
 
 ### v0.116.0 - Sync Transfer
 
@@ -3911,6 +4002,13 @@ Deliverables:
 - encrypted reconciliation of locator candidate buckets, semantic-commitment
   reverse-index roots, and admitted duplicate-equivalence transitions between
   authorized peers;
+- paged reconciliation for large locator buckets with authenticated page and
+  total-count proofs, bounded resumable traversal, and no whole-bucket
+  allocation requirement;
+- exchange of canonical per-replica quota counters and duplicate-amplification
+  evidence so reconnect or replay cannot reset an offline creator's allowance;
+- explicit propagation of conflicting equivalence-transition heads without
+  selecting a representative by message arrival order;
 - no raw locator, semantic commitment, duplicate relation, actor, recipient, or
   transparency-monitor identity disclosed to blind stores;
 - padded request and response buckets;
@@ -3930,6 +4028,8 @@ Exit criteria:
   heads to an untrusted blind store.
 - Offline duplicate identities converge as explicit encrypted state rather than
   being collapsed because their private locators match.
+- Locator-bucket reconciliation remains bounded per operation while preserving
+  every admitted page and conflict head.
 
 ### v0.121.0 - Minimal Daemon
 
@@ -3961,30 +4061,71 @@ for later receipt, repair, and archive integrations.
 
 Deliverables:
 
-- canonical durable operation states:
+- durable encoding as one monotonic irreversible operation phase plus
+  orthogonal per-recovery-path, controlled-copy, storage-notice, and residual
+  results, never one mutually exclusive flat enum;
+- canonical irreversible operation phases:
   - `Planned`: scope selected, with no authoritative mutation;
   - `Prepared`: authorization, legal hold, ownership, shared-instance handling,
-    controlled-backup inventory, replacement-pack plan, and pre-erasure
-    verification receipt validated while rollback remains possible;
+    controlled-backup inventory, replacement-pack plan, provider capability
+    preflight, and pre-erasure verification receipt validated while rollback
+    remains possible;
   - `TombstoneCommitted`: the private semantic tombstone is authoritative, but
-    keys remain available for a signed abort-before-destruction outcome;
-  - `KeysDestroyed`: every admitted recovery path for the targeted DEK is
-    destroyed and the operation crosses its irreversible point of no return;
-  - `StorageNoticesPending`: required opaque notices and remote acknowledgements
-    remain outstanding without undoing local cryptographic erasure;
-  - `ControlledCopiesCleared`: required controlled backup and recovery copies
-    are sanitized or cryptographically superseded;
-  - `Complete`: every policy-required local, controlled-copy, and remote
-    acknowledgement condition is satisfied;
-  - `ResidualCopiesKnown`: local key erasure occurred but one or more controlled,
-    remote, exported, or otherwise known copies remain or cannot be cleared;
+    no destructive request has been dispatched and a signed
+    abort-before-destruction outcome remains possible;
+  - `DestroyingKeys`: durable destruction intents and idempotency tokens are
+    committed before the first local, filesystem, KMS, HSM, escrow, recovery-
+    share, or wrapper destruction request is dispatched; the operation can no
+    longer abort because an external request may already have succeeded;
+  - `KeysDestroyed`: durable admitted evidence confirms that every enumerated
+    recovery path is unavailable under its declared destruction assumptions;
+- derived `DestructionUncertain` status whenever the operation phase is
+  `DestroyingKeys` and at least one destructive request may have succeeded but
+  lacks durable confirmation after crash, timeout, provider partition, or
+  ambiguous local persistence;
+- derived post-destruction status labels including `StorageNoticesPending`,
+  `ControlledCopiesCleared`, `Complete`, and `ResidualCopiesKnown`; these labels
+  summarize orthogonal monotonic component results and are not operation
+  phases;
+- per-wrapper and per-provider durable destruction records binding the
+  redaction operation, encryption instance, recovery-path kind, provider and
+  key identifier, wrapping or share epoch, request precondition, idempotency
+  token, request transcript hash, provider result, query result, evidence type,
+  and last verified checkpoint;
+- recovery-path result states for not requested, request durably prepared,
+  dispatched, confirmed not destroyed, confirmed destroyed or revoked,
+  uncertain, refused, unreachable, and residual-by-policy;
 - transition table, durable journal encoding, idempotent resume tokens, allowed
-  retry actions, and prohibited backward transitions for every state;
+  retry and provider-query actions, and prohibited backward transitions for
+  every phase and component result;
+- external providers must declare destruction idempotency, status-query, and
+  evidence semantics before use; strict erasure policy refuses a provider whose
+  post-crash outcome cannot be queried or otherwise durably proven;
+- post-crash recovery queries each provider with the original operation and
+  idempotency token before retrying; Sagnir never interprets timeout, missing
+  response, local key-file absence, or an uncommitted success response as proof
+  of destruction;
+- a confirmed-not-destroyed path may receive a newly journaled retry intent,
+  while an uncertain request is never replaced with a fresh request merely to
+  make the journal appear complete;
+- a provider response that contradicts earlier destruction evidence creates
+  immutable provider-equivocation and compromise evidence, changes the local
+  erasure assurance to fail closed or residual, and never rewrites the prior
+  transcript or recreates key material;
+- `KeysDestroyed` requires durable confirmation for every wrapper, share,
+  escrow copy, local key instance, ancestor derivation path, and external
+  provider entry enumerated by `Prepared`; one uncertain path keeps local
+  cryptographic erasure unverified and fail closed;
 - stable redaction operation identity and `saga vault redaction status` and
   `saga vault redaction resume` commands that expose the durable state,
   component results, next permitted actions, and point-of-no-return status;
-- before `KeysDestroyed`, abort requires a signed outcome that preserves the
-  tombstone and records that no key destruction occurred;
+- abort requires a signed outcome that preserves the tombstone and records that
+  no key destruction occurred, and is permitted only while the phase remains
+  `TombstoneCommitted` with no destructive dispatch;
+- once `DestroyingKeys` begins, recovery is forward-only for the tombstone and
+  every possibly destroyed path: Sagnir may query, confirm, retry a confirmed
+  non-destruction, or record residual uncertainty, but never recreate key
+  material or return to an abortable phase;
 - after `KeysDestroyed`, recovery is forward-only: keys are never recreated,
   the tombstone is never rolled back, and retries may only clear copies, emit
   notices, collect acknowledgements, repack, or record residuals;
@@ -3992,7 +4133,8 @@ Deliverables:
   in either order; the top-level state is derived from monotonic component
   results and never moves backward when one component remains pending;
 - separate machine-readable result properties:
-  - local cryptographic erasure: pending, verified, or failed;
+  - local cryptographic erasure: pending, destroying, uncertain, verified,
+    confirmed incomplete, or failed closed;
   - controlled-copy clearance: not applicable, pending, verified, or residual;
   - remote deletion acknowledgement: not configured, pending, partial,
     acknowledged, refused, or unreachable;
@@ -4004,6 +4146,21 @@ Deliverables:
 - private encrypted semantic tombstone binding the semantic commitment,
   encryption instance, erasure-unit scope, redaction transition, policy and
   crypto epochs, authority, reason, and effective causal frontier;
+- a valid event concurrent with the tombstone may retain a historical reference
+  to the erased encryption instance, but current resolution returns
+  `RedactedBody` and never restores, requests, repairs, or materializes the old
+  ciphertext;
+- an event causally after the tombstone cannot make the erased encryption
+  instance current again through ordering, merge, replay, alias movement, or a
+  stale availability receipt;
+- legitimate post-redaction reintroduction requires explicit authorization and
+  a new encryption instance, independently random DEK, current selector and
+  storage identity, current policy evaluation, and a new semantic commitment
+  when the old commitment opening is unavailable; provenance may reference the
+  historical tombstone but cannot clear or supersede it;
+- stale or concurrent historical references to the erased instance remain
+  verifiable signed history but cannot satisfy present availability, repair,
+  materialization, promotion, or completeness policy;
 - separate endpoint-scoped opaque storage deletion or supersession notice
   binding only the blind store's opaque storage-realm handle, storage-authority
   epoch, ciphertext storage IDs, pack generation and positions, receipt IDs,
@@ -4106,10 +4263,14 @@ Deliverables:
   filesystem backup with retained wrapper and key, backup-encryption epoch
   destruction, unsanitizable backup refusal, stale recovery kit, and offline or
   air-gapped peer partition-return tests.
-- state-transition, signed pre-destruction abort, irreversible-boundary,
-  forbidden rollback, idempotent resume, partial remote acknowledgement,
-  out-of-order component completion, status/resume output,
-  residual-copy classification, and separate-result-property tests.
+- state-transition, signed pre-destruction abort, crash-before-dispatch,
+  provider-success-before-journal, provider-timeout, provider-query recovery,
+  repeated idempotency token, unsupported-provider refusal,
+  `DestructionUncertain`, all-path evidence, irreversible-boundary, forbidden
+  rollback, idempotent resume, partial remote acknowledgement, out-of-order
+  component completion, concurrent historical reference, post-redaction stale
+  lineage, authorized reintroduction, status/resume output, residual-copy
+  classification, and separate-result-property tests.
 
 Verification:
 
@@ -4145,6 +4306,13 @@ Exit criteria:
   reopened to recompute its semantic commitment.
 - Once `KeysDestroyed` commits, no recovery path can return to a state in which
   the targeted DEK is available.
+- A crash after an external destructive action cannot produce a false
+  `KeysDestroyed` or false failure result: the operation remains
+  `DestroyingKeys` with `DestructionUncertain` until every recovery path has
+  durable admitted evidence.
+- Concurrent history remains verifiable but resolves the erased instance as
+  `RedactedBody`; only a separately authorized new encryption instance can
+  reintroduce content after redaction.
 - Status reports local erasure, controlled copies, remote acknowledgements, and
   uncontrolled residuals independently rather than collapsing them into one
   success boolean.
@@ -4363,8 +4531,9 @@ Deliverables:
 - pack corpus;
 - bundle corpus;
 - encrypted envelope corpus;
-- private locator bucket, reverse-index, duplicate-equivalence, private
-  tombstone, opaque storage-notice, and pre-erasure receipt corpus;
+- private locator page, quota record, reverse-index, duplicate-equivalence,
+  equivalence-conflict, compartment-move, destruction-record, private tombstone,
+  opaque storage-notice, and pre-erasure receipt corpus;
 - proof and sync-message corpus;
 - decompression and delta-chain bomb corpus;
 - fork-bomb and causal-fanout corpus;
@@ -4389,8 +4558,9 @@ Deliverables:
 - every canonical object-body fuzz target;
 - WAL and recovery-state fuzz targets;
 - pack and encrypted-envelope fuzz targets;
-- private locator bucket and reverse-index fuzz targets;
-- duplicate-equivalence, private tombstone, opaque storage-notice, and
+- private locator page, quota record, and reverse-index fuzz targets;
+- duplicate-equivalence, equivalence-conflict, compartment-move,
+  destruction-record, private tombstone, opaque storage-notice, and
   pre-erasure receipt fuzz targets;
 - bundle parser fuzz target;
 - proof and sync-message fuzz targets;
@@ -4416,10 +4586,20 @@ Deliverables:
 - composed WAL recovery, alias CAS, merge/promotion, private duplicate identity,
   key rotation, redaction projection, restricted restore, checkpoint, GC, and
   partition models;
+- duplicate-equivalence representative CAS, conflict-head preservation,
+  anti-grinding selection, locator quota, and authenticated overflow-page
+  models;
+- external key-destruction model covering durable intent before dispatch,
+  provider success before local journal commit, ambiguous timeout, idempotent
+  query, confirmed retry, `DestructionUncertain`, and all-path confirmation;
+- concurrent and causally later redaction-reference model proving that event
+  ordering cannot resurrect an erased encryption instance;
 - compatibility review between subsystem assumptions;
 - checked invariants for atomicity, no lost heads, no locator-based identity
-  collapse, no redacted-body resurrection, no stale restore admission, no stale
-  admission, and eventual convergence under documented assumptions;
+  collapse, no silently discarded admitted bucket entry, no last-writer-wins or
+  grindable duplicate representative, no false key-destruction success, no
+  redacted-body resurrection, no stale restore admission, no stale admission,
+  and eventual convergence under documented assumptions;
 - model execution instructions and CI smoke bounds.
 
 Verification:
@@ -4429,8 +4609,10 @@ Verification:
 
 Exit criteria:
 
-- Counterexamples for stale CAS, partial commit, lost divergence, and replay are
-  represented in executable models rather than prose alone.
+- Counterexamples for stale CAS, conflicting duplicate representatives, bucket
+  exhaustion, partial destruction evidence, stale redaction lineage, partial
+  commit, lost divergence, and replay are represented in executable models
+  rather than prose alone.
 - This release is full-system assurance, not the first time foundational
   formats are modeled.
 
@@ -4447,10 +4629,19 @@ Deliverables:
 - loom or equivalent tests for writers, proof caches, and alias updates;
 - atomic forward/reverse private-index update and rebuild interruption tests;
 - crash tests between private tombstone commit, pre-erasure receipt commit,
-  wrapper destruction, storage-notice emission, receipt supersession, and
-  wrapping-epoch rotation;
+  durable destruction intent, provider dispatch, provider success, local
+  confirmation commit, wrapper destruction, storage-notice emission, receipt
+  supersession, and wrapping-epoch rotation;
+- KMS, HSM, filesystem, software-wrapper, escrow, and recovery-share fixtures
+  for idempotent destruction tokens, post-crash outcome query, confirmed
+  non-destruction retry, unavailable query, contradictory provider response,
+  and permanently uncertain result;
 - crash tests for every durable erasure state transition and for attempts to
-  roll back from or recreate keys after `KeysDestroyed`;
+  roll back from or recreate keys after `DestroyingKeys` or `KeysDestroyed`;
+- crash and concurrency tests for cross-compartment target creation, encrypted
+  index commit, source logical removal, and optional later redaction;
+- concurrent duplicate-equivalence compare-and-swap and conflict-resolution
+  transaction tests;
 - mixed-pack replacement crash tests across pack durability, receipt
   acquisition, encrypted-index commit, notice emission, and old-pack deletion;
 - process and thread race tests;
@@ -4469,8 +4660,12 @@ Exit criteria:
 - No interruption leaves a trusted one-sided private index, reports erasure
   before required evidence and key transitions commit, or loses an admitted
   private semantic tombstone.
-- Recovery is forward-only after `KeysDestroyed`, and incomplete remote or
-  controlled-copy work remains resumable without weakening local erasure.
+- Recovery is forward-only after `DestroyingKeys`; uncertain provider outcomes
+  remain explicit and cannot be converted into success or failure by restart.
+- Cross-compartment move recovery preserves the source until the new target
+  identity, encryption instance, and indexes are durable.
+- Incomplete remote or controlled-copy work remains resumable without weakening
+  local erasure.
 
 ### v0.131.0 - Partition And Adversarial Network Tests
 
@@ -4483,8 +4678,15 @@ Deliverables:
 - concurrent partitioned world advancement;
 - concurrent equal-plaintext private creation and duplicate-equivalence
   reconciliation;
+- conflicting partitioned representative selections, stale expected-root CAS,
+  multi-head propagation, and authorized multi-parent resolution;
+- authorized-replica duplicate amplification, per-replica quota replay, paged
+  locator-bucket reconciliation, and local traversal-budget interruption;
 - offline peer and blind store returning with pre-redaction ciphertext,
   receipts, wrappers, or pack positions;
+- valid concurrent events referencing a redacted instance, causally later stale
+  references, merge-order variation, and explicitly authorized reintroduction
+  as a new encryption instance;
 - endpoint-specific storage-notice delay, replay, reordering, and substitution;
 - equivocation and conflicting sequence tests;
 - delayed evidence and stale policy epoch tests;
@@ -4502,6 +4704,11 @@ Exit criteria:
   transitions.
 - Partitions preserve every signed duplicate semantic identity and propagate
   redaction before stale body repair or materialization.
+- Partitions never choose conflicting duplicate representatives by arrival
+  order or attacker-grindable bytes, and quota enforcement cannot silently
+  discard already admitted history.
+- Concurrent historical references remain verifiable as `RedactedBody`, while
+  stale ordering and repair cannot resurrect the erased encryption instance.
 - Hostile peers cannot force unbounded recursive expansion or partial trust.
 
 ### v0.132.0 - Differential Vectors And Performance Budgets
@@ -4519,10 +4726,17 @@ Deliverables:
   rebuild benchmarks;
 - concurrent offline duplicate creation, locator-bucket reconciliation,
   duplicate-equivalence admission, and future-reference selection benchmarks;
+- authenticated overflow-page traversal, quota accounting,
+  duplicate-amplification detection, conflict-head reconciliation, and
+  multi-parent representative-resolution benchmarks;
 - wrapped-DEK creation, recipient rewrap, multi-wrapper enumeration, and
   compartment-scale key-rotation benchmarks;
+- cross-compartment copy/move target creation, index commit, source removal, and
+  target-policy evaluation benchmarks;
 - redaction preflight, wrapper destruction, tombstone propagation, stale-body
   quarantine, repack, and partial-redaction copy-on-write benchmarks;
+- KMS/HSM destruction dispatch, idempotent outcome query, ambiguous recovery,
+  and all-recovery-path evidence aggregation benchmarks;
 - full-world verification and hostile-bundle rejection benchmarks;
 - p50/p95/p99 latency, memory, I/O amplification, and ciphertext-expansion
   budgets;
@@ -4712,6 +4926,11 @@ Deliverables:
   rules and encrypted authenticated locator translation;
 - multi-value private-locator buckets, semantic reverse indexes, and immutable
   offline duplicate identities;
+- authenticated paged locator buckets, canonical replica quotas,
+  duplicate-amplification detection, and conflict-safe representative
+  transitions;
+- signed cross-compartment copy/move transitions with new target identities,
+  encryption instances, and policy evaluation;
 - authenticated key-transparency map semantics and split-view evidence;
 - no operational encryption mode before sealed-private prerequisites;
 - sealed-private migration and honest prior-leakage accounting;
@@ -4734,7 +4953,8 @@ Deliverables:
   across implemented sync, repair, backup and snapshot restore paths, an
   explicit archival integration contract, opaque blind-storage deletion
   notices, mixed-pack replacement, pre-erasure verification receipts, an
-  irreversible forward-only state machine, and explicit non-recall limits;
+  irreversible forward-only state machine, uncertain provider-destruction
+  recovery, concurrent-reference semantics, and explicit non-recall limits;
 - Git import/export interoperability without using Git as native storage;
 - optional daemon;
 - formal, crash, concurrency, partition, fuzz, and performance assurance;

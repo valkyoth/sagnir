@@ -70,8 +70,15 @@ exposure.
   private content;
 - locator equality collapsing distinct independently signed semantic
   commitments or keyed-locator collisions aliasing different plaintext;
+- an authorized replica exhausting a locator bucket through repeated blinded
+  duplicates, replaying quota state, or forcing unbounded reconciliation;
+- concurrent equivalence transitions choosing different future
+  representatives, with arrival order or grindable blinded values deciding the
+  result;
 - corrupt forward/reverse indexes forcing full scans, substitution, or wrong
   ciphertext resolution;
+- cross-compartment content being treated as a rename and retaining source
+  identity, keys, recipients, or policy in the target compartment;
 - recipient removal being mistaken for retroactive access revocation.
 - replayed, duplicated, expired, revoked, superseded, or over-scoped
   invitations;
@@ -86,8 +93,13 @@ exposure.
   wrapping keys before current redaction state is observed;
 - current-storage rekeying being misreported as erasure while a controlled
   backup still holds a recoverable old wrapper and wrapping key;
-- rollback or key recreation after the erasure state machine crosses its
-  `KeysDestroyed` point of no return;
+- rollback or key recreation after the erasure state machine dispatches its
+  first destructive request in `DestroyingKeys`;
+- a KMS, HSM, filesystem, escrow, wrapper, or recovery-share destruction
+  succeeding immediately before a crash and Sagnir falsely reporting either
+  success or failure without durable evidence;
+- concurrent or causally later events, merge order, replay, receipts, or repair
+  resurrecting a redacted encryption instance;
 - deletion of a mixed pack before live-record replacement durability and
   required remote receipts are established;
 - replacement pack size, lineage, or position mapping revealing which records
@@ -127,8 +139,12 @@ exposure.
   ledger;
 - compartment-keyed private locators and encrypted authenticated translation
   mappings separated from ciphertext storage IDs;
-- bounded multi-value locator buckets, authenticated semantic reverse indexes,
+- bounded authenticated locator pages, canonical per-replica admission quotas,
+  duplicate-amplification detection, authenticated semantic reverse indexes,
   and duplicate-equivalence transitions that preserve old signed identities;
+- expected-root representative compare-and-swap, explicit conflict heads,
+  multi-parent resolution, and prohibition on randomness-derived winner
+  selection;
 - explicit prohibition on semantic commitments in blind-store metadata, logs,
   public proofs, and public storage receipts;
 - lock/unlock materialization;
@@ -138,6 +154,8 @@ exposure.
 - authenticated key-transparency maps with inclusion, absence, consistency,
   checkpoint, monitor, and split-view evidence;
 - key epochs and rekey operations;
+- signed cross-compartment copy/move transitions with new target commitments,
+  locators, encryption instances, DEKs, selectors, and target-policy checks;
 - threshold-governed recovery ceremony with stale-authority invalidation;
 - signed redaction tombstones, distinct `RedactedBody` state, tombstone-first
   anti-entropy, and quarantine of stale ciphertext;
@@ -145,8 +163,12 @@ exposure.
   without semantic-ledger disclosure;
 - restricted restore admission and wrapping-epoch rotation when controlled
   backups could recover old DEK wrappers;
-- durable forward-only erasure states with separate local, controlled-copy,
+- durable forward-only erasure phases with pre-dispatch destruction intent,
+  per-provider idempotency and query evidence, explicit
+  `DestructionUncertain`, and separate local, controlled-copy,
   remote-acknowledgement, and uncontrolled-residual results;
+- concurrent historical redaction references resolve to `RedactedBody`, while
+  authorized reintroduction requires a new encryption instance;
 - privacy-padded mixed-pack replacement before old-pack deletion;
 - redaction-aware storage receipts, availability repair, and archive restore;
 - signed release artifacts, checksums, SBOMs, and provenance bound to the exact

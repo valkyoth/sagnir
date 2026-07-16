@@ -387,11 +387,20 @@ Privacy rule:
 - sealed private mode uses random-blinded immutable semantic commitments inside
   the encrypted ledger, compartment-keyed private lookup locators, and
   randomized ciphertext storage IDs;
-- private locators map to bounded encrypted candidate buckets because
+- private locators map to bounded authenticated bucket pages because
   disconnected peers may create equal plaintext with different immutable
-  semantic commitments;
+  semantic commitments; page traversal is resumable and does not require one
+  unbounded allocation;
+- canonical per-replica admission quotas and duplicate-amplification detection
+  prevent one authorized offline replica from exhausting a locator bucket,
+  while local limits may quarantine but never silently discard admitted
+  history;
 - duplicate identities remain valid signed history; optional encrypted
   equivalence evidence may guide future references but cannot rewrite old ones;
+- representative changes use expected-root compare-and-swap; concurrent choices
+  remain explicit conflict heads until an authorized multi-parent resolution,
+  and attacker-controlled blinded values never determine representative
+  priority;
 - authenticated encrypted reverse indexes map semantic commitments directly to
   locator epochs and ciphertext records for bounded graph traversal;
 - blind-store metadata, logs, public proofs, and public storage receipts expose
@@ -407,9 +416,16 @@ Redaction rule:
 
 - a signed private semantic tombstone and distinct `RedactedBody` state survive
   key destruction;
-- erasure is a durable state machine with reversible planning/preparation,
-  authoritative tombstone commit, irreversible `KeysDestroyed`, forward-only
-  notice and controlled-copy cleanup, and explicit complete or residual states;
+- erasure uses a monotonic irreversible phase plus orthogonal component
+  results, not one flat enum;
+- reversible planning/preparation and tombstone commit precede
+  `DestroyingKeys`; durable per-provider intent and idempotency tokens commit
+  before destructive dispatch;
+- ambiguous KMS, HSM, filesystem, escrow, wrapper, or recovery-share outcomes
+  remain `DestructionUncertain` until post-crash query or other admitted durable
+  evidence resolves every path; only then may `KeysDestroyed` commit;
+- recovery is forward-only from `DestroyingKeys`, including when a provider may
+  have succeeded before Sagnir journaled confirmation;
 - remote acknowledgement and controlled-copy cleanup advance independently
   after key destruction, with a derived top-level state and no backward
   transition;
@@ -420,6 +436,9 @@ Redaction rule:
 - private semantic tombstones project to endpoint-scoped opaque storage deletion
   notices that reveal no semantic commitment, path, actor, or compartment;
 - anti-entropy propagates admitted tombstones before body requests;
+- concurrent historical references remain valid but resolve to
+  `RedactedBody`; stale ordering cannot restore availability, and authorized
+  reintroduction creates a new encryption instance and DEK;
 - sync, repair, receipts, repack, partial clone, and archive restoration cannot
   resurrect a redacted encryption instance;
 - stale ciphertext returned after redaction is quarantined and cannot satisfy
@@ -437,6 +456,16 @@ Redaction rule:
 - v0.122 defines the core operation and later integration contracts; repack,
   remote receipts, repair, and archival implement those contracts in their own
   milestones.
+
+Compartment movement rule:
+
+- compartment identity is part of sealed-private semantic identity, so a
+  cross-compartment move is a signed copy/move transition rather than a rename;
+- the target receives a new random-blinded semantic commitment, private
+  locator, encryption instance, DEK, selector, and target-policy evaluation;
+- source history remains bound to the original identity, and source removal
+  happens only after target durability;
+- cryptographic erasure of the source is a separate redaction operation.
 
 Post-quantum readiness rule:
 

@@ -16,6 +16,10 @@ All notable Sagnir changes are recorded here.
 - Added the irreversible erasure state machine, mixed-content pack replacement
   protocol, separate erasure result properties, and corrected milestone
   ownership for receipts, availability repair, and archival integration.
+- Added uncertain external key-destruction recovery, authenticated paged locator
+  buckets with replica quotas, conflict-safe duplicate representatives,
+  redaction concurrency semantics, and signed cross-compartment movement to the
+  roadmap.
 
 ## 0.10.0
 
