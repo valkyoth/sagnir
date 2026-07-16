@@ -70,8 +70,12 @@ exposure.
   private content;
 - locator equality collapsing distinct independently signed semantic
   commitments or keyed-locator collisions aliasing different plaintext;
-- an authorized replica exhausting a locator bucket through repeated blinded
-  duplicates, replaying quota state, or forcing unbounded reconciliation;
+- an authorized replica exhausting a locator candidate set through repeated blinded
+  duplicates, creating new incarnations, rotating locator epochs, replaying
+  quota state, or forcing linear proof/reconciliation work;
+- malformed authenticated search ranges, excessive tree height, adversarial
+  splits, or amplification declarations causing unbounded locator-index reads,
+  writes, proofs, or rebuilds;
 - concurrent equivalence transitions choosing different future
   representatives, with arrival order or grindable blinded values deciding the
   result;
@@ -79,6 +83,9 @@ exposure.
   ciphertext resolution;
 - cross-compartment content being treated as a rename and retaining source
   identity, keys, recipients, or policy in the target compartment;
+- a recursively moved target tree retaining descendant source-compartment
+  references, inheriting source reviews or approvals, or overwriting concurrent
+  source/target state through stale CAS;
 - recipient removal being mistaken for retroactive access revocation.
 - replayed, duplicated, expired, revoked, superseded, or over-scoped
   invitations;
@@ -93,11 +100,18 @@ exposure.
   wrapping keys before current redaction state is observed;
 - current-storage rekeying being misreported as erasure while a controlled
   backup still holds a recoverable old wrapper and wrapping key;
+- local wrapper unlink or overwrite being misreported as erasure while
+  filesystem journals, snapshots, CoW blocks, SSD remnants, or forensic images
+  retain a wrapper decryptable by a surviving parent key;
 - rollback or key recreation after the erasure state machine dispatches its
   first destructive request in `DestroyingKeys`;
 - a KMS, HSM, filesystem, escrow, wrapper, or recovery-share destruction
   succeeding immediately before a crash and Sagnir falsely reporting either
   success or failure without durable evidence;
+- unsigned, replayed, downgraded, revoked, compromised, retired-provider, or
+  wrong-request destruction evidence satisfying an erasure claim;
+- permanently uncertain destruction accumulating unbounded journals or being
+  administratively closed as verified erasure;
 - concurrent or causally later events, merge order, replay, receipts, or repair
   resurrecting a redacted encryption instance;
 - deletion of a mixed pack before live-record replacement durability and
@@ -139,7 +153,9 @@ exposure.
   ledger;
 - compartment-keyed private locators and encrypted authenticated translation
   mappings separated from ciphertext storage IDs;
-- bounded authenticated locator pages, canonical per-replica admission quotas,
+- persistent content-addressed authenticated locator search trees with committed
+  ranges, logarithmic proofs, deterministic union/split, bounded amplification,
+  per-replica and actor/device aggregate quota continuity,
   duplicate-amplification detection, authenticated semantic reverse indexes,
   and duplicate-equivalence transitions that preserve old signed identities;
 - expected-root representative compare-and-swap, explicit conflict heads,
@@ -154,8 +170,10 @@ exposure.
 - authenticated key-transparency maps with inclusion, absence, consistency,
   checkpoint, monitor, and split-view evidence;
 - key epochs and rekey operations;
-- signed cross-compartment copy/move transitions with new target commitments,
-  locators, encryption instances, DEKs, selectors, and target-policy checks;
+- signed recursive cross-compartment graph translations with complete descendant
+  mappings, no reachable source identity, source/target/policy CAS, explicit
+  conflicts, new target commitments, locators, encryption instances, DEKs,
+  selectors, and target-policy checks;
 - threshold-governed recovery ceremony with stale-authority invalidation;
 - signed redaction tombstones, distinct `RedactedBody` state, tombstone-first
   anti-entropy, and quarantine of stale ciphertext;
@@ -163,10 +181,14 @@ exposure.
   without semantic-ledger disclosure;
 - restricted restore admission and wrapping-epoch rotation when controlled
   backups could recover old DEK wrappers;
+- independently destroyable local erasure-unit KEKs/key slots or complete
+  wrapping-epoch rotation and surviving-DEK rewrap when local media could retain
+  deleted wrappers;
 - durable forward-only erasure phases with pre-dispatch destruction intent,
-  per-provider idempotency and query evidence, explicit
-  `DestructionUncertain`, and separate local, controlled-copy,
-  remote-acknowledgement, and uncontrolled-residual results;
+  canonical signed/attested destruction evidence, per-provider idempotency and
+  query handling, explicit `DestructionUncertain`, signed terminal
+  `ResidualUncertainty`, and separate local, controlled-copy, remote-
+  acknowledgement, and uncontrolled-residual results;
 - concurrent historical redaction references resolve to `RedactedBody`, while
   authorized reintroduction requires a new encryption instance;
 - privacy-padded mixed-pack replacement before old-pack deletion;

@@ -387,14 +387,16 @@ Privacy rule:
 - sealed private mode uses random-blinded immutable semantic commitments inside
   the encrypted ledger, compartment-keyed private lookup locators, and
   randomized ciphertext storage IDs;
-- private locators map to bounded authenticated bucket pages because
-  disconnected peers may create equal plaintext with different immutable
-  semantic commitments; page traversal is resumable and does not require one
-  unbounded allocation;
-- canonical per-replica admission quotas and duplicate-amplification detection
-  prevent one authorized offline replica from exhausting a locator bucket,
-  while local limits may quarantine but never silently discard admitted
-  history;
+- private locators map through persistent content-addressed authenticated
+  search trees because disconnected peers may create equal plaintext with
+  different immutable semantic commitments; committed key ranges and bounded
+  nodes provide logarithmic inclusion and absence proofs;
+- deterministic path-copy union/split semantics and declared read, write, proof,
+  and rebalance amplification budgets avoid linear page chains;
+- canonical per-replica and aggregate actor/device admission quotas plus
+  duplicate-amplification detection prevent identity or locator rotation from
+  exhausting candidate sets, while local limits may quarantine but never
+  silently discard admitted history;
 - duplicate identities remain valid signed history; optional encrypted
   equivalence evidence may guide future references but cannot rewrite old ones;
 - representative changes use expected-root compare-and-swap; concurrent choices
@@ -424,6 +426,16 @@ Redaction rule:
 - ambiguous KMS, HSM, filesystem, escrow, wrapper, or recovery-share outcomes
   remain `DestructionUncertain` until post-crash query or other admitted durable
   evidence resolves every path; only then may `KeysDestroyed` commit;
+- destruction evidence is a canonical signed, attested, or authenticated
+  local-agent envelope bound to provider/key epoch, operation, key, idempotency
+  token, request transcript, result, assurance level, and checkpoint; transport
+  authentication or an unsigned API response is insufficient;
+- local wrapper unlink or overwrite is not erasure: local storage uses an
+  independently destroyable erasure-unit KEK/key slot or rotates the parent
+  wrapping epoch, rewraps every surviving DEK, and destroys the old epoch;
+- permanently unresolved operations close only as signed
+  `ResidualUncertainty`, remain non-abortable, compact their journal without
+  claiming erasure, and may advance later if valid evidence appears;
 - recovery is forward-only from `DestroyingKeys`, including when a provider may
   have succeeded before Sagnir journaled confirmation;
 - remote acknowledgement and controlled-copy cleanup advance independently
@@ -447,9 +459,9 @@ Redaction rule:
   and reconciles a policy-sufficient redaction frontier before decryption or
   materialization;
 - erasure rotates affected wrapping epochs and rewraps surviving DEKs when
-  controlled backups could otherwise recover an old wrapper and its wrapping
-  key, but Sagnir cannot claim erasure until every controlled recoverable backup
-  copy is sanitized or cryptographically superseded.
+  current local storage or controlled backups could otherwise recover an old
+  wrapper and its wrapping key, but Sagnir cannot claim erasure until every
+  controlled recoverable copy is sanitized or cryptographically superseded.
 - mixed-content packs use independently authenticated record deletion only when
   declared by the pack/provider capability; otherwise Sagnir verifies and
   receipts a privacy-padded replacement before deleting the old pack.
@@ -462,7 +474,14 @@ Compartment movement rule:
 - compartment identity is part of sealed-private semantic identity, so a
   cross-compartment move is a signed copy/move transition rather than a rename;
 - the target receives a new random-blinded semantic commitment, private
-  locator, encryption instance, DEK, selector, and target-policy evaluation;
+  locator, encryption instance, DEK, selector, and target-policy evaluation for
+  every compartment-bound reachable descendant;
+- a recursive authenticated translation manifest handles shared subgraphs and
+  proves no source-compartment commitment remains reachable from the target;
+- source frontier, exact root, target absence/replacement, and target policy use
+  compare-and-swap; concurrent changes become explicit conflict heads;
+- source-bound reviews, proofs, and approvals do not automatically authorize
+  translated target identities;
 - source history remains bound to the original identity, and source removal
   happens only after target durability;
 - cryptographic erasure of the source is a separate redaction operation.

@@ -130,12 +130,17 @@ the storage ID identifies ciphertext placement.
 One private locator can map to multiple semantic commitments. Disconnected peers
 may independently create equal plaintext with different random blinding values,
 and both signed identities remain valid. The encrypted forward index therefore
-uses bounded authenticated bucket pages, while an authenticated encrypted
-reverse index maps each semantic commitment directly to its locator epoch and
-ciphertext record. Per-replica canonical admission quotas and
-duplicate-amplification detection prevent one authorized offline replica from
-exhausting a locator. Local resource limits may quarantine unadmitted candidates
-but cannot discard admitted pages.
+uses a persistent content-addressed authenticated B-tree, trie, or equivalent
+search structure with committed key ranges and logarithmic inclusion and
+absence proofs. An authenticated encrypted reverse index maps each semantic
+commitment directly to its locator epoch and ciphertext record.
+
+Per-replica and aggregate actor/device canonical quotas plus
+duplicate-amplification detection prevent an authorized principal from
+exhausting a locator through new replicas or locator rotation. Authenticated
+quota state carries across replica incarnations and locator epochs. Local
+resource limits may quarantine unadmitted candidates but cannot discard
+admitted search nodes.
 
 Optional private duplicate-equivalence evidence can guide future references but
 cannot rewrite historical signatures or references. Representative changes bind
@@ -152,17 +157,20 @@ by comparing public hashes or commitments.
 
 ## Cross-Compartment Movement
 
-Because the compartment is an input to the semantic commitment and locator
-domain, a cross-compartment copy or move creates a new target semantic
-commitment, random blinding value, private locator, encryption instance, DEK,
-selector, and target-policy decision. A signed transition binds the original
-historical identity to the new target identity inside authorized encrypted
-views.
+Because the compartment is an input to every semantic commitment and locator
+domain, a cross-compartment directory copy or move recursively translates every
+compartment-bound reachable descendant. A signed manifest binds source and
+target commitments, references, locators, encryption instances, DEKs, selectors
+and shared-subgraph mappings, and proves the target reaches no source-
+compartment identity.
 
-A copy preserves the source. A move records source logical removal only after
-the target and both encrypted indexes are durable. Neither operation claims
-that historical source signatures covered the target identity. Destroying the
-source DEK requires a separate redaction operation.
+The transition compares and swaps the expected source frontier/root, expected
+target absence or replacement, and target policy root. Concurrency produces an
+explicit conflict rather than arrival-order overwrite. A copy preserves the
+source. A move records source logical removal only after the complete target
+graph and encrypted indexes are durable. Source reviews, proofs, and approvals
+do not automatically authorize target identities. Destroying source DEKs
+requires a separate redaction operation.
 
 ## Redaction And Restore Projections
 
@@ -188,6 +196,13 @@ erasure. Cryptographic supersession is valid only when backups use an
 independently destroyable backup-encryption epoch whose destruction makes every
 superseded backup copy undecryptable; metadata marking alone is insufficient.
 
+The same rule applies to current local storage. Unlinking, overwriting, or
+truncating a wrapper is not cryptographic erasure because journals, snapshots,
+CoW blocks, SSD wear-leveling, and forensic images may retain it. Each erasure
+unit therefore uses an independently destroyable local KEK/key slot, or erasure
+rotates the parent wrapping epoch, rewraps every surviving DEK, and destroys the
+old epoch. Otherwise Sagnir records residual or unverified erasure.
+
 ## Erasure State
 
 The durable encoding is a monotonic operation phase plus orthogonal recovery-
@@ -203,6 +218,20 @@ share request that may have succeeded without durable confirmation produces
 `DestructionUncertain`. Recovery queries the original provider operation and
 fails closed; it never guesses from timeout or local absence. `KeysDestroyed`
 requires durable admitted evidence for every enumerated path.
+
+Admitted evidence uses a canonical envelope binding provider identity and key
+epoch, operation and key/slot/share identifiers, idempotency token, request
+transcript, result, assurance level, and checkpoint. It is authenticated by a
+provider signature, hardware attestation, or governed local key agent. Cached
+TLS responses, unsigned API results, logs, exit codes, and file absence are not
+transferable proof. Revocation, compromise, provider retirement, replay, and
+contradiction reevaluate assurance without rewriting historical evidence.
+
+If an outcome can never be resolved, a signed `ResidualUncertainty` disposition
+closes operational work without claiming erasure. It retains the tombstone and
+evidence, remains non-abortable, allows bounded journal compaction and alert
+acknowledgement, and may later advance to `KeysDestroyed` only when valid
+evidence appears.
 
 Remote acknowledgements and controlled-copy clearance may finish in either
 order. The top-level status is derived from their monotonic component results

@@ -35,11 +35,16 @@ Encrypted bundles must be verified before decrypt or import.
 ## Private Identity Reconciliation
 
 Private locators are deterministic lookup values, not signed object identity.
-One locator can name authenticated bounded pages containing multiple
-independently blinded semantic commitments created while peers were offline.
-Sync preserves every admitted commitment and reference without requiring one
-unbounded bucket allocation. Canonical per-replica creation quotas and
-duplicate-amplification evidence limit an authorized replica; over-quota
+One locator maps through a persistent content-addressed authenticated B-tree,
+trie, or equivalent search structure to multiple independently blinded semantic
+commitments created while peers were offline. Committed key ranges and bounded
+immutable nodes provide logarithmic inclusion and absence proofs. Deterministic
+path-copy union and split preserve admitted candidates without linear page
+chains.
+
+Canonical per-replica and aggregate actor/device creation quotas plus
+duplicate-amplification evidence limit authorized principals. Quota state is
+carried through replica incarnation and locator epoch changes. Over-quota
 candidates are refused before admission or kept in authenticated quarantine,
 never silently removed after admission.
 
@@ -50,23 +55,29 @@ swap the expected equivalence root and prior representative. Concurrent choices
 remain explicit conflict heads until an authorized multi-parent resolution;
 arrival order and attacker-controlled blinded values never choose the winner.
 
-Authorized peers reconcile authenticated forward locator buckets and reverse
-semantic-commitment indexes. Blind remotes receive neither locators, semantic
-commitments, duplicate relationships, nor private transparency-monitor
-metadata.
+Authorized peers reconcile authenticated forward locator search roots and
+reverse semantic-commitment indexes. Blind remotes receive neither locators,
+semantic commitments, duplicate relationships, nor private transparency-
+monitor metadata.
 
 ## Cross-Compartment Movement
 
 Compartment identity is committed into sealed-private semantic identity.
 Copying or moving content to another compartment therefore creates a signed
-transition with a new target semantic commitment, private locator, encryption
-instance, DEK, selector, and target-policy evaluation. It is not an ordinary
+recursive graph-translation transition with new target semantic commitments,
+private locators, encryption instances, DEKs, selectors, and target-policy
+evaluation for every compartment-bound reachable descendant. Shared subgraphs
+translate once per compatible target-policy domain, and the target root proves
+that no source-compartment identity remains reachable. It is not an ordinary
 rename.
 
-The target becomes durable and verifiable before a move records logical removal
-from the source. Historical source references remain unchanged. Removing or
-cryptographically erasing the source ciphertext is a separate redaction
-operation with its own authority, retention, backup, and residual-copy checks.
+The transition compares and swaps the expected source frontier/root, target
+absence or admitted replacement, and target policy root. Stale source, occupied
+target, or policy change produces explicit multi-head conflict. The target
+becomes durable and verifiable before a move records logical removal from the
+source. Historical source references remain unchanged, and source reviews or
+proofs do not automatically authorize target identities. Removing or
+cryptographically erasing source ciphertext is a separate redaction operation.
 
 ## Redaction Projection
 
@@ -93,6 +104,23 @@ with the original token and fails closed while any path is unresolved.
 `KeysDestroyed` commits only after durable admitted evidence covers every
 recovery path. From `DestroyingKeys` onward, Sagnir cannot roll back the
 tombstone or recreate possibly destroyed key material.
+
+Destruction evidence is a canonical envelope authenticated by a provider
+signature, hardware attestation, or governed local key agent and binds the exact
+operation, provider/key epoch, key or slot, idempotency token, request
+transcript, result, assurance level, and checkpoint. TLS caching, unsigned API
+results, file absence, or logs are not transferable proof.
+
+Deleting or overwriting a local DEK wrapper is not erasure while a surviving
+parent key can decrypt recovered journal, snapshot, CoW, or media remnants.
+Sagnir requires an independently destroyable erasure-unit KEK/key slot or a
+complete parent wrapping-epoch rotation with surviving-DEK rewrap and old-epoch
+destruction evidence.
+
+Permanent ambiguity may close operationally only as signed
+`ResidualUncertainty`. It remains non-abortable, retains the tombstone and
+evidence, never claims erasure, and can advance later only if valid evidence
+arrives.
 
 Events concurrent with redaction remain verifiable historical references but
 resolve the old instance as `RedactedBody`. Later ordering, merge, replay,
