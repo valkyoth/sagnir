@@ -332,6 +332,13 @@ Crypto rule:
 - object formats must carry algorithm identifiers;
 - unknown algorithms are rejected unless local policy explicitly admits them;
 - migration is a signed epoch transition, not in-place mutation.
+- every production provider/backend publishes a bounded side-channel profile
+  naming covered constant-time operations, platform/compiler/hardware scope,
+  fallback behavior, secret copies and lifetimes, zeroization limitations, and
+  excluded local or microarchitectural adversaries;
+- invalid secret-bearing inputs use reviewed response shapes, hardware and
+  software paths remain semantically equivalent, and timing tests detect
+  regressions without being presented as proof of whole-system constant time.
 
 ## Phase 7: Native Encrypted Realms
 
@@ -427,6 +434,11 @@ Privacy rule:
 - projection witness statements bind exact roots, evaluator/checkpoint,
   transcript and replay mode; policy enforces principal/administrative-domain
   independence, key lifecycle, threshold unavailability, and Sybil resistance;
+- production and independently developed projection evaluators are tested
+  differentially; high-assurance profiles require at least one independent
+  full-replay witness, while disagreements quarantine derived state and preserve
+  signed evidence until a governed projection-version migration resolves the
+  defect;
 - each compartment has its own logical root and commitment-key epoch; a
   count-hiding authenticated realm manifest composes opaque compartment-root
   references and supports scoped inclusion/continuity proofs without disclosing
@@ -611,7 +623,12 @@ Privacy-profile rule:
   measured profile bounds;
 - profile tests use reproducible traces and statistical thresholds, and policy
   warns or refuses when required cover traffic or provider capabilities are
-  unavailable.
+  unavailable;
+- runtime profile health is authenticated state:
+  `Healthy`, `Degraded`, `Unavailable`, or `Recovering`; protected profiles
+  fail closed outside `Healthy`, degraded intervals retain weaker assurance,
+  and status/history remain encrypted or coarsened so monitoring does not create
+  a public activity oracle.
 
 Post-quantum readiness rule:
 
@@ -709,6 +726,13 @@ Required work:
 - reproducible release build check;
 - SBOM generation;
 - release metadata validator;
+- independently developed projection evaluator and full-replay witness;
+- independent protocol-level cryptographic review over the exact candidate,
+  including domain separation, confidential identity, key hierarchy and
+  erasure, authenticated roots, time/revocation, thresholds, witnesses, and
+  provider side-channel boundaries;
+- immutable finding disposition and mandatory review reopening when a later
+  cryptographic or trust-protocol change invalidates scope;
 - vault leak-scan fixtures;
 - encrypted bundle malicious corpus;
 - Linux, Windows, BSD, MacOS, Android, and iOS build checks where practical;

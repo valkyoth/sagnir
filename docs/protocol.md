@@ -85,6 +85,16 @@ requires independent principals and administrative domains; key compromise,
 revocation, equivocation, Sybil enrollment, or unavailable threshold fails
 closed.
 
+High-assurance projection policy also requires implementation diversity. An
+independently developed evaluator consumes the normative ledger and projection
+formats without sharing the production evaluator implementation, and at least
+one independent full-replay witness uses it. Different roots for one canonical
+input quarantine the manifest and produce signed disagreement evidence; they
+are never resolved by majority or arrival order. Evaluator defects are repaired
+through a signed projection-version transition that preserves the original
+ledger, manifests, signatures, witnesses, and replay certificates rather than
+rewriting historical evidence.
+
 An encryption-instance ID is a domain-separated hash over its realm, opaque
 compartment or neutral handle, semantic commitment, erasure unit, preallocated
 creation-operation ID, and an independent 256-bit random nonce. The signed

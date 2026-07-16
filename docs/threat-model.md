@@ -118,6 +118,9 @@ exposure.
 - projection witnesses merely countersigning supplied roots, sharing one
   administrative operator, multiplying nominal identities, becoming
   unavailable, or equivocating without threshold failure;
+- production and witness projection evaluators sharing one implementation bug,
+  disagreement being resolved by majority or arrival order, or an evaluator
+  fix rewriting roots and signatures that historical actors actually produced;
 - canonical logical state being confused with replica/device/endpoint-local
   placement projections, including arrival-order overwrite of another
   endpoint's placement;
@@ -136,6 +139,15 @@ exposure.
   bounds, or leaking operation shape through sizes, epochs, key IDs, pack
   offsets, filesystem timestamps/churn, repeated I/O, or disabled/distinguishable
   cover traffic;
+- privacy-profile monitors missing a failed cover-traffic, padding, batching,
+  clock, queue, or provider capability; prematurely returning to healthy state;
+  retroactively upgrading degraded traffic; or exposing health transitions as a
+  public activity oracle;
+- provider code or dependencies leaking secrets through branches, lookups,
+  allocation/error paths, invalid-input timing, accelerator/fallback
+  differences, residual copies, or ineffective compiler-optimized zeroization,
+  while overstating protection against excluded local or microarchitectural
+  adversaries;
 - model-check runs using different bounds, fairness assumptions, reductions,
   seeds, timeouts, or incomplete state spaces while being reported as equivalent
   assurance;
@@ -257,6 +269,9 @@ exposure.
 - canonical witness statements distinguishing independent replay from evidence
   validation, with principal/domain independence, Sybil resistance, key
   lifecycle, equivocation evidence, and fail-closed threshold unavailability;
+- independently developed projection evaluation and at least one independent
+  high-assurance full-replay witness, differential rebuild/delta tests,
+  disagreement quarantine, and evidence-preserving signed evaluator migration;
 - compartment-scoped logical roots composed through a count-hiding opaque realm
   manifest with partial-access inclusion and consistency proofs;
 - keyed nonce-bound compartment handles with collision refusal, signed rotation,
@@ -273,6 +288,17 @@ exposure.
 - canonical monotonic time/revocation statements, append-only consistency
   proofs, governed authority key lifecycle, quorum/diversity policy, request
   privacy, and bounded offline freshness;
+- provider-specific side-channel profiles with bounded constant-time claims,
+  control/data-flow and error-path review, acceleration/fallback equivalence,
+  timing regression evidence, secret-copy inventory, zeroization limitations,
+  and explicit excluded adversaries;
+- authenticated privacy-profile health transitions with continuous capability
+  monitoring, protected fail-closed operation, encrypted degraded intervals,
+  recovery observation windows, non-retroactive assurance, and non-oracular
+  status;
+- independent pre-1.0 cryptographic protocol review bound to the exact release
+  candidate, immutable finding dispositions, and mandatory scope reopening
+  after affected cryptographic or trust-protocol changes;
 - expected-root representative compare-and-swap, explicit conflict heads,
   multi-parent resolution, and prohibition on randomness-derived winner
   selection;

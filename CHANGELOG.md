@@ -43,6 +43,9 @@ All notable Sagnir changes are recorded here.
 - Defined bounded projection replay certificates, independent witness
   governance, non-reusable creation-operation reservations, reproducible model
   coverage, isolated admission prototypes, and measurable privacy profiles.
+- Added independent projection implementation diversity, evidence-preserving
+  evaluator remediation, production-provider side-channel assurance, runtime
+  privacy-profile health, and an independent pre-1.0 cryptographic review gate.
 
 ## 0.10.0
 

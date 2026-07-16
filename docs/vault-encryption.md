@@ -205,6 +205,17 @@ independent principals and administrative domains, rejects nominal Sybil
 witnesses, and fails closed on unavailable, revoked, compromised, stale, or
 equivocal witness state.
 
+## Provider Side-Channel Boundary
+
+Every production cryptographic provider/backend declares which secret-bearing
+operations have an admitted constant-time implementation guarantee and the
+platform, compiler, CPU-feature, acceleration, and fallback scope of that
+claim. Secret-dependent branches, lookups, failures, diagnostics, temporary
+copies, and zeroization behavior require review. Timing distributions and
+invalid-input tests detect regressions but do not prove protection from cache,
+page-fault, speculative-execution, physical, firmware, or privileged local
+adversaries unless a provider profile explicitly includes them.
+
 ## Measurable Privacy Profiles
 
 Each sealed-private profile declares observable ciphertext/pack sizes, epochs,
@@ -217,6 +228,15 @@ names, sizes, offsets, timestamps, journal/CoW behavior, and read/write timing.
 Profile tests use reproducible traces and statistical thresholds. Sagnir does
 not claim timing or access-pattern protection when cover traffic is disabled,
 unavailable, over budget, or distinguishable.
+
+Runtime profile health is authenticated as `Healthy`, `Degraded`,
+`Unavailable`, or `Recovering`. Protected profiles emit no new protected
+traffic outside `Healthy` except through a separately modelled recovery
+channel. Encrypted health records preserve the best-known degraded interval and
+its weaker observed assurance; recovery cannot retroactively upgrade traffic
+already emitted. Authorized status can report detail, while locked, blind-store,
+remote, and public views remain fixed or coarsened so health monitoring does
+not expose an activity or outage oracle.
 
 Opaque compartment handles are keyed, random-nonce-bound, and epoch-versioned.
 Collision is a security failure, not an alias. Rotation uses a signed

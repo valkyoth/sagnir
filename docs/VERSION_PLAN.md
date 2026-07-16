@@ -985,9 +985,38 @@ Deliverables:
 - signing and verification over canonical transcripts only;
 - known-answer and established adversarial vectors;
 - secret redaction and zeroization through the admitted sanitization crate;
+- a machine-readable side-channel assurance profile for every production
+  provider/backend combination, naming the secret-bearing operations covered by
+  an admitted constant-time implementation guarantee and the platforms,
+  compiler settings, hardware features, and fallback paths for which that
+  guarantee applies;
+- review of secret-dependent branches, memory lookups, allocation behavior,
+  early returns, parsing failures, and error mapping in provider code and its
+  direct cryptographic dependencies;
+- hardware-accelerated and software-fallback paths must implement equivalent
+  transcript, validation, refusal, and response-shape semantics; an unavailable
+  accelerator cannot silently select an unreviewed fallback;
+- invalid-key, malformed-signature, decapsulation/ciphertext failure, wrong-key,
+  and authentication-failure paths use bounded, policy-declared response shapes
+  and avoid distinguishable secret-dependent diagnostics;
+- timing-distribution tests with recorded host, CPU feature, compiler, sample,
+  warmup, noise-control, and statistical-method metadata where such testing can
+  detect regressions; passing a timing test is supporting evidence rather than
+  proof of constant-time execution;
+- secret-copy and lifetime inventory covering stack, heap, temporary buffers,
+  FFI/provider boundaries, registers where observable, panic/error paths, and
+  serialization scratch space, with zeroization review that records compiler
+  optimization and unavailable whole-system erasure limitations;
+- explicit side-channel exclusions and residual-risk statements for cache and
+  shared-microarchitecture attacks, page-fault observation, speculative
+  execution, physical probing, compromised firmware, and a privileged or local
+  root adversary unless a later provider profile specifically admits those
+  threats;
 - provider failure, unsupported-suite, key-substitution, unavailable entropy,
   repeated randomness, forked state, VM-clone, early-boot, and compromised
-  randomness fault-injection tests.
+  randomness fault-injection tests;
+- secret-dependent timing, invalid-input response-shape, accelerator/fallback
+  equivalence, and zeroization/copy-lifetime regression tests.
 
 Verification:
 
@@ -1004,6 +1033,9 @@ Exit criteria:
   fails.
 - Deterministic test randomness cannot be selected by a production build or
   runtime configuration.
+- Every admitted production provider states its exact constant-time assurance
+  boundary and residual side-channel exclusions; Sagnir does not infer a
+  whole-system side-channel guarantee from a library name or timing test.
 
 ### v0.24.0 - Key Lifecycle And Anti-Replay
 
@@ -3298,6 +3330,23 @@ Deliverables:
 - witness key rotation, revocation, compromise, retirement, stale checkpoint,
   conflicting statement, and equivocation preserve immutable evidence and
   trigger fail-closed threshold reevaluation;
+- projection evaluator implementations have stable implementation identity,
+  build/provenance digest, supported projection-version range, and admission
+  status distinct from the semantic projection version and executable evaluator
+  digest already bound by replay evidence;
+- implementation disagreement never resolves by publisher preference, witness
+  majority, or arrival order: the manifest and derived state are quarantined,
+  both canonical transcripts and roots are preserved, and signed disagreement
+  evidence identifies implementation/build digests, inputs, resource bounds,
+  outputs, and checkpoint;
+- an evaluator defect is remediated through a signed security/admission
+  transition naming affected projection versions, evaluator digests,
+  checkpoints and manifests, defect classification, replacement implementation
+  and projection version, replay requirements, and quarantine/release policy;
+- remediation preserves original ledger bytes, manifests, witness statements,
+  signatures, and replay certificates as historical evidence; corrected roots
+  are new signed projection-version transitions and never rewrite the roots
+  that historical actors actually signed;
 - threshold unavailability yields `projection assurance unavailable` and
   quarantine/refusal for policies requiring witnesses; it never lowers the
   threshold or treats publisher signatures as witness substitutes;
@@ -3374,6 +3423,9 @@ Exit criteria:
 - Required witnesses have explicit replay assurance, independence, lifecycle,
   threshold, and unavailability semantics resistant to nominal Sybil
   enrollment.
+- Projection implementation disagreement and evaluator defects fail closed,
+  preserve original signed evidence, and can be resolved only through an
+  admitted signed projection-version migration.
 - Creation-operation reservations are crash-safe, idempotent for one exact
   operation, and never silently reused after abandonment or cancellation.
 - The selected formats pass early usability and scale rejection thresholds
@@ -3750,9 +3802,43 @@ Deliverables:
 - profile downgrade, unsupported cover traffic, exceeded padding/latency budget,
   and local-provider capability mismatch produce explicit warning or refusal
   according to policy;
+- runtime privacy-profile state machine with canonical states `Healthy`,
+  `Degraded`, `Unavailable`, and `Recovering`, plus reason codes and
+  policy-bound transition rules;
+- `Healthy` requires every profile-mandated padding, batching, cover-traffic,
+  timing-resolution, queue-capacity, storage-provider, and clock capability to
+  be operating within the declared measurement window and budget;
+- continuous or schedule-driven health monitors cover traffic production,
+  dummy/real traffic ratio, padding and bucket conformance, batching delay,
+  queue pressure, bandwidth/storage budget, timer/clock capability, and local
+  provider features without inspecting or logging private operation content;
+- detected contract violation enters `Degraded`; inability to establish the
+  required capabilities or measurements enters `Unavailable`; restart,
+  partition, provider recovery, and budget restoration enter `Recovering`
+  until the profile's declared observation window and recovery probes succeed;
+- protected profiles fail closed before new protected traffic while
+  `Degraded`, `Unavailable`, or `Recovering`, except for a separately declared
+  bounded recovery channel whose observable behavior is included in the
+  profile contract; less strict profiles may warn only when their policy
+  explicitly permits degraded operation;
+- encrypted authenticated health records bind profile/policy epoch, prior and
+  new state, exact best-known affected interval, monitor observations, failed
+  capability/budget, recovery evidence, local monotonic sequence, and
+  checkpoint; blind stores and public logs receive no activity-bearing health
+  detail;
+- traffic emitted during a known or subsequently bounded degradation interval
+  is permanently labelled with the weaker observed assurance and is never
+  retroactively claimed to satisfy the stronger profile after recovery;
+- authorized `saga vault status` reporting exposes current health and encrypted
+  local history at policy-approved granularity, while locked, remote, public,
+  and unauthenticated status surfaces use fixed/coarsened responses that do not
+  become an activity, outage, or recovery oracle;
 - metadata leakage inventory and profile-specific defaults;
 - tests that public summaries do not expose redacted plaintext fields and
-  profile fixtures do not exceed declared observable bounds.
+  profile fixtures do not exceed declared observable bounds;
+- restart, crash, suspend/resume, network partition, clock degradation,
+  exhausted cover-traffic budget, stalled scheduler, provider loss/recovery,
+  false recovery, and status-oracle tests for every supported profile.
 
 Verification:
 
@@ -3774,6 +3860,9 @@ Exit criteria:
 - Sagnir does not describe padding or batching as protection against timing or
   access-pattern correlation unless the selected profile's measured contract
   supports that claim.
+- Protected privacy profiles cannot remain or return `Healthy` without current
+  measured evidence; degraded intervals remain auditable without making their
+  existence publicly observable.
 
 ### v0.96.0 - Encrypted Object Envelope
 
@@ -6275,6 +6364,28 @@ Deliverables:
 - independent canonical-codec reference implementation;
 - differential canonical bytes and object-ID tests;
 - cryptographic known-answer and malformed-vector suites;
+- independently developed reference projection evaluator built from the
+  normative projection specification and canonical vectors without importing,
+  linking, generating from, or wrapping the production evaluator implementation;
+- differential full-rebuild and every admitted delta-transition test across
+  production and reference evaluators, including randomized operation histories,
+  canonical edge cases, malformed inputs, resource-bound edges, projection
+  version changes, and deliberately seeded evaluator defects;
+- at least one high-assurance full-replay witness implementation uses the
+  independent evaluator and independently acquires committed ledger chunks;
+  running another process or administrative domain around the production
+  evaluator does not satisfy implementation diversity;
+- adversarial evaluator-disagreement suite proving quarantine, immutable
+  disagreement evidence, no majority/arrival-order resolution, and refusal by
+  protected worlds and partial-access recipients;
+- evaluator-bug remediation and projection-version migration fixtures proving
+  signed defect scope, original evidence preservation, corrected new-root
+  admission, affected-manifest quarantine/release, old/new implementation
+  interoperability, and historical verification;
+- provider side-channel assurance fixtures covering declared constant-time
+  operations, secret-dependent control/data-flow review findings,
+  invalid-input response shapes, timing distributions, hardware acceleration
+  versus software fallback, secret-copy lifetime, and zeroization limitations;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - million-object semantic-commitment reverse-index lookup and authenticated
@@ -6318,6 +6429,10 @@ Deliverables:
   covering size, timing, frequency, access-pattern and repeated-operation
   linkability, filesystem timestamp/directory churn, batching latency, padding
   overhead, and cover-traffic bandwidth/storage cost;
+- privacy-profile runtime state-machine traces for healthy operation,
+  degradation detection, fail-closed protected traffic, unavailable
+  capabilities, restart/partition recovery, recovery observation windows,
+  permanent weaker labelling of affected intervals, and non-oracular status;
 - malicious local storage-provider benchmark/simulation that retains old
   ciphertext and observes filenames, metadata, offsets, journals/CoW effects,
   and I/O timing/frequency under every supported privacy profile;
@@ -6337,6 +6452,9 @@ Verification:
 Exit criteria:
 
 - Canonical interoperability does not depend on one implementation.
+- Projection correctness for high-assurance profiles is exercised by an
+  independently developed evaluator and full-replay witness, with fail-closed
+  disagreement and evidence-preserving migration behavior.
 - Sagnir publishes explicit resource budgets and detects material regressions
   in its critical local and hostile-input paths.
 - Encryption and redaction claims include measured costs for realistic wrapper,
@@ -6348,6 +6466,9 @@ Exit criteria:
   delta-chain, rebuild, transcript-storage, and threshold costs.
 - Privacy claims are tied to measured profile leakage and overhead; failed or
   absent cover traffic does not inherit stronger profile claims.
+- Provider side-channel claims and runtime privacy health are bounded,
+  reproducible assurance artifacts with explicit residual risks rather than
+  unqualified whole-system guarantees.
 
 ### v0.133.0 - Cross-Platform Build Gate
 
@@ -6439,6 +6560,76 @@ Exit criteria:
   checksums, OCI manifests and indexes, SBOMs, and provenance tied to the exact
   admitted source and gate result.
 
+### v0.135.1 - Independent Cryptographic Protocol Review Gate
+
+Goal: obtain protocol-level cryptographic review independent of implementation
+pentesting before the 1.0 release candidate is accepted.
+
+Deliverables:
+
+- review scope binds the exact source commit, normative documents, canonical
+  formats, algorithm/provider registry, feature set, threat model, security
+  controls, vectors, model artifacts, and intended 1.0 deployment profiles;
+- reviewers are independent of the design and implementation authors, disclose
+  conflicts and prior involvement, and have demonstrated protocol and applied
+  cryptography expertise appropriate to the reviewed constructions;
+- review of every domain separator, transcript, context binding, canonical
+  encoding dependency, algorithm/epoch transition, and cross-protocol replay
+  boundary;
+- review of confidential semantic commitments, private locators, compartment
+  handles, semantic-to-locator translation, ciphertext/storage identity,
+  membership-oracle resistance, and cross-compartment correlation claims;
+- review of the key hierarchy, OS-CSPRNG boundary, DEK/KEK generation and
+  wrapping, recipient slots, nonce allocation, rotation, compromise recovery,
+  private-locator epochs, erasure-unit ownership, wrapper destruction, and
+  cryptographic-erasure claims;
+- review of authenticated indexes, unique representation, semantic projection,
+  logical/realm root composition, replay and delta certificates, independent
+  evaluator/witness assurance, migration, and root-substitution resistance;
+- review of authoritative-time, revocation, key-transparency, invitation,
+  recovery, governance, threshold, witness, quota-right, checkpoint, and
+  anti-replay protocols;
+- review of production-provider side-channel profiles, constant-time assurance
+  boundaries, invalid-input behavior, hardware/software fallback equivalence,
+  secret copies, zeroization limitations, and explicit excluded adversaries;
+- reviewer reproduction or independent checking of security-critical canonical
+  and known-answer vectors, selected model properties, and claimed
+  implementation-independent projection results;
+- machine-readable finding register with severity, affected formats/versions/
+  profiles, exploit preconditions, remediation owner, disposition, retest
+  evidence, and release-blocking status;
+- every resolved finding links to the correcting commit and independent
+  reviewer confirmation; disputed, accepted, or deferred findings retain both
+  reviewer and maintainer rationale without editing the original report;
+- unresolved cryptographic risk requires explicit signed maintainer/governance
+  acceptance naming scope, affected profiles, expiry/review date, user-visible
+  limitation, and why 1.0 remains acceptable; release policy may prohibit
+  acceptance above a declared severity;
+- public review summary and finding dispositions, with narrowly redacted
+  sensitive exploit detail allowed only under the security-disclosure policy;
+- explicit statement that a general penetration test, dependency audit, formal
+  model, or internal design review does not substitute for this independent
+  cryptographic protocol review.
+
+Verification:
+
+- independent reviewer sign-off over the exact review bundle and final finding
+  register;
+- review-bundle digest and disposition validator;
+- rerun of all corrected vectors, models, side-channel fixtures, and release
+  gates named by findings;
+- maintainer verification that no reviewed critical format or provider changed
+  after sign-off without reopening the affected review scope.
+
+Exit criteria:
+
+- No unresolved release-blocking cryptographic finding remains.
+- Every reviewed construction has an explicit disposition and residual-risk
+  statement tied to the exact 1.0 candidate inputs.
+- Any post-review change to a cryptographic format, transcript, provider,
+  projection evaluator, key lifecycle, privacy assurance, or trust protocol
+  reopens the affected review before v0.136.0.
+
 ### v0.136.0 - 1.0 Release Candidate Gate
 
 Goal: freeze the 1.0 feature set and reject incomplete production behavior.
@@ -6461,13 +6652,29 @@ Deliverables:
 - projection replay certificates, delta-chain bounds/rebuild cadence,
   creation-reservation non-reuse, and projection-witness governance pass
   independent vectors, crash, partition, and adversarial tests;
+- the independent projection evaluator and independently implemented
+  high-assurance full-replay witness pass differential rebuild/delta tests;
+  evaluator disagreement and signed bug-remediation/migration fixtures preserve
+  historical evidence and fail closed;
 - canonical and cryptographic vectors pass independently;
+- v0.135.1 independent cryptographic protocol review is complete for the exact
+  candidate, every finding has a validated disposition, no prohibited-severity
+  risk remains accepted, and review scope has not been invalidated by later
+  changes;
+- production provider side-channel profiles, constant-time assurance boundaries,
+  invalid-input response-shape tests, acceleration/fallback equivalence,
+  timing-regression artifacts, secret-copy inventory, zeroization review, and
+  excluded-adversary statements are complete;
 - formal models complete within admitted bounds;
 - crash, concurrency, partition, and hostile-network suites pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
   behavior meet declared release thresholds;
+- privacy-profile `Healthy`/`Degraded`/`Unavailable`/`Recovering` transitions,
+  protected fail-closed behavior, encrypted degraded-interval evidence,
+  restart/partition recovery, non-retroactive claims, and non-oracular status
+  reporting pass release fixtures;
 - known limitations document;
 - security controls updated;
 - threat model updated;
@@ -6603,6 +6810,8 @@ Deliverables:
 - signed release artifacts, checksums, OCI manifests and indexes, SBOM, and
   provenance attestation;
 - completed pentest report;
+- completed independent cryptographic protocol review and finding disposition
+  for the exact release candidate;
 - passing release gate.
 
 Verification:
