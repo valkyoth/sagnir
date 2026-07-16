@@ -9,6 +9,13 @@ All notable Sagnir changes are recorded here.
   sync and repair, invitation and recovery ceremonies, key transparency,
   encryption performance budgets, signed release provenance, and inherited
   threat-model/control-map updates.
+- Clarified offline duplicate private identities, multi-value locator indexes,
+  blind-storage deletion projections, redaction-safe backup restoration,
+  pre-erasure verification evidence, private transparency monitoring, and
+  signed OCI release manifests.
+- Added the irreversible erasure state machine, mixed-content pack replacement
+  protocol, separate erasure result properties, and corrected milestone
+  ownership for receipts, availability repair, and archival integration.
 
 ## 0.10.0
 

@@ -127,11 +127,66 @@ semantic ledger. Canonical references and signatures bind the immutable
 semantic commitment. The private locator is a rotatable lookup projection, and
 the storage ID identifies ciphertext placement.
 
+One private locator can map to multiple semantic commitments. Disconnected peers
+may independently create equal plaintext with different random blinding values,
+and both signed identities remain valid. The encrypted forward index therefore
+uses bounded candidate buckets, while an authenticated encrypted reverse index
+maps each semantic commitment directly to its locator epoch and ciphertext
+record. Optional private duplicate-equivalence evidence can guide future
+references but cannot rewrite historical signatures or references.
+
 Blind stores receive neither semantic commitments nor private locators. For the
 1.0 design, locator translation uses an encrypted authenticated mapping and
 authenticated-index evidence, not a public zero-knowledge proof. This prevents
 outsiders from checking whether known plaintext appears in an encrypted realm
 by comparing public hashes or commitments.
+
+## Redaction And Restore Projections
+
+Authorized peers retain a private encrypted semantic tombstone. Blind stores
+receive only an endpoint-scoped opaque deletion or receipt-supersession notice
+for ciphertext IDs and pack positions they already host. The notice is signed by
+an admitted storage-deletion authority and reveals no semantic commitment,
+path, actor, compartment, or private causal history.
+
+Filesystem backups, VM snapshots, recovery kits, archives, and air-gapped
+devices start restore in restricted mode. They must reconcile a
+policy-sufficient current redaction frontier before restored keys, wrappers,
+ciphertext, or indexes may be decrypted or materialized. A purely isolated
+snapshot cannot prove it has observed the latest redaction without a later
+checkpoint, witness, authorized peer, or governance recovery record.
+
+If a controlled backup retains both an old DEK wrapper and the wrapping key
+that can open it, rotating current storage is not cryptographic erasure. The
+backup must be sanitized, replaced, or cryptographically superseded, and the
+affected wrapping epoch must rotate with surviving DEKs rewrapped. When that
+cannot be established, Sagnir records the residual copy and refuses to claim
+erasure. Cryptographic supersession is valid only when backups use an
+independently destroyable backup-encryption epoch whose destruction makes every
+superseded backup copy undecryptable; metadata marking alone is insufficient.
+
+## Erasure State
+
+The durable operation uses `Planned`, `Prepared`, `TombstoneCommitted`,
+`KeysDestroyed`, `StorageNoticesPending`, `ControlledCopiesCleared`,
+`Complete`, and `ResidualCopiesKnown`. `KeysDestroyed` is the irreversible
+point. Before it, a signed abort can record that destruction did not occur.
+After it, recovery is forward-only. Remote acknowledgements and controlled-copy
+clearance may finish in either order; the top-level state is derived from their
+monotonic component results rather than treating them as one reversible linear
+sequence.
+
+Status must report local cryptographic erasure, controlled-backup clearance,
+remote deletion acknowledgements, and uncontrolled residual copies separately.
+`Complete` means configured obligations are satisfied; it never means Sagnir
+recalled plaintext or keys copied beyond its control.
+
+Mixed-content packs require either independently authenticated record deletion
+or replacement. Replacement is built and verified without redacted instances,
+padded according to privacy policy, uploaded and receipted before encrypted
+indexes move, and only then may the old pack be deleted. Archive execution is
+post-1.0; pre-1.0 milestones define the same non-resurrection contract without
+claiming an archive implementation exists.
 
 ## Encryption Honesty
 

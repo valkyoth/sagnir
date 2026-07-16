@@ -387,6 +387,13 @@ Privacy rule:
 - sealed private mode uses random-blinded immutable semantic commitments inside
   the encrypted ledger, compartment-keyed private lookup locators, and
   randomized ciphertext storage IDs;
+- private locators map to bounded encrypted candidate buckets because
+  disconnected peers may create equal plaintext with different immutable
+  semantic commitments;
+- duplicate identities remain valid signed history; optional encrypted
+  equivalence evidence may guide future references but cannot rewrite old ones;
+- authenticated encrypted reverse indexes map semantic commitments directly to
+  locator epochs and ciphertext records for bounded graph traversal;
 - blind-store metadata, logs, public proofs, and public storage receipts expose
   none of the semantic commitment, blinding value, private locator, or
   translation mapping;
@@ -398,12 +405,38 @@ Privacy rule:
 
 Redaction rule:
 
-- a signed tombstone and distinct `RedactedBody` state survive key destruction;
+- a signed private semantic tombstone and distinct `RedactedBody` state survive
+  key destruction;
+- erasure is a durable state machine with reversible planning/preparation,
+  authoritative tombstone commit, irreversible `KeysDestroyed`, forward-only
+  notice and controlled-copy cleanup, and explicit complete or residual states;
+- remote acknowledgement and controlled-copy cleanup advance independently
+  after key destruction, with a derived top-level state and no backward
+  transition;
+- stable operation IDs plus status and resume commands expose interruption
+  recovery and the remaining permitted actions;
+- local erasure, controlled copies, remote acknowledgements, and uncontrolled
+  residuals are reported as separate properties;
+- private semantic tombstones project to endpoint-scoped opaque storage deletion
+  notices that reveal no semantic commitment, path, actor, or compartment;
 - anti-entropy propagates admitted tombstones before body requests;
 - sync, repair, receipts, repack, partial clone, and archive restoration cannot
   resurrect a redacted encryption instance;
 - stale ciphertext returned after redaction is quarantined and cannot satisfy
   availability or repair policy.
+- backup, VM-snapshot, recovery-kit, and air-gapped restore begins restricted
+  and reconciles a policy-sufficient redaction frontier before decryption or
+  materialization;
+- erasure rotates affected wrapping epochs and rewraps surviving DEKs when
+  controlled backups could otherwise recover an old wrapper and its wrapping
+  key, but Sagnir cannot claim erasure until every controlled recoverable backup
+  copy is sanitized or cryptographically superseded.
+- mixed-content packs use independently authenticated record deletion only when
+  declared by the pack/provider capability; otherwise Sagnir verifies and
+  receipts a privacy-padded replacement before deleting the old pack.
+- v0.122 defines the core operation and later integration contracts; repack,
+  remote receipts, repair, and archival implement those contracts in their own
+  milestones.
 
 Post-quantum readiness rule:
 

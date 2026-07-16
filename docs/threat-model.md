@@ -28,6 +28,8 @@ exposure.
 - encrypted realm keys;
 - immutable private semantic commitments and blinding values;
 - private lookup locators and translation mappings;
+- locator candidate buckets, semantic reverse indexes, and private duplicate
+  equivalence evidence;
 - recipient slots;
 - compartment metadata;
 - encrypted bundle manifests.
@@ -35,6 +37,8 @@ exposure.
 - key-transparency roots and consistency evidence;
 - recovery shares, ceremony evidence, and replacement authority;
 - redaction tombstones and `RedactedBody` state;
+- opaque blind-storage deletion notices and pre-erasure verification receipts;
+- restored backup, VM-snapshot, recovery-kit, archive, and air-gapped state;
 - release-signing keys, checksums, artifacts, SBOMs, and provenance statements.
 
 ## Initial Threats
@@ -64,6 +68,10 @@ exposure.
   leaking known plaintext membership in encrypted realms;
 - dictionary attacks and cross-compartment correlation against low-entropy
   private content;
+- locator equality collapsing distinct independently signed semantic
+  commitments or keyed-locator collisions aliasing different plaintext;
+- corrupt forward/reverse indexes forcing full scans, substitution, or wrong
+  ciphertext resolution;
 - recipient removal being mistaken for retroactive access revocation.
 - replayed, duplicated, expired, revoked, superseded, or over-scoped
   invitations;
@@ -72,6 +80,18 @@ exposure.
   unauthenticated second administration path;
 - stale peers, archives, receipts, or availability repair resurrecting
   ciphertext after redaction;
+- malicious or substituted storage notices deleting arbitrary blind-store
+  ciphertext or correlating private content across epochs and providers;
+- restored backups or recovery kits reviving old DEK wrappers and superseded
+  wrapping keys before current redaction state is observed;
+- current-storage rekeying being misreported as erasure while a controlled
+  backup still holds a recoverable old wrapper and wrapping key;
+- rollback or key recreation after the erasure state machine crosses its
+  `KeysDestroyed` point of no return;
+- deletion of a mixed pack before live-record replacement durability and
+  required remote receipts are established;
+- replacement pack size, lineage, or position mapping revealing which records
+  were redacted or survived;
 - substituted release artifacts, signatures, checksums, SBOMs, tags, or
   provenance attestations.
 
@@ -107,6 +127,8 @@ exposure.
   ledger;
 - compartment-keyed private locators and encrypted authenticated translation
   mappings separated from ciphertext storage IDs;
+- bounded multi-value locator buckets, authenticated semantic reverse indexes,
+  and duplicate-equivalence transitions that preserve old signed identities;
 - explicit prohibition on semantic commitments in blind-store metadata, logs,
   public proofs, and public storage receipts;
 - lock/unlock materialization;
@@ -119,6 +141,13 @@ exposure.
 - threshold-governed recovery ceremony with stale-authority invalidation;
 - signed redaction tombstones, distinct `RedactedBody` state, tombstone-first
   anti-entropy, and quarantine of stale ciphertext;
+- endpoint-scoped opaque storage notices authorized by separate deletion keys
+  without semantic-ledger disclosure;
+- restricted restore admission and wrapping-epoch rotation when controlled
+  backups could recover old DEK wrappers;
+- durable forward-only erasure states with separate local, controlled-copy,
+  remote-acknowledgement, and uncontrolled-residual results;
+- privacy-padded mixed-pack replacement before old-pack deletion;
 - redaction-aware storage receipts, availability repair, and archive restore;
 - signed release artifacts, checksums, SBOMs, and provenance bound to the exact
   source, tag, toolchain, dependencies, target, and release gate;
