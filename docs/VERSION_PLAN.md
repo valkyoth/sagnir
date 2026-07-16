@@ -527,10 +527,10 @@ Exit criteria:
 - Windows initialization has the same fail-closed attachment and commit
   guarantees as the Unix backend.
 
-### v0.11.0 - Architecture Documentation Authority
+### v0.11.0 - Architecture And Store Compatibility Contracts
 
-Goal: make the expanded roadmap and supporting architecture documents agree
-before new trust formats are implemented.
+Goal: make the architecture documents agree and define durable repository
+compatibility before new canonical formats are implemented.
 
 Deliverables:
 
@@ -543,12 +543,26 @@ Deliverables:
 - document private reconciliation instead of unconditional raw-head disclosure
   in `docs/protocol.md`;
 - add a documentation consistency validator for normative trust statements;
-- declare which document is authoritative when future drafts conflict.
+- declare which document is authoritative when future drafts conflict;
+- durable `.saga/FORMAT` compatibility contract;
+- minimum reader and writer versions in durable format metadata;
+- read-only compatibility behavior for stores newer than the local writer but
+  still within the admitted reader range;
+- unknown-critical-format and unsupported-writer refusal;
+- transactional, crash-safe upgrade protocol with preflight, dry-run, backup,
+  staged writes, commit marker, and recovery;
+- explicit downgrade and old-writer refusal after upgrade;
+- migration provenance recording old format, new format, tool version, input
+  roots, and resulting roots;
+- mixed-version peer and repository fixtures;
+- golden repositories retained in CI for every released durable format.
 
 Verification:
 
 - `scripts/check_doc_links.sh`
 - documentation consistency validator;
+- repository-format compatibility fixture suite;
+- migration crash-consistency suite;
 - `scripts/checks.sh`
 
 Exit criteria:
@@ -556,6 +570,12 @@ Exit criteria:
 - No supporting architecture document describes a weaker trust boundary than
   this version plan.
 - CI rejects reintroduction of the known contradictory patterns.
+- A newer tool can explain, dry-run, and transactionally upgrade every admitted
+  released durable format.
+- An older or incompatible tool fails closed without partially rewriting the
+  repository.
+- Every durable migration is attributable and its root transition is
+  reproducible from retained golden fixtures.
 
 ### v0.12.0 - Normative Canonical Protocol Specification
 
@@ -916,7 +936,9 @@ Deliverables:
 - signed membership and role transitions;
 - threshold administrative actions over independent principals;
 - signed ownership transfer and emergency recovery;
-- governance root updates committed into checkpoints;
+- authenticated governance event chain and interim governance root;
+- transition result commits the exact previous and resulting governance roots;
+- no dependency on the later checkpoint schema for v0.25.0 validity;
 - first-contact trust binding for imported governance history;
 - unauthorized enrollment, stale administrator, split governance, threshold
   inflation, genesis substitution, and recovery replay tests.
@@ -933,6 +955,8 @@ Exit criteria:
   solely because it is well-formed.
 - Every live governance mutation verifies against the admitted genesis and
   current governance root.
+- Governance transitions are authenticated before checkpoints exist, but
+  checkpoint anchoring is deferred explicitly to v0.27.0.
 
 ### v0.26.0 - Canonical Signed Event Envelope
 
@@ -967,6 +991,10 @@ Deliverables:
 - event DAG parent and frontier commitments;
 - checkpoint schema committing to object/state, alias/frontier, event, fact,
   policy, key-registry, and crypto-epoch roots;
+- exact v0.25.0 governance root anchored as part of the key-registry and policy
+  interpretation state;
+- continuity check from genesis through the authenticated governance event
+  chain to the checkpointed governance root;
 - previous-checkpoint commitment;
 - equivocation evidence for conflicting events at one sequence;
 - missing-suffix and rollback diagnostics;
@@ -982,6 +1010,8 @@ Verification:
 Exit criteria:
 
 - Every trusted realm checkpoint binds all roots required to interpret state.
+- A checkpoint cannot substitute, skip, or fork the previously authenticated
+  governance root without producing an invalid continuity proof.
 - Rollback and tampering are detectable relative to an admitted later
   checkpoint or witness.
 
@@ -1623,7 +1653,16 @@ Deliverables:
 - signed replica retirement transition;
 - causal-stability certificate bound to one membership epoch and exact replica
   set;
-- canonical signer set and governance-authorized quorum rule;
+- acknowledged frontier and sequence watermark from every active replica in
+  that membership epoch;
+- explicit prohibition on replacing a missing active replica's acknowledgement
+  with a governance quorum;
+- governance-authorized retirement for every missing replica before stability
+  can be certified;
+- retirement transition with an exact cutoff frontier and sequence watermark;
+- post-retirement rule that later submissions from the retired replica are
+  rejected from the compacted lineage or enter an explicit recovery/fork
+  process;
 - explicit Byzantine, indefinitely offline, retired, and later-returning
   replica behavior;
 - retirement grace period and pre-retirement-state admission rule;
@@ -1634,9 +1673,12 @@ Deliverables:
 - safe dotted-context or Merkle-clock compaction;
 - replica-creation quotas and governance-backed Sybil controls;
 - tests proving compaction cannot erase an unseen concurrent head;
-- retirement, rejoin, stale replica, and malicious replica-fanout tests.
-- unseen concurrent head, Byzantine quorum, offline quorum, rollback,
-  conflicting certificate, and late pre-retirement state tests.
+- retirement, rejoin, stale replica, and malicious replica-fanout tests;
+- unseen concurrent head, missing acknowledgement, governance-quorum
+  substitution, rollback, conflicting certificate, and late pre-retirement
+  state tests;
+- malicious replica test that acknowledges stability and later reveals a
+  previously signed but omitted change.
 
 Verification:
 
@@ -1648,8 +1690,13 @@ Exit criteria:
 - Device churn does not make frontiers grow without bound.
 - Compaction requires sufficient stability evidence and preserves every
   potentially concurrent admitted head.
-- "Sufficient" means the canonical quorum for the certificate's committed
-  membership epoch, not the currently reachable peer set.
+- "Sufficient" means acknowledgement from every active replica in the committed
+  membership epoch.
+- A governance quorum may retire a missing replica but cannot attest on that
+  replica's behalf.
+- A replica that acknowledges a frontier and later reveals an omitted prior
+  change produces fork or equivocation evidence; the change is not silently
+  merged into compacted history.
 
 ## Phase 5: Changes And Sealing
 
@@ -2636,13 +2683,28 @@ Goal: define cryptographic key separation before encrypted bytes are written.
 
 Deliverables:
 
-- key-encryption-key, realm, compartment/world, and data-key hierarchy;
-- domain-separated derivation for metadata, objects, indexes, WAL, wrapping,
-  and proof-disclosure keys;
+- key-encryption-key, realm, compartment/world, private-ID, and erasure-unit
+  key hierarchy;
+- explicit erasure-unit granularity: object, path group, compartment, epoch, or
+  retention class;
+- random independently generated data-encryption key for every declared erasure
+  unit, wrapped by the authorized compartment or recipient keys;
+- reviewed puncturable-key construction allowed only as a separately admitted
+  alternative to independently wrapped keys;
+- surviving realm, compartment, epoch, or recipient ancestor keys cannot
+  rederive a destroyed erasure-unit data key;
+- domain-separated derivation only for non-erasable purpose keys such as
+  metadata indexing, WAL authentication context, wrapping context, and
+  proof-disclosure context;
+- private-ID key lifecycle separated from encryption-key and data-key rotation;
+- ordinary rekeying does not require every private object ID to change;
 - key identifier and crypto epoch binding;
 - bounded KDF and derivation parameter admission;
 - cross-purpose key-reuse rejection;
-- known-answer derivation vectors.
+- known-answer derivation and wrapping vectors;
+- erased-key reconstruction tests using every surviving key and metadata
+  combination;
+- private-ID stability tests across ordinary encryption rekeying.
 
 Verification:
 
@@ -2653,6 +2715,10 @@ Exit criteria:
 
 - Compromise or misuse of one derived purpose key does not silently authorize a
   different cryptographic purpose.
+- Destroyed erasure-unit data keys cannot be reconstructed from retained
+  ancestor keys, wrapped-key metadata, private-ID keys, or later crypto epochs.
+- Private object identity and ciphertext confidentiality can rotate under
+  separate governed lifecycles.
 
 ### v0.92.0 - AEAD Nonce And Live Key Session Safety
 
@@ -3032,6 +3098,7 @@ Deliverables:
 - crypto epoch transition;
 - `saga vault rekey`;
 - recipient and compartment rewrap plan;
+- encryption-key rotation independent from private-ID key rotation;
 - old-key retention and cryptographic-erasure policy;
 - crash-safe staged key rotation;
 - rollback and interrupted-rotation recovery;
@@ -3047,6 +3114,8 @@ Verification:
 Exit criteria:
 
 - Key rotation is a signed transition model, not an in-place mutation.
+- Ordinary ciphertext rekeying does not force private object identity changes
+  unless a separate governed private-ID migration is explicitly requested.
 
 ### v0.107.0 - Hybrid Post-Quantum Readiness Scaffold
 
@@ -3491,7 +3560,10 @@ Deliverables:
 
 - signed redaction transition identifying scope, authority, reason, and policy
   basis without embedding removed plaintext;
-- key-destruction and recipient-revocation plan for cryptographic erasure;
+- destruction of independently wrapped erasure-unit data keys or admitted
+  punctures, plus recipient revocation where applicable;
+- validation that no surviving ancestor key can recreate the erased key;
+- erasure-unit scope and granularity committed into the redaction transition;
 - compartment, object, metadata, index, cache, and repack handling;
 - preserved historical commitments and redaction evidence;
 - explicit distinction between redaction, logical removal, ciphertext deletion,
@@ -3499,7 +3571,8 @@ Deliverables:
 - statement that already replicated plaintext, keys, screenshots, logs, or
   exports cannot be recalled;
 - interrupted purge, stale recipient, retained key copy, partial repack,
-  historical proof, and unauthorized redaction tests.
+  historical proof, unauthorized redaction, surviving-ancestor reconstruction,
+  and private-ID-key retention tests.
 
 Verification:
 
@@ -3512,6 +3585,9 @@ Exit criteria:
 - Authorized redaction can make retained ciphertext undecryptable where key
   destruction assumptions hold without erasing the signed fact that a
   redaction occurred.
+- Cryptographic erasure is not reported successful if the erased data key can
+  be derived again from any retained master, compartment, epoch, recipient, or
+  private-ID key.
 - Sagnir never claims erasure of data or keys already copied beyond its control.
 
 ### v0.123.0 - Reachability, Repack, And Safe Garbage Collection
@@ -3889,6 +3965,8 @@ Goal: first serious production-ready `saga` CLI.
 Deliverables:
 
 - local realm initialization;
+- durable repository-format compatibility, golden fixtures, and transactional
+  migration;
 - realm genesis-bound identity, first-contact trust bootstrap, governance,
   membership, and trust roots;
 - normative canonical formats and independent vectors;
@@ -3898,6 +3976,7 @@ Deliverables:
   evidence;
 - world and change workflow;
 - convergent multi-head worlds and deterministic multi-parent merges;
+- all-active-replica causal stability with explicit retirement cutoffs;
 - seal and amend;
 - status and diff;
 - byte-preserving cross-platform paths and root-bound materialization;
@@ -3925,6 +4004,7 @@ Deliverables:
 - no operational encryption mode before sealed-private prerequisites;
 - sealed-private migration and honest prior-leakage accounting;
 - crash-safe nonce and live-key session handling;
+- independently wrapped erasure-unit data keys separated from private-ID keys;
 - selective disclosure;
 - bundles;
 - encrypted bundles;
