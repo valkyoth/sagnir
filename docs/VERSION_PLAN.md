@@ -39,6 +39,18 @@ Every release should prefer:
 - policy-aware APIs even when enforcement is still simple;
 - explicit unsupported behavior over silent compatibility promises.
 
+Every unreleased milestone also inherits continuous portability checks:
+
+- canonical vectors run on Linux, Windows, and MacOS CI where hosted runners
+  are available;
+- format and policy results must be byte-identical across platforms;
+- filesystem behavior has platform fixtures from the milestone that introduces
+  it, not only at the final portability phase;
+- BSD, Android, and iOS constraints are reviewed whenever a format or
+  filesystem assumption changes;
+- the late cross-platform release remains the comprehensive 1.0 matrix and
+  unsupported-behavior audit, not the first portability check.
+
 ## Roadmap Authority And Review Cadence
 
 Until the architecture documents are synchronized, this version plan is the
@@ -466,9 +478,9 @@ Admitted v0.10.0 defaults:
 - parallelism, max entries, and max refs remain optional hard controls.
 
 The profile and mode are persisted metadata in this release. Repository-scale
-graph execution and derived scheduling remain assigned to v0.32.0, while
-profile-to-policy enforcement remains assigned to v0.34.0 and compound
-protected-transition admission remains assigned to v0.68.0.
+graph execution and derived scheduling remain assigned to v0.34.0, while
+profile-to-policy enforcement remains assigned to v0.36.0 and compound
+protected-transition admission remains assigned to v0.70.0.
 
 Verification:
 
@@ -699,19 +711,22 @@ Exit criteria:
 - Membership and append-only consistency are not overloaded onto one structure
   when their required security properties differ.
 
-### v0.18.0 - Realm Genesis And Governance
+### v0.18.0 - Realm Genesis And Governance Schema
 
-Goal: establish the authenticated origin of realm authority.
+Goal: define the canonical origin and governance schema before live
+cryptographic enforcement exists.
 
 Deliverables:
 
 - canonical realm-genesis object;
+- realm ID derived from or cryptographically bound to the genesis commitment;
 - initial administrative and trust keys;
 - initial policy, key-registry, and crypto roots;
 - actor and device enrollment authority;
-- signed membership and role transitions;
-- threshold administrative actions;
-- ownership transfer and emergency recovery;
+- membership, role, threshold administration, ownership transfer, and emergency
+  recovery statement schemas;
+- explicit marker that this release defines canonical bytes and invariants but
+  does not yet execute signed governance;
 - genesis substitution, duplicate genesis, split-governance, and recovery
   takeover tests.
 
@@ -727,8 +742,43 @@ Exit criteria:
   one admitted genesis object.
 - Conflicting genesis or governance roots are detected rather than merged by
   local preference.
+- Live governance enforcement remains unavailable until v0.25.0.
 
-### v0.19.0 - Actor, Device, And Replica Identity
+### v0.19.0 - First-Contact Trust Bootstrap
+
+Goal: let a new device authenticate the intended realm genesis without trusting
+a human-facing name or transport endpoint.
+
+Deliverables:
+
+- pinned genesis fingerprint mode;
+- canonical signed invitation or capability schema carrying the exact
+  realm/genesis commitment;
+- out-of-band fingerprint verification workflow;
+- explicitly warned trust-on-first-use mode;
+- persisted first-contact trust record and later mismatch detection;
+- no silent trust inheritance from DNS, URL, transport certificate, remote
+  endpoint identity, or realm name;
+- fingerprint substitution, invitation replay, endpoint impersonation,
+  same-name realm, TOFU mismatch, and downgrade tests;
+- explicit dependency that cryptographic invitation verification activates only
+  after providers and live governance are admitted at v0.25.0.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-sync`
+- trust-bootstrap golden-output tests.
+
+Exit criteria:
+
+- A clone or invitation identifies a realm by its genesis commitment.
+- Users can distinguish pinned, invitation-backed, out-of-band, and warned TOFU
+  trust states before any remote state is admitted.
+- Before v0.25.0, invitation bytes are schema fixtures and cannot establish live
+  authority merely by parsing successfully.
+
+### v0.20.0 - Actor, Device, And Replica Identity
 
 Goal: make every authoritative signer and causal writer explicit before
 worlds, events, or checkpoints depend on identity.
@@ -740,7 +790,7 @@ Deliverables:
 - key registry metadata;
 - public key metadata storage;
 - actor-to-device authorization records;
-- signed enrollment and retirement hooks;
+- enrollment and retirement statement schemas;
 - `saga actor init`;
 - identity collision, substitution, unauthorized enrollment, and malformed
   registry tests.
@@ -755,7 +805,7 @@ Exit criteria:
 - Events, worlds, checkpoints, revisions, and facts can identify the exact
   authorized actor and device that produced them.
 
-### v0.20.0 - Signature Envelope And Set Admission
+### v0.21.0 - Signature Envelope And Set Admission
 
 Goal: bound signature metadata and principal counting before cryptographic use.
 
@@ -779,7 +829,7 @@ Exit criteria:
 - Thresholds count independent admitted principals or roles, not merely distinct
   device keys controlled by one principal.
 
-### v0.21.0 - Canonical Signed Statement Transcripts
+### v0.22.0 - Canonical Signed Statement Transcripts
 
 Goal: bind authoritative signatures to complete realm and transition context.
 
@@ -803,7 +853,7 @@ Exit criteria:
 - A valid signature for one realm, action, epoch, world, scope, frontier, or
   algorithm state cannot authorize another.
 
-### v0.22.0 - Signing And Verification Providers
+### v0.23.0 - Signing And Verification Providers
 
 Goal: admit actual cryptographic signing and verification before signed state is
 used by storage or worlds.
@@ -829,7 +879,7 @@ Exit criteria:
 - Sagnir creates and verifies real context-bound signatures without relying on
   envelope shape as evidence of authenticity.
 
-### v0.23.0 - Key Lifecycle And Anti-Replay
+### v0.24.0 - Key Lifecycle And Anti-Replay
 
 Goal: define governed key authority before keys authorize durable events.
 
@@ -854,7 +904,37 @@ Exit criteria:
 - Old, revoked, rotated, replayed, or algorithm-retired keys cannot silently
   regain authority.
 
-### v0.24.0 - Canonical Signed Event Envelope
+### v0.25.0 - Live Governance Enforcement
+
+Goal: activate signed realm governance only after signature providers, canonical
+transcripts, identity schemas, and key lifecycle rules exist.
+
+Deliverables:
+
+- cryptographically verified genesis administrator authority;
+- signed actor and device enrollment;
+- signed membership and role transitions;
+- threshold administrative actions over independent principals;
+- signed ownership transfer and emergency recovery;
+- governance root updates committed into checkpoints;
+- first-contact trust binding for imported governance history;
+- unauthorized enrollment, stale administrator, split governance, threshold
+  inflation, genesis substitution, and recovery replay tests.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-policy`
+- governance state-machine model.
+
+Exit criteria:
+
+- No membership, role, policy authority, or key-registry mutation is accepted
+  solely because it is well-formed.
+- Every live governance mutation verifies against the admitted genesis and
+  current governance root.
+
+### v0.26.0 - Canonical Signed Event Envelope
 
 Goal: define authoritative events before an event DAG or WAL records them.
 
@@ -877,7 +957,7 @@ Exit criteria:
 - The signed event DAG consumes one canonical event type whose authority and
   scope are explicit.
 
-### v0.25.0 - Checkpoint Schema And Signed Event DAG
+### v0.27.0 - Checkpoint Schema And Signed Event DAG
 
 Goal: commit all authoritative realm roots and detect rollback or equivocation.
 
@@ -905,7 +985,7 @@ Exit criteria:
 - Rollback and tampering are detectable relative to an admitted later
   checkpoint or witness.
 
-### v0.26.0 - Authoritative Time Model
+### v0.28.0 - Authoritative Time Model
 
 Goal: define ordering, expiry, and timestamp trust for offline operation.
 
@@ -930,7 +1010,7 @@ Exit criteria:
 - Canonical validity never depends silently on an unauthenticated local wall
   clock.
 
-### v0.27.0 - Typed Ingest Contract
+### v0.29.0 - Typed Ingest Contract
 
 Goal: establish the type-state boundary before durable ingest APIs are written.
 
@@ -954,7 +1034,7 @@ Exit criteria:
 - Storage and world APIs cannot be designed around raw bytes, caller-supplied
   graph claims, or generic validation booleans.
 
-### v0.28.0 - WAL Recovery Model Gate
+### v0.30.0 - WAL Recovery Model Gate
 
 Goal: model transactional durability before fixing the WAL byte format.
 
@@ -977,7 +1057,7 @@ Exit criteria:
 - The WAL format and writer milestones begin only after the model has no known
   counterexample within admitted bounds.
 
-### v0.29.0 - Chained WAL Commitment Format
+### v0.31.0 - Chained WAL Commitment Format
 
 Goal: define bounded WAL frames and chained transaction commitments before
 writing transactions.
@@ -1008,7 +1088,7 @@ Exit criteria:
   signed checkpoint or trusted witness; a store controller can recompute
   unauthenticated local chains.
 
-### v0.30.0 - WAL Writer And Recovery
+### v0.32.0 - WAL Writer And Recovery
 
 Goal: make committed local transactions recoverable.
 
@@ -1033,7 +1113,7 @@ Exit criteria:
 - Recovery cannot apply a committed frontier or alias before all transaction
   bodies are present and verified.
 
-### v0.31.0 - Loose Object Store
+### v0.33.0 - Loose Object Store
 
 Goal: store immutable loose objects under `.saga/objects`.
 
@@ -1053,7 +1133,7 @@ Exit criteria:
 
 - Loose objects are immutable and corruption is detected before indexing.
 
-### v0.32.0 - Local Fsck And Verification Modes
+### v0.34.0 - Local Fsck And Verification Modes
 
 Goal: verify local store structure and loose objects through explicit resource
 budgets.
@@ -1090,7 +1170,7 @@ Exit criteria:
 - If only memory or parallelism is configured, Sagnir derives conservative
   internal limits from the available budget.
 
-### v0.33.0 - Canonical Realm And World Policy
+### v0.35.0 - Canonical Realm And World Policy
 
 Goal: make transition validity signed, deterministic, and history-bound before
 daily mutation commands depend on policy.
@@ -1099,12 +1179,23 @@ Deliverables:
 
 - canonical realm and world policy object;
 - deterministic policy language and evaluator version;
+- total or provably terminating policy constructs;
+- fuel or instruction, recursion, allocation, output, and collection-size
+  limits;
+- no floating point, locale-dependent behavior, unspecified iteration order, or
+  unpinned Unicode and regular-expression semantics;
 - signed policy epoch transitions;
+- historical evaluation under the policy epoch and evaluator version committed
+  by the transition;
+- evaluator compatibility, migration, and retirement rules that preserve
+  verification of old history;
 - seal, merge, promotion, evidence, and retention requirements;
 - policy root committed into state and checkpoints;
 - no filesystem, environment, network, or untrusted wall-clock inputs during
   canonical evaluation;
-- malformed, nondeterministic, stale-epoch, and unauthorized-policy tests.
+- malformed, nondeterministic, stale-epoch, and unauthorized-policy tests;
+- policy-complexity, fuel exhaustion, allocation, recursion, Unicode-version,
+  regex-version, and evaluator-upgrade tests.
 
 Verification:
 
@@ -1117,8 +1208,9 @@ Exit criteria:
 - Peers given the same admitted state and evaluator version reach the same
   canonical policy decision.
 - Policy authority traces to realm governance rather than a local file.
+- Evaluator upgrades cannot retroactively reinterpret a historical transition.
 
-### v0.34.0 - Local Acceptance Policy
+### v0.36.0 - Local Acceptance Policy
 
 Goal: let each device enforce stricter local trust and materialization rules
 without redefining realm validity.
@@ -1147,7 +1239,7 @@ Exit criteria:
 
 ## Phase 3: Worktree And Source State
 
-### v0.35.0 - Byte-Preserving Worktree Path Model
+### v0.37.0 - Byte-Preserving Worktree Path Model
 
 Goal: represent real cross-platform source paths without excluding valid
 projects or confusing display text with path identity.
@@ -1175,7 +1267,7 @@ Exit criteria:
 - Ambiguous or unrepresentable cross-platform paths fail with an explicit
   portability diagnosis.
 
-### v0.36.0 - Worktree Path Scanner
+### v0.38.0 - Worktree Path Scanner
 
 Goal: classify source paths safely across supported operating systems.
 
@@ -1207,7 +1299,7 @@ Exit criteria:
 - A path admitted under one root cannot be reused as proof for another root or
   after the underlying file identity changes.
 
-### v0.37.0 - Ignore Rules
+### v0.39.0 - Ignore Rules
 
 Goal: add deterministic ignored/untracked/tracked classification.
 
@@ -1227,7 +1319,7 @@ Exit criteria:
 
 - Worktree scans produce stable tracked and ignored path sets.
 
-### v0.38.0 - Blob And Tree Builder
+### v0.40.0 - Blob And Tree Builder
 
 Goal: build deterministic source tree objects from tracked files.
 
@@ -1257,7 +1349,7 @@ Exit criteria:
 - A file changed during snapshot cannot be sealed under a digest from a mixed
   or unstable read.
 
-### v0.39.0 - Incremental Worktree Index
+### v0.41.0 - Incremental Worktree Index
 
 Goal: make large-worktree status and sealing efficient without treating cache
 metadata as integrity evidence.
@@ -1283,7 +1375,7 @@ Exit criteria:
 - Cache hits can accelerate status but can never prove content integrity.
 - Deleting or corrupting the index causes a bounded deterministic rebuild.
 
-### v0.40.0 - State Root Object
+### v0.42.0 - State Root Object
 
 Goal: bind source tree state to policy and crypto epochs.
 
@@ -1304,7 +1396,7 @@ Exit criteria:
 
 - Sagnir can represent a complete source state without a change workflow.
 
-### v0.41.0 - Status Command
+### v0.43.0 - Status Command
 
 Goal: compare worktree state against the current state root.
 
@@ -1325,7 +1417,7 @@ Exit criteria:
 
 - `saga status` is useful for a simple local project.
 
-### v0.42.0 - Text Diff
+### v0.44.0 - Text Diff
 
 Goal: show deterministic text diffs for tracked files.
 
@@ -1346,7 +1438,7 @@ Exit criteria:
 
 - `saga diff` can explain simple local text changes.
 
-### v0.43.0 - Binary And Large File Bounds
+### v0.45.0 - Binary And Large File Bounds
 
 Goal: protect status and diff from unbounded memory behavior.
 
@@ -1373,7 +1465,7 @@ Exit criteria:
 
 ## Phase 4: Worlds
 
-### v0.44.0 - World Metadata
+### v0.46.0 - World Metadata
 
 Goal: model worlds as first-class source states.
 
@@ -1401,7 +1493,7 @@ Exit criteria:
 - Concurrent state is represented as an explicit frontier rather than being
   collapsed into one last-writer-wins head.
 
-### v0.45.0 - World Aliases
+### v0.47.0 - World Aliases
 
 Goal: map human world names to immutable world states.
 
@@ -1432,7 +1524,7 @@ Exit criteria:
 - Concurrent alias updates preserve every admitted head and never silently
   discard divergent history.
 
-### v0.46.0 - World Open And List
+### v0.48.0 - World Open And List
 
 Goal: create and inspect draft worlds.
 
@@ -1453,7 +1545,7 @@ Exit criteria:
 
 - A user can create a draft world without mutating the source world.
 
-### v0.47.0 - World Switch Materialization
+### v0.49.0 - World Switch Materialization
 
 Goal: materialize another world into the worktree safely.
 
@@ -1478,7 +1570,7 @@ Exit criteria:
   level; it does not claim that a multi-file filesystem update is globally
   atomic.
 
-### v0.48.0 - Dirty Worktree Protection
+### v0.50.0 - Dirty Worktree Protection
 
 Goal: prevent accidental data loss during world switches and promotions.
 
@@ -1498,7 +1590,7 @@ Exit criteria:
 - Sagnir refuses destructive materialization unless the user explicitly chooses
   an admitted path.
 
-### v0.49.0 - Materialization Recovery Journal
+### v0.51.0 - Materialization Recovery Journal
 
 Goal: make interrupted checkout, switch, undo, and restore operations resumable
 without overstating filesystem atomicity.
@@ -1522,20 +1614,29 @@ Exit criteria:
 - Every interrupted multi-file materialization is detected at startup and can
   be resumed, rolled back, or reported for bounded manual repair.
 
-### v0.50.0 - Replica Retirement And Causal Compaction
+### v0.52.0 - Replica Retirement And Causal Compaction
 
 Goal: bound causal context growth without hiding unseen concurrent state.
 
 Deliverables:
 
 - signed replica retirement transition;
-- causal-stability certificate;
+- causal-stability certificate bound to one membership epoch and exact replica
+  set;
+- canonical signer set and governance-authorized quorum rule;
+- explicit Byzantine, indefinitely offline, retired, and later-returning
+  replica behavior;
+- retirement grace period and pre-retirement-state admission rule;
+- invalidation when governance equivocation, membership rollback, or a
+  conflicting stability certificate is detected;
 - bounded frontier and concurrent-head representation;
 - tombstone and retirement-evidence retention rules;
 - safe dotted-context or Merkle-clock compaction;
 - replica-creation quotas and governance-backed Sybil controls;
 - tests proving compaction cannot erase an unseen concurrent head;
 - retirement, rejoin, stale replica, and malicious replica-fanout tests.
+- unseen concurrent head, Byzantine quorum, offline quorum, rollback,
+  conflicting certificate, and late pre-retirement state tests.
 
 Verification:
 
@@ -1547,10 +1648,12 @@ Exit criteria:
 - Device churn does not make frontiers grow without bound.
 - Compaction requires sufficient stability evidence and preserves every
   potentially concurrent admitted head.
+- "Sufficient" means the canonical quorum for the certificate's committed
+  membership epoch, not the currently reachable peer set.
 
 ## Phase 5: Changes And Sealing
 
-### v0.51.0 - Change Begin
+### v0.53.0 - Change Begin
 
 Goal: record developer intent before source state is sealed.
 
@@ -1572,7 +1675,7 @@ Exit criteria:
 
 - Sagnir can distinguish intent from the final sealed revision.
 
-### v0.52.0 - Change Revision Object
+### v0.54.0 - Change Revision Object
 
 Goal: represent an exact immutable version of a change.
 
@@ -1594,7 +1697,7 @@ Exit criteria:
 
 - Revisions are immutable and tied to exact source-state transitions.
 
-### v0.53.0 - Seal Command
+### v0.55.0 - Seal Command
 
 Goal: turn worktree changes into a sealed revision.
 
@@ -1620,7 +1723,7 @@ Exit criteria:
 - This release seals local draft history only; it does not claim protected-world
   proof admission or promotion readiness.
 
-### v0.54.0 - Save, Amend, And Log
+### v0.56.0 - Save, Amend, And Log
 
 Goal: support both explicit change evolution and a simple secure local save
 workflow.
@@ -1652,7 +1755,7 @@ Exit criteria:
 - Profiles requiring proof obligations unavailable at this milestone fail
   closed instead of silently downgrading to an unprotected save.
 
-### v0.55.0 - Operation Ledger
+### v0.57.0 - Operation Ledger
 
 Goal: record user-facing operations as append-only history.
 
@@ -1672,7 +1775,7 @@ Exit criteria:
 
 - User-visible mutations are attributable to durable operation records.
 
-### v0.56.0 - Undo
+### v0.58.0 - Undo
 
 Goal: make common local mistakes reversible without erasing history.
 
@@ -1696,9 +1799,9 @@ Exit criteria:
 
 ## Phase 6: Cryptography, Proof, Convergence, And Promotion
 
-### v0.57.0 - Typed Ingest Enforcement
+### v0.59.0 - Typed Ingest Enforcement
 
-Goal: implement the v0.27.0 type-state contract across storage, worlds, changes,
+Goal: implement the v0.29.0 type-state contract across storage, worlds, changes,
 proofs, and policy.
 
 Deliverables:
@@ -1723,7 +1826,7 @@ Exit criteria:
   entries, or generic validation flags.
 - Structural graph validation is never reported as cryptographic proof.
 
-### v0.58.0 - Threshold Principals And Proof Of Possession
+### v0.60.0 - Threshold Principals And Proof Of Possession
 
 Goal: prevent one principal or rogue key from satisfying a multi-party policy.
 
@@ -1747,7 +1850,7 @@ Exit criteria:
 - Adding devices or keys for one actor cannot increase an independent-principal
   threshold unless canonical governance explicitly creates a new principal.
 
-### v0.59.0 - Signature Set Verification
+### v0.61.0 - Signature Set Verification
 
 Goal: verify admitted bounded signature sets against governance and policy.
 
@@ -1769,7 +1872,7 @@ Exit criteria:
 - A structurally valid envelope cannot satisfy policy unless its transcript,
   cryptography, governance authority, principal count, and epochs all verify.
 
-### v0.60.0 - Checkpoint And Transition Transcript Integration
+### v0.62.0 - Checkpoint And Transition Transcript Integration
 
 Goal: apply canonical transcripts to checkpoints, aliases, changes, merges, and
 policy transitions.
@@ -1793,7 +1896,7 @@ Exit criteria:
 - Every authoritative mutation type has an implemented canonical transcript and
   cannot reuse a signature from another mutation type.
 
-### v0.61.0 - Provider Isolation And Live Key Handling
+### v0.63.0 - Provider Isolation And Live Key Handling
 
 Goal: contain provider failure and minimize exposure of live secret keys.
 
@@ -1820,7 +1923,7 @@ Exit criteria:
 - Provider or key-agent failure cannot leave an operation partially authorized
   or secrets intentionally exposed through logs, debug output, or crash dumps.
 
-### v0.62.0 - Governed Rotation And Emergency Recovery
+### v0.64.0 - Governed Rotation And Emergency Recovery
 
 Goal: implement governance-backed rotation and recovery without creating a
 second unauthenticated authority path.
@@ -1845,7 +1948,7 @@ Exit criteria:
 - Emergency recovery is explicit, threshold-governed, auditable, and cannot be
   replayed as an ordinary administrative action.
 
-### v0.63.0 - Checkpoint Anchoring And Rollback Detection
+### v0.65.0 - Checkpoint Anchoring And Rollback Detection
 
 Goal: make signed checkpoint comparison and witness anchoring operational.
 
@@ -1854,12 +1957,17 @@ Deliverables:
 - checkpoint persistence and comparison;
 - optional peer, removable-media, TPM, secure-enclave, or hardware witness
   anchors;
+- witness classification as advisory evidence unless canonical governance
+  explicitly assigns authority;
+- witness quorum and administrative-domain diversity policy;
+- split-view gossip and conflicting-witness evidence;
 - highest-seen checkpoint tracking;
 - restored-snapshot and deleted-suffix diagnostics;
 - equivocation evidence retention without recursive fork expansion;
 - missing-suffix and rollback diagnostics;
 - witness unavailability and stale-witness behavior;
-- restored snapshot, conflicting witness, and checkpoint-substitution tests.
+- restored snapshot, insufficient diversity, split view, conflicting witness,
+  stale witness, and checkpoint-substitution tests.
 
 Verification:
 
@@ -1872,8 +1980,10 @@ Exit criteria:
 - Deleted suffixes, stale snapshots, and actor equivocation are detectable when
   compared with an admitted later checkpoint or witness.
 - Sagnir documents the limits of purely local rollback detection honestly.
+- Advisory witnesses strengthen rollback evidence but cannot redefine canonical
+  realm validity.
 
-### v0.64.0 - Target-Bound Verification Results
+### v0.66.0 - Target-Bound Verification Results
 
 Goal: replace generic bearer-style verification capability with immutable,
 target-specific results.
@@ -1897,7 +2007,7 @@ Exit criteria:
 - Verification of one object, change, world, scope, or epoch cannot authorize
   another operation.
 
-### v0.65.0 - Integrity Proof
+### v0.67.0 - Integrity Proof
 
 Goal: produce target-bound integrity results from canonical bodies rather than
 caller-supplied graph claims.
@@ -1930,20 +2040,27 @@ Exit criteria:
 - General relationship cycles remain representable while dependency cycles are
   rejected.
 
-### v0.66.0 - Proof Artifact And Soundness Suite
+### v0.68.0 - Proof Artifact And Soundness Suite
 
 Goal: define exactly what each proof proves and make proof artifacts portable.
 
 Deliverables:
 
 - canonical proof artifact envelope;
+- maximum encoded and decompressed proof bytes;
+- maximum node count, tree depth, sibling count, causal-frontier width, and
+  recursive composition depth;
+- hash-operation, signature-operation, batch-fallback, and verification-time
+  budgets;
+- cancellation and deterministic resource-exhaustion results;
 - inclusion and absence proofs;
 - append-only consistency proofs;
 - changed-cone and causal-closure proofs;
 - completeness claim with explicit scope and assumptions;
 - verifier-version binding;
 - proof soundness and non-goal statements;
-- malformed, truncated, substituted, and scope-confusion tests.
+- malformed, truncated, substituted, scope-confusion, oversized, deep,
+  high-frontier, decompression-bomb, and batch-fallback-cost tests.
 
 Verification:
 
@@ -1955,8 +2072,12 @@ Exit criteria:
 - Every proof kind states its target, assumptions, coverage, and limitations.
 - A proof cannot claim full-world completeness when it covers only a changed
   cone or bounded chunk.
+- Proof parsing and verification remain bounded independently of object or
+  bundle limits.
+- Private-realm proof artifacts are encrypted by default unless an intentional
+  disclosure policy produces a scoped public artifact.
 
-### v0.67.0 - Proof Cache And Incremental Verification
+### v0.69.0 - Proof Cache And Incremental Verification
 
 Goal: reuse verified immutable subtrees without accepting stale security state.
 
@@ -1980,7 +2101,7 @@ Exit criteria:
 - Cached results can accelerate one-file changes in large worlds without
   surviving any relevant verifier, policy, crypto, or frontier change.
 
-### v0.68.0 - Compound Policy Admission
+### v0.70.0 - Compound Policy Admission
 
 Goal: combine canonical realm validity and local acceptance into one
 non-contradictory admission result.
@@ -2008,7 +2129,7 @@ Exit criteria:
 - Promotion code consumes one validated admission result rather than checking
   independent enums that can contradict each other.
 
-### v0.69.0 - World Transition Object
+### v0.71.0 - World Transition Object
 
 Goal: represent every world-state move as an immutable, signed transition.
 
@@ -2035,7 +2156,7 @@ Exit criteria:
 
 - No world mutation can be represented as an unexplained alias overwrite.
 
-### v0.70.0 - Deterministic Merge Base And Fast-Forward
+### v0.72.0 - Deterministic Merge Base And Fast-Forward
 
 Goal: define convergence when peers advance the same world concurrently.
 
@@ -2057,7 +2178,7 @@ Exit criteria:
 
 - Divergent history is preserved and cannot be discarded by promotion or sync.
 
-### v0.71.0 - Deterministic Tree Merge
+### v0.73.0 - Deterministic Tree Merge
 
 Goal: create reproducible source-state results for divergent worlds.
 
@@ -2065,7 +2186,12 @@ Deliverables:
 
 - three-way tree merge;
 - deterministic path ordering;
-- add/add, delete/modify, type-change, executable-bit, and rename handling;
+- add/add, delete/modify, rename/delete, rename/rename, directory/file,
+  type-change, executable-bit, and symlink-target handling;
+- case-folding, Unicode-normalization, reserved-name, trailing-dot, and
+  platform-unmaterializable conflict detection;
+- target-platform capability set committed to materialization preflight rather
+  than silently changing the canonical merge;
 - binary and oversized-file merge policy;
 - merge algorithm version committed into the transition;
 - independent replay and fixture tests.
@@ -2079,8 +2205,11 @@ Exit criteria:
 
 - Identical merge inputs and algorithm versions produce identical result trees
   on every supported platform.
+- A canonical merged tree that cannot be materialized on a target platform
+  remains valid canonical state but produces an explicit portability conflict
+  instead of path loss or substitution.
 
-### v0.72.0 - Conflict And Resolution Objects
+### v0.74.0 - Conflict And Resolution Objects
 
 Goal: preserve unresolved source, policy, compartment, and evidence conflicts
 as explicit state.
@@ -2090,6 +2219,8 @@ Deliverables:
 - typed conflict object;
 - explicit resolution object;
 - source-text, rename, type, policy, compartment, and evidence conflict kinds;
+- case-folding, Unicode normalization, reserved-name, directory/file,
+  rename/delete, rename/rename, and symlink-target conflict kinds;
 - resolver actor and rationale binding;
 - no silent arbitrary-text CRDT merge;
 - conflict fanout and duplicate-resolution bounds;
@@ -2105,7 +2236,7 @@ Exit criteria:
 - A world with concurrent heads or unresolved conflicts cannot be represented
   as cleanly promoted.
 
-### v0.73.0 - Promotion Preflight
+### v0.75.0 - Promotion Preflight
 
 Goal: evaluate promotion before mutating target worlds.
 
@@ -2130,7 +2261,7 @@ Exit criteria:
 - Promotion denial is deterministic and explainable.
 - Preflight cannot approve a transition against a stale target frontier.
 
-### v0.74.0 - Promotion Commit
+### v0.76.0 - Promotion Commit
 
 Goal: move proven source state between worlds.
 
@@ -2162,7 +2293,7 @@ Exit criteria:
 
 ## Phase 7: Facts And Evidence
 
-### v0.75.0 - Local Fact Envelope
+### v0.77.0 - Local Fact Envelope
 
 Goal: represent bounded evidence without blurring cryptographic, observed,
 derived, and heuristic trust classes.
@@ -2191,7 +2322,7 @@ Exit criteria:
 - A confidence score cannot make a heuristic or observation equivalent to a
   cryptographic attestation.
 
-### v0.76.0 - Fact Log
+### v0.78.0 - Fact Log
 
 Goal: append and replay local facts.
 
@@ -2215,7 +2346,7 @@ Exit criteria:
 
 - Local facts survive process restart and corruption is detected.
 
-### v0.77.0 - Test Evidence Recording
+### v0.79.0 - Test Evidence Recording
 
 Goal: bind command results to sealed revisions or state roots.
 
@@ -2244,7 +2375,7 @@ Exit criteria:
   environment, result, and bounded artifacts without treating terminal text as
   proof.
 
-### v0.78.0 - Review Evidence Recording
+### v0.80.0 - Review Evidence Recording
 
 Goal: record local review approval facts.
 
@@ -2266,7 +2397,7 @@ Exit criteria:
 
 - Review facts can satisfy local policy requirements.
 
-### v0.79.0 - Why Query
+### v0.81.0 - Why Query
 
 Goal: explain why a path or state exists.
 
@@ -2287,7 +2418,7 @@ Exit criteria:
 
 - A user can trace a path back to the change and evidence that produced it.
 
-### v0.80.0 - Local Impact Traversal
+### v0.82.0 - Local Impact Traversal
 
 Goal: trace local blast radius from tainted inputs.
 
@@ -2310,13 +2441,13 @@ Exit criteria:
 
 ## Phase 8: Causal Memory And Explanation
 
-### v0.81.0 - Structured Event Log
+### v0.83.0 - Structured Event Log
 
 Goal: separate noisy command events from stable canonical facts.
 
 Deliverables:
 
-- diagnostic command-event envelope distinct from the authoritative v0.24.0
+- diagnostic command-event envelope distinct from the authoritative v0.26.0
   signed event envelope;
 - diagnostic event kind registry;
 - operation-to-event binding;
@@ -2336,7 +2467,7 @@ Exit criteria:
 - Diagnostic command events cannot substitute for signed authoritative state
   events.
 
-### v0.82.0 - Fact Compiler
+### v0.84.0 - Fact Compiler
 
 Goal: derive stable local facts from admitted events and objects.
 
@@ -2356,7 +2487,7 @@ Exit criteria:
 
 - Rebuilding facts from canonical objects and admitted events is deterministic.
 
-### v0.83.0 - Causal Graph Indexes
+### v0.85.0 - Causal Graph Indexes
 
 Goal: build rebuildable indexes for forward and reverse causal traversal.
 
@@ -2379,7 +2510,7 @@ Exit criteria:
 - Deleting indexes does not delete truth; Sagnir can rebuild memory projections
   from canonical objects, events, and facts.
 
-### v0.84.0 - Explanation Object
+### v0.86.0 - Explanation Object
 
 Goal: make explanations auditable instead of transient text output.
 
@@ -2402,7 +2533,7 @@ Exit criteria:
 - An explanation can be inspected later and tied to the exact facts, objects,
   and policy decisions used to produce it.
 
-### v0.85.0 - Explain Command
+### v0.87.0 - Explain Command
 
 Goal: explain local changes, decisions, worlds, and operations.
 
@@ -2425,7 +2556,7 @@ Exit criteria:
 - Sagnir can answer why a local policy decision or operation succeeded or
   failed without external infrastructure.
 
-### v0.86.0 - Trace Command
+### v0.88.0 - Trace Command
 
 Goal: follow local causal paths across changes, facts, proofs, and worlds.
 
@@ -2447,7 +2578,7 @@ Exit criteria:
 
 - Sagnir can show causal chains and clearly mark derived or uncertain analysis.
 
-### v0.87.0 - Context Packs
+### v0.89.0 - Context Packs
 
 Goal: build deterministic context packages for diagnostics and optional AI
 summaries.
@@ -2472,7 +2603,7 @@ Exit criteria:
 - Sagnir can prepare bounded evidence packs without exposing unrelated local
   source, facts, keys, or protected metadata.
 
-### v0.88.0 - Ask Query Scaffold
+### v0.90.0 - Ask Query Scaffold
 
 Goal: allow natural-language questions only as a bounded layer over
 deterministic facts.
@@ -2499,7 +2630,7 @@ Exit criteria:
 
 ## Phase 9: Native Encrypted Realms
 
-### v0.89.0 - Vault Key Hierarchy And Derivation
+### v0.91.0 - Vault Key Hierarchy And Derivation
 
 Goal: define cryptographic key separation before encrypted bytes are written.
 
@@ -2523,7 +2654,7 @@ Exit criteria:
 - Compromise or misuse of one derived purpose key does not silently authorize a
   different cryptographic purpose.
 
-### v0.90.0 - AEAD Nonce And Live Key Session Safety
+### v0.92.0 - AEAD Nonce And Live Key Session Safety
 
 Goal: prevent nonce reuse, wrong-key acceptance, and unsafe live-key handling
 before encrypted pages or objects are written.
@@ -2553,68 +2684,47 @@ Exit criteria:
   cannot cause two records under one key to reuse a forbidden nonce.
 - Wrong keys fail authentication without exposing parsed plaintext.
 
-### v0.91.0 - Authenticated Encrypted Pages And Index
+### v0.93.0 - Sealed Private Object IDs
 
-Goal: support bounded random access without decrypting an entire realm.
-
-Deliverables:
-
-- authenticated encrypted page or segment format;
-- encrypted manifest and index;
-- signed pack/root commitment;
-- compression-before-encryption policy;
-- authentication before decompression or plaintext parsing;
-- expanded-size and decompression-ratio limits;
-- ciphertext storage hash computed during encryption;
-- random-read, substitution, truncation, and decompression-bomb tests.
-
-Verification:
-
-- `cargo test -p sagnir-vault`
-- `cargo test -p sagnir-store`
-
-Exit criteria:
-
-- Status and index lookup can read bounded authenticated regions.
-- Unauthenticated ciphertext never reaches decompression or canonical parsing.
-
-### v0.92.0 - Device Recipients And Recovery Model
-
-Goal: define access recovery and device authorization without one shared user
-secret.
+Goal: avoid known-plaintext membership leaks before any encrypted realm can be
+created.
 
 Deliverables:
 
-- per-device recipient keys;
-- OS keychain, TPM, secure enclave, and hardware-token backend interfaces;
-- threshold and offline recovery metadata;
-- recipient and key-transparency records;
-- key compromise and recovery evidence;
-- forward-secrecy versus permanent-history access policy;
-- backend-unavailable and recovery-threshold tests.
+- private keyed object ID format;
+- ciphertext storage ID format;
+- deduplication identity policy scoped to one key domain;
+- randomized encryption requirement;
+- non-revealing private-ID formatting;
+- no public plaintext object hash in sealed-private metadata;
+- known-plaintext, cross-realm correlation, formatting, and identity-confusion
+  tests.
 
 Verification:
 
+- `cargo test -p sagnir-object`
 - `cargo test -p sagnir-crypto`
-- backend contract tests with software fixtures.
 
 Exit criteria:
 
-- The format supports device-specific access, revocation evidence, and offline
-  recovery without embedding a mandatory platform backend.
+- Sealed-private formats can hide whether known plaintext content is present.
+- No user-facing encryption command exists before this identity format.
 
-### v0.93.0 - Vault Metadata Model
+### v0.94.0 - Vault Metadata Model
 
-Goal: represent encrypted realm state without encrypting data yet.
+Goal: represent encrypted realm mode and privacy guarantees before writing
+ciphertext.
 
 Deliverables:
 
 - vault enabled marker;
-- vault mode model;
+- sealed-private mode marker;
 - crypto epoch reference;
-- protected metadata policy;
+- protected metadata and identifier policy;
+- explicit prohibition on representing metadata-visible encryption as
+  sealed-private;
 - encrypted realm status model;
-- tests for invalid vault metadata.
+- invalid mode, downgrade, and contradictory metadata tests.
 
 Verification:
 
@@ -2623,10 +2733,38 @@ Verification:
 
 Exit criteria:
 
-- Sagnir can distinguish open realms from encrypted realms before touching
-  object encryption.
+- Sagnir can distinguish open and sealed-private realms before touching object
+  encryption.
+- Privacy guarantees are explicit machine-readable state, not CLI wording.
 
-### v0.94.0 - Encrypted Object Envelope
+### v0.95.0 - Private Metadata And Padded Storage
+
+Goal: protect semantic metadata and reduce observable storage-shape leakage
+before encrypted realm creation.
+
+Deliverables:
+
+- two-layer public commitment and encrypted semantic ledger model;
+- encrypted paths, worlds, actors, facts, graph edges, policies, and proofs;
+- fixed-size or bucketed record classes;
+- epoch batching and pack compaction;
+- configurable object-count and transfer-size padding;
+- metadata leakage inventory and profile-specific defaults;
+- tests that public summaries do not expose redacted plaintext fields.
+
+Verification:
+
+- `cargo test -p sagnir-vault`
+- encrypted metadata fixture review.
+
+Exit criteria:
+
+- Locked or blind-storage views expose only documented minimal commitments and
+  availability metadata.
+- Public proof summaries are commitments or deliberate predicates, not
+  plaintext reports with fields removed.
+
+### v0.96.0 - Encrypted Object Envelope
 
 Goal: define encrypted object bytes and authenticated metadata.
 
@@ -2651,7 +2789,36 @@ Exit criteria:
 
 - Encrypted object metadata is bounded and context-bound before decryption.
 
-### v0.95.0 - Passphrase Unlock Baseline
+### v0.97.0 - Authenticated Encrypted Pages And Index
+
+Goal: support bounded random access without decrypting an entire realm.
+
+Deliverables:
+
+- authenticated encrypted page or segment format;
+- encrypted manifest and index;
+- signed pack/root commitment;
+- isolated compression contexts that never combine attacker-controlled input
+  with secrets;
+- deduplication and delta bases scoped to one compartment and key domain;
+- authentication before decompression or plaintext parsing;
+- expanded-size and decompression-ratio limits;
+- ciphertext storage hash computed during encryption;
+- compression-oracle, cross-compartment base, random-read, substitution,
+  truncation, and decompression-bomb tests.
+
+Verification:
+
+- `cargo test -p sagnir-vault`
+- `cargo test -p sagnir-store`
+
+Exit criteria:
+
+- Status and index lookup can read bounded authenticated regions.
+- Secret and attacker-controlled bytes never share a compression context.
+- Unauthenticated ciphertext never reaches decompression or canonical parsing.
+
+### v0.98.0 - Passphrase Unlock Baseline
 
 Goal: support one local unlock method for development and tests.
 
@@ -2672,18 +2839,106 @@ Exit criteria:
 
 - A passphrase can unlock a test realm key without becoming the realm key.
 
-### v0.96.0 - Encrypt Project Command
+### v0.99.0 - Device Recipients And Recipient Slots
 
-Goal: enable encrypted realm storage through `saga`.
+Goal: define device access and recovery without one shared user secret.
+
+Deliverables:
+
+- per-device recipient keys;
+- recipient ID, kind, wrapping algorithm, and wrapped key metadata;
+- signed recipient authorization;
+- recipient and key-transparency records;
+- OS keychain, TPM, secure enclave, and hardware-token backend interfaces;
+- threshold and offline recovery metadata;
+- anonymous recipient slots where feasible;
+- key compromise and recovery evidence;
+- acknowledgement that removal cannot revoke already acquired keys;
+- backend-unavailable, duplicate slot, unauthorized recipient, and recovery
+  threshold tests.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- backend contract tests with software fixtures.
+
+Exit criteria:
+
+- The format supports device-specific access, revocation evidence, and offline
+  recovery without embedding a mandatory platform backend.
+
+### v0.100.0 - Compartment Encryption Boundaries
+
+Goal: establish path, world, and projection access boundaries before encrypted
+realm creation.
+
+Deliverables:
+
+- compartment ID and key metadata;
+- recipient wrapping of only authorized compartment keys;
+- prohibition on giving partial-access recipients a realm master key that can
+  derive every compartment;
+- `saga vault compartment create`;
+- `saga vault protect`;
+- `saga vault unprotect`;
+- partial unlock metadata;
+- compartment, cross-compartment deduplication, and unauthorized derivation
+  tests.
+
+Verification:
+
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-cli`
+
+Exit criteria:
+
+- A recipient authorized for one compartment cannot derive keys, deduplication
+  identities, or delta bases for another compartment.
+
+### v0.101.0 - Sealed-Private Migration And Leakage Accounting
+
+Goal: define safe conversion of an existing open realm before exposing the
+encryption command.
+
+Deliverables:
+
+- full object-ID, metadata, index, pack, and compartment rewrite plan;
+- crash-safe staged repack and rollback;
+- old plaintext identifier and metadata cleanup policy;
+- explicit leakage statement for information previously published, replicated,
+  logged, cached, or observed;
+- prohibition on claiming that migration recalls prior disclosures;
+- old-to-new commitment map protected inside the encrypted ledger;
+- interrupted migration, stale index, old-pack retention, rollback, and
+  previously disclosed metadata tests.
+
+Verification:
+
+- `cargo test -p sagnir-vault`
+- `cargo test -p sagnir-store`
+- migration crash-consistency suite.
+
+Exit criteria:
+
+- An open realm can be rewritten into sealed-private form without mixing old
+  public identifiers into the new external representation.
+- Sagnir states clearly that prior disclosure cannot be undone.
+
+### v0.102.0 - Encrypt Project Command
+
+Goal: enable sealed-private encrypted realm storage through `saga`.
 
 Deliverables:
 
 - `saga encrypt project`;
-- vault init transaction;
+- sealed-private vault initialization transaction;
 - encryption-enabled canonical event and compiled fact;
-- existing object migration plan;
-- refusal for already encrypted realm;
-- dry-run output tests.
+- required migration/repack for an existing open realm;
+- irreversible-disclosure warning for previously exposed metadata;
+- refusal when sealed-private prerequisites or resource budgets are unmet;
+- refusal for already encrypted realms;
+- dry-run and interrupted migration tests.
 
 Verification:
 
@@ -2692,10 +2947,11 @@ Verification:
 
 Exit criteria:
 
-- A user can turn a local realm into an encrypted realm through an explicit
-  command.
+- A user can enable sealed-private storage only after private IDs, protected
+  metadata, recipients, compartments, envelopes, and encrypted indexes exist.
+- The command never labels metadata-visible encryption as sealed-private.
 
-### v0.97.0 - Unlock Command
+### v0.103.0 - Unlock Command
 
 Goal: load admitted keys for a local encrypted realm.
 
@@ -2703,9 +2959,10 @@ Deliverables:
 
 - `saga unlock`;
 - unlock session metadata;
-- time-to-live metadata;
+- monotonic time-to-live metadata;
+- compartment-aware partial unlock;
 - `--no-worktree` verification mode;
-- failed unlock tests.
+- wrong-key, expired-session, compartment-overreach, and failed unlock tests.
 
 Verification:
 
@@ -2714,20 +2971,22 @@ Verification:
 
 Exit criteria:
 
-- Sagnir can verify encrypted storage without always materializing plaintext.
+- Sagnir can verify encrypted storage without always materializing plaintext or
+  loading unrelated compartment keys.
 
-### v0.98.0 - Lock Command
+### v0.104.0 - Lock Command
 
 Goal: evict local unlock state and optionally remove materialized plaintext.
 
 Deliverables:
 
 - `saga lock`;
-- key eviction metadata;
+- key and session eviction;
+- local key-agent revocation;
 - `--wipe-worktree`;
 - `--keep-worktree`;
 - warning text about imperfect plaintext cleanup;
-- lock tests.
+- lock, forked-process, key-agent, and materialized-plaintext tests.
 
 Verification:
 
@@ -2736,19 +2995,21 @@ Verification:
 
 Exit criteria:
 
-- Sagnir clearly separates encrypted storage from plaintext worktree state.
+- Sagnir clearly separates encrypted storage from plaintext worktree state and
+  does not claim to recall plaintext copied elsewhere.
 
-### v0.99.0 - Vault Status And Leak Scanner
+### v0.105.0 - Vault Status And Leak Scanner
 
-Goal: make encrypted realm state and plaintext leak surfaces visible.
+Goal: make encrypted realm state and plaintext or metadata leak surfaces
+visible.
 
 Deliverables:
 
 - `saga vault status`;
 - `saga vault scan-leaks`;
-- ignored-directory checks;
-- editor cache checks;
-- build output checks;
+- sealed-private mode and migration-state reporting;
+- ignored-directory, editor cache, build output, old pack, log, and object-ID
+  disclosure checks;
 - leak warning fixture tests.
 
 Verification:
@@ -2758,32 +3019,10 @@ Verification:
 
 Exit criteria:
 
-- Users get honest warnings about plaintext risks while unlocked.
+- Users get honest warnings about plaintext and metadata risks while unlocked
+  and after migration from an open realm.
 
-### v0.100.0 - Recipient Slot Model
-
-Goal: support recipient-based key wrapping metadata.
-
-Deliverables:
-
-- recipient ID;
-- recipient kind;
-- wrapped key metadata;
-- key-wrap algorithm identifier;
-- created-by actor reference;
-- signed recipient authorization;
-- anonymous recipient slot option where feasible;
-- add/remove validation tests.
-
-Verification:
-
-- `cargo test -p sagnir-crypto`
-
-Exit criteria:
-
-- Sagnir can describe who may unlock future encrypted realm keys.
-
-### v0.101.0 - Rekey And Crypto Epochs
+### v0.106.0 - Rekey And Crypto Epochs
 
 Goal: rotate encrypted realm keys without mutating old history in place.
 
@@ -2792,11 +3031,12 @@ Deliverables:
 - TLA+/PlusCal or equivalent key-rotation model completed before mutation code;
 - crypto epoch transition;
 - `saga vault rekey`;
-- recipient rewrap plan;
-- old-key retention policy;
+- recipient and compartment rewrap plan;
+- old-key retention and cryptographic-erasure policy;
 - crash-safe staged key rotation;
 - rollback and interrupted-rotation recovery;
-- tests for invalid epoch transitions.
+- invalid epoch, partial compartment, stale recipient, and restored-snapshot
+  tests.
 
 Verification:
 
@@ -2808,58 +3048,7 @@ Exit criteria:
 
 - Key rotation is a signed transition model, not an in-place mutation.
 
-### v0.102.0 - Sealed Private Object IDs
-
-Goal: avoid known-plaintext membership leaks in encrypted realms.
-
-Deliverables:
-
-- private keyed object ID metadata;
-- ciphertext storage ID metadata;
-- deduplication ID policy;
-- randomized encryption requirement;
-- non-revealing private-ID formatting integration;
-- tests that public plaintext hashes are not exposed in sealed private mode.
-
-Verification:
-
-- `cargo test -p sagnir-object`
-- `cargo test -p sagnir-crypto`
-
-Exit criteria:
-
-- Encrypted realms can hide whether known plaintext objects are present.
-
-### v0.103.0 - Compartment Encryption Scaffold
-
-Goal: prepare path, world, and projection-level encryption boundaries.
-
-Deliverables:
-
-- compartment ID;
-- compartment key metadata;
-- recipient wrapping of only authorized compartment keys;
-- prohibition on giving partial-access recipients a realm master key that can
-  derive every compartment;
-- `saga vault compartment create`;
-- `saga vault protect`;
-- `saga vault unprotect`;
-- partial unlock metadata;
-- compartment policy tests.
-
-Verification:
-
-- `cargo test -p sagnir-policy`
-- `cargo test -p sagnir-crypto`
-- `cargo test -p sagnir-cli`
-
-Exit criteria:
-
-- Sagnir can represent different access boundaries inside one encrypted realm.
-- A recipient authorized for one compartment cannot derive keys for another
-  compartment.
-
-### v0.104.0 - Hybrid Post-Quantum Readiness Scaffold
+### v0.107.0 - Hybrid Post-Quantum Readiness Scaffold
 
 Goal: prepare recipient wrapping and signatures for reviewed hybrid algorithms.
 
@@ -2869,6 +3058,7 @@ Deliverables:
 - post-quantum algorithm registry placeholders;
 - algorithm admission document;
 - crypto provider review checklist;
+- downgrade and component-stripping tests;
 - tests that unknown or unadmitted algorithms fail closed.
 
 Verification:
@@ -2881,34 +3071,7 @@ Exit criteria:
 - Sagnir is ready to admit hybrid classical plus post-quantum providers without
   changing object formats.
 
-### v0.105.0 - Private Metadata And Padded Storage
-
-Goal: reduce information leakage from encrypted filesystem layout and transfer
-shape.
-
-Deliverables:
-
-- two-layer public commitment and encrypted semantic ledger model;
-- encrypted paths, worlds, actors, facts, graph edges, policies, and proofs;
-- fixed-size or bucketed record classes;
-- epoch batching and pack compaction;
-- configurable object-count and transfer-size padding;
-- metadata leakage inventory and profile-specific defaults;
-- tests that public summaries do not expose redacted plaintext fields.
-
-Verification:
-
-- `cargo test -p sagnir-vault`
-- encrypted metadata fixture review.
-
-Exit criteria:
-
-- Locked or blind-storage views expose only documented minimal commitments and
-  availability metadata.
-- Public proof summaries are commitments or deliberate predicates, not
-  plaintext reports with fields removed.
-
-### v0.106.0 - Selective Disclosure Proofs
+### v0.108.0 - Selective Disclosure Proofs
 
 Goal: disclose only policy or evidence claims required by a recipient.
 
@@ -2918,6 +3081,9 @@ Deliverables:
 - signed disclosed claims;
 - hidden-witness commitment model;
 - scope and audience binding;
+- leakage analysis for leaf positions, tree shape, cross-proof correlation,
+  freshness, revocation, and repeated disclosure;
+- privacy-preserving tree shaping or explicit leakage acknowledgement;
 - replay and claim-substitution tests;
 - documented admission rule that zero-knowledge proofs are added only for
   predicates that genuinely require hidden witnesses.
@@ -2931,10 +3097,12 @@ Exit criteria:
 
 - A peer can verify selected evidence or policy inputs without receiving the
   unrelated encrypted ledger.
+- The disclosure report states what structural metadata the proof reveals and
+  whether it remains fresh after revocation or policy-epoch changes.
 
 ## Phase 10: Bundles And Sync
 
-### v0.107.0 - Pack File Format
+### v0.109.0 - Pack File Format
 
 Goal: store multiple immutable objects in a bounded pack.
 
@@ -2964,7 +3132,7 @@ Exit criteria:
 - Pack readers reject decompression bombs, deep delta chains, invalid bases, and
   offset arithmetic overflow before expensive materialization.
 
-### v0.108.0 - Bundle Manifest
+### v0.110.0 - Bundle Manifest
 
 Goal: describe a proof-carrying offline transfer, including encrypted transfer
 metadata.
@@ -2996,7 +3164,7 @@ Exit criteria:
 - Sagnir can estimate whether local verification settings are sufficient before
   import or materialization.
 
-### v0.109.0 - Bundle Create And Verify
+### v0.111.0 - Bundle Create And Verify
 
 Goal: create and verify offline bundles before import or decrypt.
 
@@ -3027,7 +3195,7 @@ Exit criteria:
 - Manifest estimates are treated as untrusted preflight hints; streaming local
   hard limits remain authoritative throughout verification.
 
-### v0.110.0 - Quarantine Namespace And Trust Isolation
+### v0.112.0 - Quarantine Namespace And Trust Isolation
 
 Goal: ensure untrusted remote data cannot influence trusted state before full
 re-admission.
@@ -3058,7 +3226,7 @@ Exit criteria:
 - Re-admission executes the complete typed ingest pipeline without carrying
   quarantine trust state forward.
 
-### v0.111.0 - Bundle Import
+### v0.113.0 - Bundle Import
 
 Goal: import verified bundles safely, including encrypted bundles.
 
@@ -3089,13 +3257,18 @@ Exit criteria:
   materializing it.
 - Budget refusal leaves no partially trusted alias, index, or worktree state.
 
-### v0.112.0 - Sync Negotiation
+### v0.114.0 - Sync Negotiation
 
 Goal: exchange local and remote heads before transfer.
 
 Deliverables:
 
 - remote head request;
+- authenticated negotiation transcript binding realm and genesis commitment,
+  endpoint identities, protocol version, critical capabilities, crypto suite,
+  private-realm mode, and required verification level;
+- unknown-critical-feature rejection;
+- capability and verification-requirement stripping detection;
 - compact causal-context or Merkle-clock exchange;
 - missing object response;
 - missing fact response;
@@ -3105,7 +3278,9 @@ Deliverables:
 - minimum verification mode negotiation;
 - replay rejection metadata;
 - private set reconciliation option for private realms;
-- equivocation evidence exchange without recursive fork expansion.
+- equivocation evidence exchange without recursive fork expansion;
+- explicit rule that remote requirements may strengthen local verification but
+  cannot redefine canonical realm validity.
 
 Verification:
 
@@ -3116,8 +3291,10 @@ Exit criteria:
 - Sync can determine the smallest required bundle for a remote.
 - Sync can determine whether local verification budgets satisfy remote trust
   requirements before transfer.
+- Both peers authenticate the exact negotiated security parameters before
+  exchanging trusted bundle state.
 
-### v0.113.0 - Partition And Anti-Entropy Model Gate
+### v0.115.0 - Partition And Anti-Entropy Model Gate
 
 Goal: model distributed convergence and hostile ordering before implementing
 live sync transfer.
@@ -3143,7 +3320,7 @@ Exit criteria:
 - Sync transfer implementation begins only after no known model counterexample
   can discard an admitted head or trust partial remote state.
 
-### v0.114.0 - Sync Transfer
+### v0.116.0 - Sync Transfer
 
 Goal: transfer proof-carrying bundles to a remote endpoint.
 
@@ -3153,7 +3330,11 @@ Deliverables:
 - `saga clone`;
 - `saga clone --no-worktree`;
 - transport-independent framed protocol;
-- chunk acknowledgement and resume tokens;
+- chunk acknowledgement;
+- authenticated resume tokens scoped to the session, endpoint identities,
+  realm/genesis, bundle, byte or chunk range, and negotiated transcript;
+- resume-token expiry, cancellation, single-use or replay window, and key
+  rotation behavior;
 - per-peer quotas and backpressure;
 - transfer cancellation;
 - accepted response;
@@ -3163,7 +3344,9 @@ Deliverables:
 - blind remote response;
 - split-trust remote response;
 - local sync result fact;
-- protocol tests.
+- protocol tests;
+- capability stripping, transcript substitution, token replay, cross-endpoint,
+  cross-bundle, expired token, cancelled token, and range-extension tests.
 
 Verification:
 
@@ -3176,8 +3359,10 @@ Exit criteria:
   blind-storage workflows.
 - Clone and sync do not silently downgrade verification; they either satisfy
   remote requirements, quarantine fetched state, or refuse trust/materialization.
+- Resumption cannot continue under a different endpoint, bundle, range,
+  capability set, or verification requirement.
 
-### v0.115.0 - Sparse Materialization And Partial Clone
+### v0.117.0 - Sparse Materialization And Partial Clone
 
 Goal: let large or compartmentalized realms fetch and materialize only admitted
 state.
@@ -3202,7 +3387,7 @@ Exit criteria:
 - Omitted state is explicit and cryptographically committed, never confused
   with verified absence.
 
-### v0.116.0 - Native Transport Adapters
+### v0.118.0 - Native Transport Adapters
 
 Goal: carry the same Sagnir protocol over practical decentralized transports.
 
@@ -3212,6 +3397,7 @@ Deliverables:
 - SSH or stdin/stdout adapter;
 - QUIC adapter;
 - transport authentication and endpoint identity binding;
+- exact sync-negotiation transcript binding independent of transport;
 - transport-independent transcript tests;
 - replay, truncation, reordering, disconnect, and resume tests.
 
@@ -3225,7 +3411,7 @@ Exit criteria:
 - Protocol meaning does not change with transport.
 - Local-first exchange remains possible without a hosted service.
 
-### v0.117.0 - Git Import And Export Bridge
+### v0.119.0 - Git Import And Export Bridge
 
 Goal: ease adoption without making Git the native storage or trust model.
 
@@ -3250,7 +3436,7 @@ Exit criteria:
   Sagnir semantics cannot survive export.
 - Git is an interoperability boundary, not Sagnir's backend.
 
-### v0.118.0 - Private Anti-Entropy And Discovery
+### v0.120.0 - Private Anti-Entropy And Discovery
 
 Goal: reconcile encrypted peers while limiting head, graph, and access-pattern
 leakage.
@@ -3274,7 +3460,7 @@ Exit criteria:
 - Private peers can discover missing state without announcing raw semantic
   heads to an untrusted blind store.
 
-### v0.119.0 - Minimal Daemon
+### v0.121.0 - Minimal Daemon
 
 Goal: provide optional local and remote daemon support.
 
@@ -3296,7 +3482,39 @@ Exit criteria:
 
 - A minimal Sagnir remote exists for sync testing.
 
-### v0.120.0 - Reachability, Repack, And Safe Garbage Collection
+### v0.122.0 - Redaction And Cryptographic Erasure
+
+Goal: revoke future access to selected encrypted material while preserving
+honest signed historical evidence.
+
+Deliverables:
+
+- signed redaction transition identifying scope, authority, reason, and policy
+  basis without embedding removed plaintext;
+- key-destruction and recipient-revocation plan for cryptographic erasure;
+- compartment, object, metadata, index, cache, and repack handling;
+- preserved historical commitments and redaction evidence;
+- explicit distinction between redaction, logical removal, ciphertext deletion,
+  and cryptographic erasure;
+- statement that already replicated plaintext, keys, screenshots, logs, or
+  exports cannot be recalled;
+- interrupted purge, stale recipient, retained key copy, partial repack,
+  historical proof, and unauthorized redaction tests.
+
+Verification:
+
+- `cargo test -p sagnir-vault`
+- `cargo test -p sagnir-store`
+- cryptographic-erasure recovery suite.
+
+Exit criteria:
+
+- Authorized redaction can make retained ciphertext undecryptable where key
+  destruction assumptions hold without erasing the signed fact that a
+  redaction occurred.
+- Sagnir never claims erasure of data or keys already copied beyond its control.
+
+### v0.123.0 - Reachability, Repack, And Safe Garbage Collection
 
 Goal: maintain production stores without deleting state required for integrity,
 recovery, partial clones, or policy.
@@ -3327,7 +3545,7 @@ Exit criteria:
   admitted root, pin, promise, retention rule, and in-flight transaction.
 - Integrity and local availability are reported as separate properties.
 
-### v0.121.0 - Remote Storage Receipts And Availability Semantics
+### v0.124.0 - Remote Storage Receipts And Availability Semantics
 
 Goal: distinguish remote protocol acceptance from evidence that bytes are
 durably stored and retrievable.
@@ -3353,9 +3571,40 @@ Exit criteria:
   returns an admitted signed receipt with defined semantics.
 - Availability claims state their time, scope, and witness assumptions.
 
+### v0.125.0 - Availability Replication And Repair
+
+Goal: maintain configured availability rather than merely recording storage
+receipts.
+
+Deliverables:
+
+- replication policy by object, pack, compartment, archive, and protected world;
+- independent provider and administrative-domain diversity requirements;
+- periodic authenticated retrieval challenges;
+- receipt freshness and challenge scheduling;
+- missing or degraded replica detection;
+- repair planning and resumable re-replication;
+- optional evaluated erasure-coding profile with shard commitment and repair
+  semantics;
+- provider collusion, correlated failure, stale receipt, partial shard,
+  unavailable source, and repair interruption tests.
+
+Verification:
+
+- `cargo test -p sagnir-sync`
+- deterministic availability simulation;
+- repair integration suite.
+
+Exit criteria:
+
+- Sagnir can detect when configured availability falls below policy and repair
+  it from an admitted surviving source.
+- Provider count alone cannot satisfy diversity policy when providers share one
+  administrative failure domain.
+
 ## Phase 11: Hardening And Portability
 
-### v0.122.0 - Verifiable Archive Pack Concept
+### v0.126.0 - Verifiable Archive Pack Concept
 
 Goal: keep a future path for disk-space relief without making deletion part of
 the early trust model.
@@ -3382,7 +3631,7 @@ Exit criteria:
 - Archive receipts cannot be treated as proof that missing archive bodies are
   available or valid.
 
-### v0.123.0 - Malicious Corpus
+### v0.127.0 - Malicious Corpus
 
 Goal: make hostile input testing part of normal development.
 
@@ -3407,7 +3656,7 @@ Exit criteria:
 
 - Known malicious bytes stay rejected across releases.
 
-### v0.124.0 - Expanded Fuzzing
+### v0.128.0 - Expanded Fuzzing
 
 Goal: expand fuzz and model testing beyond the parser scaffolds added earlier.
 
@@ -3432,7 +3681,7 @@ Exit criteria:
 
 - New parsers have a standard place to add fuzz coverage.
 
-### v0.125.0 - Full-System Formal Model Composition
+### v0.129.0 - Full-System Formal Model Composition
 
 Goal: compose and re-check the model-first subsystem work against the complete
 pre-1.0 design.
@@ -3458,7 +3707,7 @@ Exit criteria:
 - This release is full-system assurance, not the first time foundational
   formats are modeled.
 
-### v0.126.0 - Crash And Concurrency Assurance
+### v0.130.0 - Crash And Concurrency Assurance
 
 Goal: exercise local mutation behavior at every admitted interruption and race
 boundary.
@@ -3483,7 +3732,7 @@ Exit criteria:
 - No injected interruption produces a trusted alias without complete immutable
   bodies or a cache result from the wrong generation.
 
-### v0.127.0 - Partition And Adversarial Network Tests
+### v0.131.0 - Partition And Adversarial Network Tests
 
 Goal: validate convergence and refusal behavior under hostile distributed
 ordering.
@@ -3508,7 +3757,7 @@ Exit criteria:
   transitions.
 - Hostile peers cannot force unbounded recursive expansion or partial trust.
 
-### v0.128.0 - Differential Vectors And Performance Budgets
+### v0.132.0 - Differential Vectors And Performance Budgets
 
 Goal: prove interoperability and set measurable scale expectations before 1.0.
 
@@ -3535,9 +3784,10 @@ Exit criteria:
 - Sagnir publishes explicit resource budgets and detects material regressions
   in its critical local and hostile-input paths.
 
-### v0.129.0 - Cross-Platform Build Gate
+### v0.133.0 - Cross-Platform Build Gate
 
-Goal: keep Sagnir portable from day one.
+Goal: complete the comprehensive 1.0 portability audit after continuous
+per-version portability checks.
 
 Deliverables:
 
@@ -3557,8 +3807,10 @@ Verification:
 Exit criteria:
 
 - Platform assumptions are explicit and tested where practical.
+- Canonical vectors, policy evaluation, and portable source-state results match
+  the continuous platform gates inherited by earlier milestones.
 
-### v0.130.0 - Rootless Podman Gate
+### v0.134.0 - Rootless Podman Gate
 
 Goal: make `saga` usable from a rootless container.
 
@@ -3580,7 +3832,7 @@ Exit criteria:
 - A user can run the CLI in rootless Podman.
 - Release images do not use mutable base image tags.
 
-### v0.131.0 - Release Evidence
+### v0.135.0 - Release Evidence
 
 Goal: make release outputs auditable.
 
@@ -3602,7 +3854,7 @@ Exit criteria:
 
 - A release candidate produces auditable local evidence.
 
-### v0.132.0 - 1.0 Release Candidate Gate
+### v0.136.0 - 1.0 Release Candidate Gate
 
 Goal: freeze the 1.0 feature set and reject incomplete production behavior.
 
@@ -3637,7 +3889,8 @@ Goal: first serious production-ready `saga` CLI.
 Deliverables:
 
 - local realm initialization;
-- realm genesis, governance, membership, and trust roots;
+- realm genesis-bound identity, first-contact trust bootstrap, governance,
+  membership, and trust roots;
 - normative canonical formats and independent vectors;
 - computed object hashes and body-derived references;
 - authenticated maps, append-only commitments, and complete checkpoints;
@@ -3653,7 +3906,9 @@ Deliverables:
 - context-bound signatures, key lifecycle, and anti-replay;
 - explicit causal/checkpoint time semantics;
 - canonical realm/world policy separated from local acceptance policy;
+- deterministic policy resource limits and historical evaluator migration;
 - target-bound proof artifacts and compound policy admission;
+- bounded proof parsing and verification with private proof defaults;
 - non-destructive protected promotion;
 - operation undo;
 - local facts;
@@ -3667,6 +3922,8 @@ Deliverables:
 - vault status and leak scanning;
 - recipient metadata and rekeying;
 - encrypted indexes, authenticated pages, private IDs, and metadata protection;
+- no operational encryption mode before sealed-private prerequisites;
+- sealed-private migration and honest prior-leakage accounting;
 - crash-safe nonce and live-key session handling;
 - selective disclosure;
 - bundles;
@@ -3676,7 +3933,11 @@ Deliverables:
 - resumable transport-independent sync;
 - removable-file, SSH/stdin, and QUIC transports;
 - blind or split-trust encrypted sync mode;
+- authenticated negotiation transcripts and scoped replay-resistant resume
+  tokens;
 - explicit storage receipts and availability semantics;
+- replication diversity, retrieval challenges, and availability repair;
+- redaction and cryptographic erasure with explicit non-recall limits;
 - Git import/export interoperability without using Git as native storage;
 - optional daemon;
 - formal, crash, concurrency, partition, fuzz, and performance assurance;
