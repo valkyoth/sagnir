@@ -42,10 +42,21 @@ obviously non-production.
 
 Current admitted third-party Rust dependencies must remain narrowly scoped,
 current, license-reviewed, and covered by release notes when they change.
-`getrandom` is admitted in `sagnir-cli` for one purpose: obtaining
-cross-platform operating-system entropy for new realm IDs. Realm identity
-creation must fail rather than fall back to timestamps, process IDs, or a
-pseudorandom generator when the operating-system source is unavailable.
+`getrandom` is admitted as Sagnir's cross-platform operating-system entropy
+boundary. Its current implemented use is new realm IDs; planned cryptographic
+uses include key generation, independently wrapped DEKs, private-ID keys,
+nonces, salts, randomized signatures, and randomized encryption inputs.
+
+All entropy-dependent operations must fail closed when the operating-system
+source is unavailable. Sagnir must never fall back to timestamps, process IDs,
+counters, hardware clocks, ordinary pseudorandom generators, or deterministic
+test RNGs. Fork/reseed, VM-clone, suspend/resume, early-boot, repeated-output,
+and compromised-source behavior require explicit tests before cryptographic
+use. Deterministic RNGs are test-only dependencies and must be absent from
+production feature graphs. Health checks may use guarantees exposed by an
+admitted operating-system or hardware interface, but Sagnir must not claim to
+estimate source entropy from software output.
+
 `rustix` is admitted only for the Unix CLI initialization boundary. It provides
 safe handle-relative filesystem wrappers without allowing unsafe code in
 Sagnir or admitting a larger capability stack.

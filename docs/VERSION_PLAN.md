@@ -882,11 +882,23 @@ Deliverables:
 
 - reviewed provider abstraction;
 - one mandatory production signature suite;
+- production OS-CSPRNG abstraction for key generation, salts, randomized
+  signatures, nonces, and other cryptographic randomness;
+- fail-closed entropy errors with no timestamp, process ID, counter, hardware
+  clock, or ordinary pseudorandom fallback;
+- fork and reseed policy;
+- VM-clone, suspend/resume, early-boot, and entropy-source-unavailable behavior;
+- deterministic test RNG isolated behind test-only APIs and absent from
+  production feature graphs;
+- continuous source health checks only where the admitted operating-system or
+  hardware interface defines them, without software entropy estimation claims;
 - key generation/import boundary;
 - signing and verification over canonical transcripts only;
 - known-answer and established adversarial vectors;
 - secret redaction and zeroization through the admitted sanitization crate;
-- provider failure, unsupported-suite, and key-substitution tests.
+- provider failure, unsupported-suite, key-substitution, unavailable entropy,
+  repeated randomness, forked state, VM-clone, early-boot, and compromised
+  randomness fault-injection tests.
 
 Verification:
 
@@ -898,14 +910,25 @@ Exit criteria:
 
 - Sagnir creates and verifies real context-bound signatures without relying on
   envelope shape as evidence of authenticity.
+- Production cryptographic operations that require randomness stop before
+  emitting keys, signatures, salts, or state when the admitted entropy source
+  fails.
+- Deterministic test randomness cannot be selected by a production build or
+  runtime configuration.
 
 ### v0.24.0 - Key Lifecycle And Anti-Replay
 
-Goal: define governed key authority before keys authorize durable events.
+Goal: define key-lifecycle schemas, verification mechanics, and state-machine
+rules before live governance activates them.
 
 Deliverables:
 
-- governed key epoch transitions;
+- key epoch transition, revocation, compromise, and retirement schemas;
+- verification mechanics for lifecycle statements without making parsed
+  transitions authoritative;
+- immutable genesis bootstrap key epoch;
+- explicit rule that no live rotation or revocation becomes authoritative until
+  v0.25.0 activates governance;
 - revocation and compromise evidence;
 - per-key monotonic sequence admission;
 - stale-key and stale-epoch rejection;
@@ -921,8 +944,10 @@ Verification:
 
 Exit criteria:
 
-- Old, revoked, rotated, replayed, or algorithm-retired keys cannot silently
-  regain authority.
+- Lifecycle schemas and verification mechanics reject stale, replayed,
+  malformed, or algorithm-retired transitions in tests.
+- The immutable genesis bootstrap epoch is the only authoritative key state
+  before v0.25.0; no self-authorized live transition is admitted.
 
 ### v0.25.0 - Live Governance Enforcement
 
@@ -932,6 +957,10 @@ transcripts, identity schemas, and key lifecycle rules exist.
 Deliverables:
 
 - cryptographically verified genesis administrator authority;
+- joint admission of the immutable genesis bootstrap key epoch, initial
+  governance root, and initial key-lifecycle state as one genesis-bound
+  operation;
+- no circular requirement for the initial governance root to authorize itself;
 - signed actor and device enrollment;
 - signed membership and role transitions;
 - threshold administrative actions over independent principals;
@@ -955,6 +984,9 @@ Exit criteria:
   solely because it is well-formed.
 - Every live governance mutation verifies against the admitted genesis and
   current governance root.
+- The initial governance and key-lifecycle state is admitted directly from the
+  authenticated genesis commitment; only subsequent transitions require the
+  current governance authority.
 - Governance transitions are authenticated before checkpoints exist, but
   checkpoint anchoring is deferred explicitly to v0.27.0.
 
@@ -1182,7 +1214,12 @@ Deliverables:
 - object graph check;
 - WAL replay check;
 - checkpoint and transaction-chain verification;
-- proof-cache generation and stale-cache diagnostics;
+- detect and validate only cache formats already admitted by earlier
+  milestones;
+- ignore unknown non-authoritative cache data safely;
+- never require a cache for integrity or successful fsck;
+- report that deterministic proof-cache deletion and rebuild remain unavailable
+  until v0.69.0;
 - clear failure output.
 
 Verification:
@@ -1199,6 +1236,8 @@ Exit criteria:
   unbounded or mandatory for normal machines.
 - If only memory or parallelism is configured, Sagnir derives conservative
   internal limits from the available budget.
+- Cache absence, unknown cache bytes, or safely ignored non-authoritative cache
+  formats cannot make an otherwise valid store fail integrity verification.
 
 ### v0.35.0 - Canonical Realm And World Policy
 
@@ -1655,6 +1694,13 @@ Deliverables:
   set;
 - acknowledged frontier and sequence watermark from every active replica in
   that membership epoch;
+- acknowledgement transcript signs the stable frontier, replica sequence
+  watermark, replica incarnation, and required parent frontier for that
+  replica's next event;
+- every later event from the replica must causally descend from the acknowledged
+  stable frontier;
+- higher-sequence events based on a pre-stability parent are stale-lineage
+  forks even without sequence-number reuse;
 - explicit prohibition on replacing a missing active replica's acknowledgement
   with a governance quorum;
 - governance-authorized retirement for every missing replica before stability
@@ -1663,6 +1709,9 @@ Deliverables:
 - post-retirement rule that later submissions from the retired replica are
   rejected from the compacted lineage or enter an explicit recovery/fork
   process;
+- new replica incarnation or epoch required after retirement, restored state,
+  cloned device state, or loss of the last admitted sequence/frontier;
+- concurrent writer exclusion for two processes using one replica identity;
 - explicit Byzantine, indefinitely offline, retired, and later-returning
   replica behavior;
 - retirement grace period and pre-retirement-state admission rule;
@@ -1678,7 +1727,9 @@ Deliverables:
   substitution, rollback, conflicting certificate, and late pre-retirement
   state tests;
 - malicious replica test that acknowledges stability and later reveals a
-  previously signed but omitted change.
+  previously signed but omitted change;
+- hidden higher-sequence stale-parent event, cloned device, restored replica,
+  reused incarnation, and two-process same-replica tests.
 
 Verification:
 
@@ -1697,6 +1748,10 @@ Exit criteria:
 - A replica that acknowledges a frontier and later reveals an omitted prior
   change produces fork or equivocation evidence; the change is not silently
   merged into compacted history.
+- A higher sequence number does not repair stale lineage: every event after the
+  fence must include the acknowledged frontier in its causal ancestry.
+- Replica state loss or cloning requires an explicit new incarnation rather
+  than resuming the old identity from an uncertain watermark.
 
 ## Phase 5: Changes And Sealing
 
@@ -2135,6 +2190,9 @@ Deliverables:
 - generation-number invalidation;
 - persistent verified-subtree cache;
 - changed-cone cache reuse;
+- cache format generation and versioning;
+- `saga fsck` integration for stale-cache diagnostics;
+- deterministic cache deletion and rebuild;
 - stale, substituted, partially written, and epoch-change cache tests;
 - cache deletion and deterministic rebuild behavior.
 
@@ -2147,6 +2205,8 @@ Exit criteria:
 
 - Cached results can accelerate one-file changes in large worlds without
   surviving any relevant verifier, policy, crypto, or frontier change.
+- Cache rebuild is deterministic, optional for integrity, and available only
+  after this milestone admits the cache format.
 
 ### v0.70.0 - Compound Policy Admission
 
@@ -2689,6 +2749,12 @@ Deliverables:
   retention class;
 - random independently generated data-encryption key for every declared erasure
   unit, wrapped by the authorized compartment or recipient keys;
+- v0.23.0 OS-CSPRNG boundary used for every DEK, private-ID key, wrapping key,
+  salt, nonce seed, and randomized encryption input;
+- no fallback from failed operating-system entropy to counters, timestamps,
+  deterministic test RNGs, or ordinary pseudorandom generators;
+- fork/reseed, VM-clone, suspend/resume, and early-boot handling inherited from
+  the cryptographic provider boundary;
 - reviewed puncturable-key construction allowed only as a separately admitted
   alternative to independently wrapped keys;
 - surviving realm, compartment, epoch, or recipient ancestor keys cannot
@@ -2704,7 +2770,9 @@ Deliverables:
 - known-answer derivation and wrapping vectors;
 - erased-key reconstruction tests using every surviving key and metadata
   combination;
-- private-ID stability tests across ordinary encryption rekeying.
+- private-ID stability tests across ordinary encryption rekeying;
+- unavailable, repeated, compromised, fork-cloned, and VM-cloned entropy
+  fault-injection tests.
 
 Verification:
 
@@ -2719,6 +2787,8 @@ Exit criteria:
   ancestor keys, wrapped-key metadata, private-ID keys, or later crypto epochs.
 - Private object identity and ciphertext confidentiality can rotate under
   separate governed lifecycles.
+- Vault creation and key rotation fail before persistence when production
+  entropy requirements are not met.
 
 ### v0.92.0 - AEAD Nonce And Live Key Session Safety
 
@@ -3088,9 +3158,10 @@ Exit criteria:
 - Users get honest warnings about plaintext and metadata risks while unlocked
   and after migration from an open realm.
 
-### v0.106.0 - Rekey And Crypto Epochs
+### v0.106.0 - Rekey And Private-ID Epoch Migration
 
-Goal: rotate encrypted realm keys without mutating old history in place.
+Goal: rotate ciphertext keys and private-ID keys through separate governed,
+crash-safe protocols.
 
 Deliverables:
 
@@ -3099,11 +3170,23 @@ Deliverables:
 - `saga vault rekey`;
 - recipient and compartment rewrap plan;
 - encryption-key rotation independent from private-ID key rotation;
+- scheduled and compromise-triggered private-ID key rotation;
+- whole-graph private object ID and typed-reference rewriting;
+- old and new private-ID epoch admission rules;
+- crash-safe dual-commit migration binding old and new roots;
+- encrypted old-to-new ID mapping with no public correlation;
+- mixed-epoch sync negotiation and bounded transition support while peers
+  migrate;
+- retirement of the compromised private-ID key and old externally visible
+  packs after admitted peer and retention conditions;
+- explicit statement that membership relationships observed before rotation
+  cannot be hidden retroactively;
 - old-key retention and cryptographic-erasure policy;
 - crash-safe staged key rotation;
 - rollback and interrupted-rotation recovery;
-- invalid epoch, partial compartment, stale recipient, and restored-snapshot
-  tests.
+- invalid epoch, partial compartment, stale recipient, restored snapshot,
+  interrupted graph rewrite, reference substitution, public mapping leakage,
+  mixed peer epoch, compromised-key reuse, and stale-pack tests.
 
 Verification:
 
@@ -3116,6 +3199,12 @@ Exit criteria:
 - Key rotation is a signed transition model, not an in-place mutation.
 - Ordinary ciphertext rekeying does not force private object identity changes
   unless a separate governed private-ID migration is explicitly requested.
+- Private-ID compromise has a complete migration protocol that rewrites every
+  affected identity and reference without publishing the old-to-new mapping.
+- Peers on different private-ID epochs either use the admitted migration
+  protocol or refuse trust; they do not guess identity equivalence.
+- Rotation protects future membership privacy but cannot erase correlations
+  already observed under the compromised epoch.
 
 ### v0.107.0 - Hybrid Post-Quantum Readiness Scaffold
 
