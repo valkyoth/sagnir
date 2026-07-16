@@ -388,13 +388,17 @@ Privacy rule:
   the encrypted ledger, compartment-keyed private lookup locators, and
   randomized ciphertext storage IDs;
 - private locators target one canonical persistent authenticated B+ tree keyed
-  by `(locator_epoch, private_locator, semantic_commitment)` so each candidate
-  has logarithmic inclusion and absence proofs; it freezes only after the
+  by `(locator_epoch, private_locator, semantic_commitment,
+  encryption_instance_id)` so every policy-separated instance has logarithmic
+  inclusion and absence proofs; it freezes only after the
   unique-representation gate passes;
 - logical leaves contain only stable candidate identity and object kind;
   ciphertext IDs, packs, receipts, and positions live solely in mutable
   encrypted placement/reverse indexes, so re-encryption and relocation do not
   change the logical root;
+- duplicate semantic identities and additional encryption instances consume
+  separate non-interchangeable resource rights; instance fanout is bounded
+  without charging a duplicate-identity right for policy-separated encryption;
 - private index identity has three layers: deterministic keyed logical node/root
   commitments for authorized peers, randomized encrypted node envelopes, and
   public ciphertext storage IDs for blind stores; convergence applies only to
@@ -402,6 +406,10 @@ Privacy rule:
 - a dedicated governed index-commitment key and signed checkpointed manifest
   bind each logical root to admitted semantic state; key possession alone is
   not root-admission authority;
+- each compartment has its own logical root and commitment-key epoch; a
+  count-hiding authenticated realm manifest composes opaque compartment-root
+  references and supports scoped inclusion/continuity proofs without disclosing
+  other compartments;
 - a history-independent normalization proof must show that insert, delete,
   union, split, merge, and bulk-build permutations produce one root for one
   entry set; otherwise a uniquely represented trie or key-derived tree replaces
@@ -415,6 +423,8 @@ Privacy rule:
   final spent-right root, or an explicit cutoff invalidating unseen spends;
   uncertain rights are burned, and later quota increases ratify through new
   signed history rather than rewriting the original quarantined event;
+- quota-right expiry uses causal/checkpoint frontiers or an admitted timestamp
+  authority, never local wall clocks or delivery time;
 - duplicate-amplification detection and quota carry-forward prevent identity or
   locator rotation from exhausting candidate sets, while local limits may
   quarantine but never silently discard admitted history;
@@ -425,7 +435,10 @@ Privacy rule:
   and attacker-controlled blinded values never determine representative
   priority;
 - authenticated encrypted reverse indexes map semantic commitments directly to
-  locator epochs and ciphertext records for bounded graph traversal;
+  exact encryption instances and locator epochs for bounded graph traversal;
+- canonical logical-root manifests are shared state, while placement and
+  reverse-resolution manifests are replica/device/endpoint-local projections
+  that sync reconciles independently and never resolves by arrival order;
 - blind-store metadata, logs, public proofs, and public storage receipts expose
   none of the semantic commitment, blinding value, private locator, or
   translation mapping;
@@ -512,13 +525,23 @@ Compartment movement rule:
   actors; target-only recipients receive a minimal target attestation,
   source-only recipients receive no target identifiers, and blind stores receive
   no mapping;
+- target-only attestations are revocable, replay-bound authority assertions
+  about target admission, not independent proofs of hidden source equality;
+  policies requiring independent equivalence require bridge access or a future
+  admitted hidden-witness proof;
 - promised descendants and openings must be fetched and verified; unavailable
   or redacted descendants refuse translation unless an explicitly
   compartment-neutral opaque boundary or typed redacted placeholder is admitted
   without claiming content equality;
 - compartment-neutral identity uses a separate typed commitment domain with an
-  allowlisted object kind, neutral-only reference closure, and no
-  compartment-bound metadata;
+  allowlisted object kind, neutral-only reference closure, dedicated locator,
+  commitment, encryption, wrapping, recipient and recovery key lifecycles, and
+  no compartment-bound metadata; reuse intentionally creates disclosed
+  cross-compartment linkability;
+- redacted translation uses a canonical non-content `RedactedPlaceholder` that
+  exposes no source identity to target-only recipients, cannot satisfy body,
+  proof, availability, repair or completeness requirements, and cannot be
+  replaced by stale ciphertext;
 - source frontier, exact root, target absence/replacement, and target policy use
   compare-and-swap; concurrent changes become explicit conflict heads;
 - source-bound reviews, proofs, and approvals do not automatically authorize
@@ -526,6 +549,15 @@ Compartment movement rule:
 - source history remains bound to the original identity, and source removal
   happens only after target durability;
 - cryptographic erasure of the source is a separate redaction operation.
+
+Format-admission rule:
+
+- v0.92.1 admits private-index, realm-manifest, compartment-proof, and
+  endpoint-placement formats before private index persistence;
+- v0.99.1 admits compartment translation, target-only attestation, neutral
+  lifecycle, and redacted-placeholder formats before implementation;
+- v0.121.1 admits the irreversible erasure state machine, evidence formats, and
+  provider contracts before any destructive dispatch.
 
 Post-quantum readiness rule:
 

@@ -31,6 +31,11 @@ All notable Sagnir changes are recorded here.
   offline-right retirement and non-retroactive quota ratification,
   least-privilege translation disclosure, and typed compartment-neutral
   commitments.
+- Added pre-implementation admission stops for private indexing, compartment
+  translation, and erasure evidence; completed multi-instance lookup,
+  endpoint-local placement, partial-access root composition, authoritative
+  quota expiry, honest target attestations, neutral-object lifecycle, and
+  canonical redacted-placeholder requirements.
 
 ## 0.10.0
 

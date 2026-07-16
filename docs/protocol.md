@@ -36,9 +36,10 @@ Encrypted bundles must be verified before decrypt or import.
 
 Private locators are deterministic lookup values, not signed object identity.
 The 1.0 candidate is one persistent authenticated B+ tree keyed by
-`(locator_epoch, private_locator, semantic_commitment)`. Every candidate is its
-own leaf key, so inclusion and absence remain logarithmic. It freezes only after
-the unique-representation gate passes; canonical ordering, node encoding,
+`(locator_epoch, private_locator, semantic_commitment,
+encryption_instance_id)`. Every policy-separated instance is its own leaf key,
+so inclusion and absence remain logarithmic. It freezes only after the
+unique-representation gate passes; canonical ordering, node encoding,
 split/merge rules, and logical-root derivation then become protocol formats
 rather than implementation choices.
 
@@ -62,11 +63,29 @@ commitments. Root authority comes from a signed checkpointed manifest binding
 the logical root to semantic state, policy, membership, and structure version,
 not from possession of that key.
 
+Each compartment has one logical root and commitment-key epoch. A fixed-depth or
+equivalently count-hiding authenticated realm manifest composes opaque
+compartment-root references. Scoped proofs let a compartment-only recipient
+verify inclusion and continuity without learning other compartment identities,
+counts, names, or tree shape.
+
+Canonical logical manifests are shared realm state. Placement and
+reverse-resolution manifests are scoped to one replica incarnation, device, or
+storage endpoint. Repacking, relocation, receipt renewal, and re-encryption
+modify only that projection. Sync compares logical roots and reconciles
+placement separately; one endpoint projection never overwrites another by
+arrival order.
+
 Aggregate actor/device quotas use signed escrow rights assigned to replica
 incarnations. Offline replicas consume only locally held rights; rights transfer
 through causal compare-and-swap transitions. Merge detects double-spend or
 aggregate overdraw and keeps the candidate and dependent transitions in
 authenticated quota-conflict quarantine.
+
+Duplicate-semantic-identity rights are separate from bounded
+encryption-instance-fanout rights. Adding a policy-separated instance to an
+existing commitment consumes no duplicate-identity right, but offline creation
+must possess separately governed instance capacity.
 
 Retirement reclaims remaining rights only from signed surrender, a stability
 acknowledgement committing the final spent-right root, or an explicit cutoff
@@ -76,6 +95,11 @@ A later quota increase creates a new ratification/admission transition and
 re-evaluates dependents; the original event remains evidence of its initial
 quarantine. Private quota topology and activity metadata remain encrypted from
 blind stores and ordinary diagnostics.
+
+Quota expiry is bound to causal/checkpoint frontiers or an admitted timestamp
+authority. A provably pre-expiry spend may arrive later; an offline candidate
+that cannot prove pre-expiry creation is quarantined. Local clock rollback,
+skew, or delivery delay never extends a right.
 
 Optional encrypted duplicate-equivalence evidence may guide future references,
 but it cannot rewrite historical signatures or collapse different plaintext
@@ -109,6 +133,13 @@ source-only recipients receive no target identifiers; blind stores receive
 neither mapping. Repeated translations cannot expose a stable public correlation
 handle.
 
+The target-only attestation is an admitted issuer's revocable, expiring,
+audience- and replay-bound assertion that the target transition/root was
+accepted under a named policy. It is not independent cryptographic proof of
+hidden source equality or isomorphism. Policies requiring that stronger claim
+must grant bridge/opening access or wait for an admitted post-1.0 hidden-witness
+proof system.
+
 The transition compares and swaps the expected source frontier/root, target
 absence or admitted replacement, and target policy root. Stale source, occupied
 target, or policy change produces explicit multi-head conflict. The target
@@ -123,7 +154,17 @@ equivalent target content. Only an explicitly compartment-neutral typed opaque
 boundary may remain untranslated. Construction and verification are bounded,
 resumable, cancellable, GC-pinned, and authoritative only at the atomic final
 manifest/root commit. Neutral identity uses a separate commitment domain with
-allowlisted types, neutral-only references, and no compartment-bound metadata.
+allowlisted types, neutral-only references, dedicated locator, commitment,
+encryption, wrapping, recipient and recovery key lifecycles, and no
+compartment-bound metadata. Reuse intentionally creates disclosed
+cross-compartment linkability.
+
+A canonical `RedactedPlaceholder` is a non-content target object with encrypted
+audit provenance. It exposes no source commitment to target-only recipients,
+makes no equivalence claim, cannot satisfy availability, completeness, repair,
+build/test input, or proof obligations, and cannot be replaced by stale
+ciphertext. Reintroduction requires a new authorized transition and encryption
+instance.
 
 ## Redaction Projection
 

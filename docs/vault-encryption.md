@@ -131,7 +131,8 @@ One private locator can map to multiple semantic commitments. Disconnected peers
 may independently create equal plaintext with different random blinding values,
 and both signed identities remain valid. The encrypted forward index therefore
 uses one canonical persistent authenticated B+ tree keyed by
-`(locator_epoch, private_locator, semantic_commitment)`. Each candidate is a
+`(locator_epoch, private_locator, semantic_commitment,
+encryption_instance_id)`. Each policy-separated encryption instance is a
 separate leaf key with logarithmic inclusion and absence proofs.
 
 The B+ tree has three identity layers. Authorized peers converge on a
@@ -141,10 +142,16 @@ only public ciphertext storage IDs for those envelopes. Re-encryption changes
 ciphertext identity without changing the private logical root.
 
 Logical leaves contain only stable candidate information: the composite key,
-encryption-instance identity, and logical object kind. Ciphertext IDs, pack
-generations, receipts, and positions exist only in encrypted placement and
-reverse indexes. Re-encryption, repacking, receipt renewal, and relocation may
-change placement roots but never the logical root.
+logical object kind, and erasure-policy class. Ciphertext IDs, pack generations,
+receipts, and positions exist only in encrypted placement and reverse indexes.
+Re-encryption, repacking, receipt renewal, and relocation may change placement
+roots but never the logical root.
+
+One semantic commitment may have multiple encryption instances when retention,
+recipient, legal-hold, redaction, or erasure policy differs. Creating another
+instance consumes separately governed fanout capacity, not a duplicate-semantic-
+identity right. Exact forward and reverse keys include the instance ID, so
+lookup never assumes one instance per commitment.
 
 The logical structure must be history-independent: every insertion, deletion,
 union, split, merge, and bulk-build ordering for one canonical entry set
@@ -154,6 +161,16 @@ binds the root to semantic state, policy, membership, and structure version. If
 the B+ tree cannot meet unique-representation and bounded-amplification
 requirements, Sagnir will select a uniquely represented structure before the
 format freezes.
+
+Each compartment has one logical root and commitment-key epoch. An authenticated
+count-hiding realm manifest contains opaque compartment-root references and
+supports scoped inclusion/continuity proofs without revealing other
+compartment identities, entry counts, names, locators, or tree shape.
+
+Signed compartment logical-root manifests are canonical state. Placement and
+reverse-resolution manifests belong to one replica/device/storage endpoint.
+They may differ across authorized replicas and are reconciled separately from
+logical sync; no endpoint's projection wins by arrival order.
 
 Aggregate actor/device quotas are escrowed into signed rights allocations for
 replica incarnations. Offline replicas consume only held rights, and causal
@@ -165,6 +182,11 @@ final spent-right root, invalidated through an explicit retirement cutoff, or
 burned. Governance cannot guess that offline rights were unused. A later quota
 increase admits a new signed ratification transition and does not rewrite the
 original quarantined event.
+
+Expiry is authoritative only through causal/checkpoint order or an admitted
+timestamp authority. Late delivery does not invalidate a provably pre-expiry
+spend, while an offline spend that cannot establish its pre-expiry creation
+frontier remains quarantined. Local clock behavior cannot extend capacity.
 
 In sealed-private realms, allocations, spent-right references, conflict roots,
 replica topology, and actor/device activity remain encrypted from blind stores,
@@ -205,6 +227,12 @@ Source-only recipients receive no target identifiers, and blind stores receive
 neither side. Audience- and transition-bound disclosures prevent repeated
 translations from becoming a public correlation oracle.
 
+The target-only attestation is a revocable and replay-bound assertion by an
+admitted issuer that the target was accepted under a named policy. It does not
+independently prove hidden source equality or graph isomorphism. A policy that
+requires independent equivalence must require bridge/opening access or refuse
+until a post-1.0 hidden-witness proof system is admitted.
+
 The transition compares and swaps the expected source frontier/root, expected
 target absence or replacement, and target policy root. Concurrency produces an
 explicit conflict rather than arrival-order overwrite. A copy preserves the
@@ -218,9 +246,18 @@ and commitment opening before translation. Missing, unavailable, or redacted
 descendants cause refusal unless a specifically typed compartment-neutral
 opaque boundary or redacted placeholder is admitted without claiming content
 equivalence. A neutral boundary uses a separate typed commitment domain, an
-allowlisted object kind, neutral-only reference closure, and no
-compartment-bound metadata; omitting a compartment field from an ordinary
-commitment never makes it neutral.
+allowlisted object kind, neutral-only reference closure, dedicated locator,
+commitment, encryption, wrapping, recipient, recovery and epoch lifecycles, and
+no compartment-bound metadata; omitting a compartment field from an ordinary
+commitment never makes it neutral. Reusing one neutral identity intentionally
+creates cross-compartment linkability for actors able to observe it.
+
+The only admitted redacted target projection is the canonical
+`RedactedPlaceholder`. It contains no target-visible source commitment, makes no
+content-equivalence claim, cannot satisfy body, availability, completeness,
+repair, build/test input, or proof requirements, and cannot be replaced by
+stale ciphertext. Authorized audit views may resolve its encrypted provenance;
+reintroduction requires a new transition and encryption instance.
 
 ## Redaction And Restore Projections
 

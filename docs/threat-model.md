@@ -100,6 +100,16 @@ exposure.
   result;
 - corrupt forward/reverse indexes forcing full scans, substitution, or wrong
   ciphertext resolution;
+- one semantic commitment's policy-separated encryption instances aliasing,
+  overwriting, disappearing from reverse lookup, or consuming the wrong quota
+  class;
+- canonical logical state being confused with replica/device/endpoint-local
+  placement projections, including arrival-order overwrite of another
+  endpoint's placement;
+- partial-access proofs disclosing other compartment identities, counts,
+  locators, names, or authenticated-tree shape;
+- local wall-clock rollback, skew, delivery delay, or offline observation gaps
+  extending expired quota rights or invalidating provably pre-expiry spends;
 - cross-compartment content being treated as a rename and retaining source
   identity, keys, recipients, or policy in the target compartment;
 - a recursively moved target tree retaining descendant source-compartment
@@ -113,8 +123,14 @@ exposure.
 - complete translation manifests exposing source/target membership, graph
   structure, or shared-subgraph correlation to one-sided recipients or blind
   stores;
+- target-only authority attestations being presented as independent
+  cryptographic proof of a hidden source relationship;
 - malformed compartment-neutral objects bypassing ordinary compartment binding
-  or referencing compartment-bound descendants;
+  or referencing compartment-bound descendants, neutral key-domain confusion,
+  or undisclosed cross-compartment linkability;
+- redacted placeholders satisfying body, proof, availability, completeness, or
+  repair requirements, leaking source identity, or being replaced by stale
+  ciphertext;
 - recipient removal being mistaken for retroactive access revocation.
 - replayed, duplicated, expired, revoked, superseded, or over-scoped
   invitations;
@@ -195,11 +211,20 @@ exposure.
   quota continuity,
   duplicate-amplification detection, authenticated semantic reverse indexes,
   and duplicate-equivalence transitions that preserve old signed identities;
+- exact semantic-commitment/encryption-instance composite keys, distinct
+  duplicate-identity and instance-fanout rights, and bounded policy-separated
+  instance creation;
+- compartment-scoped logical roots composed through a count-hiding opaque realm
+  manifest with partial-access inclusion and consistency proofs;
+- canonical logical manifests separated from replica/device/endpoint-local
+  placement and reverse-resolution projections with no arrival-order overwrite;
 - signed surrender, acknowledged final spent roots, explicit retirement
   cutoffs, uncertain-right burning, and non-retroactive ratification transitions
   for offline quota recovery;
 - encrypted scoped disclosure for private quota topology, allocations, spends,
   conflicts, and actor/device activity;
+- causal/checkpoint or admitted timestamp-authority expiry for quota rights,
+  with late-delivery and offline-observation quarantine rules;
 - expected-root representative compare-and-swap, explicit conflict heads,
   multi-parent resolution, and prohibition on randomness-derived winner
   selection;
@@ -221,6 +246,14 @@ exposure.
 - least-privilege translation disclosure with complete bridges limited to
   cross-authorized/audit actors, minimal target attestations, no source-to-target
   leakage, no blind-store mapping, and separately typed neutral commitments;
+- explicit target-attestation semantics as revocable authority assertions rather
+  than hidden-source proofs;
+- complete neutral key/access/retention/erasure/rekey/recovery lifecycle with
+  intentional-linkability disclosure;
+- canonical non-content redacted placeholders with encrypted audit provenance,
+  no proof/availability role, stale-body refusal, and explicit reintroduction;
+- pre-implementation admission stops for private-index, compartment-translation,
+  and irreversible erasure formats;
 - threshold-governed recovery ceremony with stale-authority invalidation;
 - signed redaction tombstones, distinct `RedactedBody` state, tombstone-first
   anti-entropy, and quarantine of stale ciphertext;
