@@ -26,9 +26,16 @@ exposure.
 - sync bundles;
 - key metadata;
 - encrypted realm keys;
+- immutable private semantic commitments and blinding values;
+- private lookup locators and translation mappings;
 - recipient slots;
 - compartment metadata;
 - encrypted bundle manifests.
+- invitation and enrollment lifecycle records;
+- key-transparency roots and consistency evidence;
+- recovery shares, ceremony evidence, and replacement authority;
+- redaction tombstones and `RedactedBody` state;
+- release-signing keys, checksums, artifacts, SBOMs, and provenance statements.
 
 ## Initial Threats
 
@@ -53,8 +60,20 @@ exposure.
 - local key disclosure through logs or debug output.
 - plaintext left in editor caches, build outputs, language-server indexes,
   shell history, backups, or OS search indexes;
-- public object IDs leaking known plaintext membership in encrypted realms;
+- public object IDs, semantic commitments, logs, proofs, receipts, or metadata
+  leaking known plaintext membership in encrypted realms;
+- dictionary attacks and cross-compartment correlation against low-entropy
+  private content;
 - recipient removal being mistaken for retroactive access revocation.
+- replayed, duplicated, expired, revoked, superseded, or over-scoped
+  invitations;
+- key-transparency split views, false absence, rollback, or hidden revocation;
+- recovery ceremonies that expose shares, retain stale authority, or create an
+  unauthenticated second administration path;
+- stale peers, archives, receipts, or availability repair resurrecting
+  ciphertext after redaction;
+- substituted release artifacts, signatures, checksums, SBOMs, tags, or
+  provenance attestations.
 
 ## Design Responses
 
@@ -84,10 +103,25 @@ exposure.
 - bounded signature envelopes;
 - crypto-agile metadata;
 - encrypted realm storage;
-- private keyed object IDs for sealed private mode;
+- random-blinded immutable semantic commitments kept inside the encrypted
+  ledger;
+- compartment-keyed private locators and encrypted authenticated translation
+  mappings separated from ciphertext storage IDs;
+- explicit prohibition on semantic commitments in blind-store metadata, logs,
+  public proofs, and public storage receipts;
 - lock/unlock materialization;
 - recipient key wrapping;
+- governed invitation issuance, acceptance, consumption, expiry, revocation,
+  and supersession;
+- authenticated key-transparency maps with inclusion, absence, consistency,
+  checkpoint, monitor, and split-view evidence;
 - key epochs and rekey operations;
+- threshold-governed recovery ceremony with stale-authority invalidation;
+- signed redaction tombstones, distinct `RedactedBody` state, tombstone-first
+  anti-entropy, and quarantine of stale ciphertext;
+- redaction-aware storage receipts, availability repair, and archive restore;
+- signed release artifacts, checksums, SBOMs, and provenance bound to the exact
+  source, tag, toolchain, dependencies, target, and release gate;
 - plaintext leak scanner;
 - local proof verification;
 - causal impact traversal;

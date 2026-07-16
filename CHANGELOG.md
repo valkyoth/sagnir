@@ -4,6 +4,12 @@ All notable Sagnir changes are recorded here.
 
 ## Unreleased
 
+- Updated the workspace and current documentation to Rust stable 1.97.1.
+- Expanded the roadmap for confidential semantic commitments, redaction-safe
+  sync and repair, invitation and recovery ceremonies, key transparency,
+  encryption performance budgets, signed release provenance, and inherited
+  threat-model/control-map updates.
+
 ## 0.10.0
 
 Status: implementation stop.

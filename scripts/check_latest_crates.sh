@@ -28,8 +28,14 @@ toolchain_version="$(
 container_rust_version="$(
     first_match 's/^ARG RUST_VERSION=\([^[:space:]]*\)$/\1/p' Containerfile
 )"
+container_build_rust_version="$(
+    first_match 's/^ARG SAGNIR_RUST_VERSION=\([^[:space:]]*\)$/\1/p' Containerfile
+)"
 cli_container_rust_version="$(
     first_match 's/^ARG RUST_VERSION=\([^[:space:]]*\)$/\1/p' containers/Containerfile.cli
+)"
+cli_container_build_rust_version="$(
+    first_match 's/^ARG SAGNIR_RUST_VERSION=\([^[:space:]]*\)$/\1/p' containers/Containerfile.cli
 )"
 
 if [ -z "$workspace_rust_version" ]; then
@@ -47,8 +53,18 @@ if [ "$container_rust_version" != "$workspace_rust_version" ]; then
     exit 1
 fi
 
+if [ "$container_build_rust_version" != "$workspace_rust_version" ]; then
+    echo "tooling freshness: Containerfile build Rust $container_build_rust_version does not match $workspace_rust_version" >&2
+    exit 1
+fi
+
 if [ "$cli_container_rust_version" != "$workspace_rust_version" ]; then
     echo "tooling freshness: containers/Containerfile.cli Rust $cli_container_rust_version does not match $workspace_rust_version" >&2
+    exit 1
+fi
+
+if [ "$cli_container_build_rust_version" != "$workspace_rust_version" ]; then
+    echo "tooling freshness: containers/Containerfile.cli build Rust $cli_container_build_rust_version does not match $workspace_rust_version" >&2
     exit 1
 fi
 

@@ -4,7 +4,7 @@ Status: baseline control map
 
 | Area | Control | Current Status | Evidence |
 | --- | --- | --- | --- |
-| Toolchain | Rust stable `1.97.0` pinned | Active | `rust-toolchain.toml` |
+| Toolchain | Rust stable `1.97.1` pinned | Active | `rust-toolchain.toml` |
 | Release arithmetic | Release profile keeps overflow checks enabled | Active | `Cargo.toml` |
 | Core runtime | Trusted library crates are `no_std` where practical | Active | crate roots |
 | Dependency policy | License, source, wildcard, and advisory checks | Configured | `deny.toml` |
@@ -33,7 +33,13 @@ Status: baseline control map
 | Hybrid signatures | Hybrid signature composition must bind classical and post-quantum components | Scaffolded | `sagnir-crypto`, `docs/signature-policy.md` |
 | Redacted debug output | Signature envelopes, typed IDs, and object IDs redact sensitive bytes in `Debug` output | Scaffolded | `sagnir-core`, `sagnir-object`, `sagnir-crypto` |
 | Native encrypted realms | Encrypted `.saga/` storage, lock/unlock, recipient wrapping, crypto epochs, and leak scanning | Planned | `docs/vault-encryption.md` |
-| Private object IDs | Sealed private mode avoids public plaintext hash membership leaks | Scaffolded | `sagnir-object`, `docs/vault-encryption.md` |
+| Sealed-private identity | Immutable confidential semantic commitments are separated from rotatable private locators and ciphertext storage IDs; blind-store metadata must expose none of the semantic commitment or translation mapping | Planned | `sagnir-object`, `docs/vault-encryption.md`, `docs/VERSION_PLAN.md` |
+| Invitation lifecycle | Realm invitations have governed issuance, scoped acceptance, one-time or bounded use, expiry, revocation, supersession, and replay protection | Planned | `docs/VERSION_PLAN.md` |
+| Key transparency | Recipient and device keys use canonical authenticated-map inclusion, absence, consistency, checkpoint, monitor, and split-view semantics | Planned | `docs/VERSION_PLAN.md` |
+| Emergency recovery | Threshold recovery follows an end-to-end ceremony that protects shares, advances epochs, and rejects stale authority | Planned | `docs/VERSION_PLAN.md` |
+| Redaction propagation | Signed tombstones and distinct `RedactedBody` state prevent sync, repair, receipts, or archival from resurrecting erased encryption instances | Planned | `docs/VERSION_PLAN.md` |
+| Release provenance | Release artifacts, checksums, SBOMs, and provenance attestations bind to the exact source, signed tag, toolchain, dependency lock, target, and release-gate result | Planned | `docs/VERSION_PLAN.md` |
+| Security boundary documentation | Every changed parser, trust, crypto, persistence, privilege, network, disclosure, recovery, or release-signing boundary updates its threat model and control-map evidence before release | Policy | `docs/VERSION_PLAN.md` |
 | Encrypted bundles | Recipient-targeted bundles and blind/split-trust sync modes | Planned | `docs/vault-encryption.md`, `docs/protocol.md` |
 | Facts | Confidence bounds and fact kinds | Scaffolded | `sagnir-fact` |
 | Events | Bounded command events are separated from authoritative facts | Planned | `docs/causal-memory.md` |

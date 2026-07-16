@@ -59,7 +59,12 @@ Public metadata may include:
 - crypto algorithm identifiers;
 - encrypted realm marker;
 - rounded ciphertext size buckets;
-- crypto epoch.
+- crypto epoch;
+- opaque ciphertext pack commitments and documented availability metadata.
+
+Public or blind-store metadata must not include semantic commitments, private
+locators, translation mappings, canonical object hashes, paths, actors, worlds,
+facts, or graph-edge identities.
 
 Protected metadata includes:
 
@@ -93,8 +98,9 @@ user passphrase / device key / hardware key / recipient key
 The realm master key is random. A passphrase unlocks or wraps it; the passphrase
 is not the realm master key.
 
-Key material types must have an admitted zero-on-drop policy before they are
-implemented. Until a zeroing provider is admitted, vault work may model key
+Key material types must use Sagnir's admitted sanitization boundary and reviewed
+secret-lifetime policy before they are implemented. Until that boundary covers
+the required key containers and provider behavior, vault work may model key
 metadata but must not store real secret bytes in long-lived Rust values.
 
 ## Object Identity In Encrypted Realms
@@ -108,12 +114,24 @@ object_id = public hash of canonical plaintext object
 Sealed private mode:
 
 ```text
-private_object_id = keyed hash over canonical plaintext object
-storage_id = public hash over ciphertext envelope
+semantic_commitment = hash(
+  domain || realm || compartment || schema || type || canonical_plaintext ||
+  random_256_bit_blinding
+)
+private_locator = keyed lookup over canonical plaintext in one compartment
+storage_id = public hash over randomized ciphertext envelope
 ```
 
-This prevents outsiders from checking whether a known file appears in an
-encrypted realm by comparing public plaintext hashes.
+The random blinding value and semantic commitment remain inside the encrypted
+semantic ledger. Canonical references and signatures bind the immutable
+semantic commitment. The private locator is a rotatable lookup projection, and
+the storage ID identifies ciphertext placement.
+
+Blind stores receive neither semantic commitments nor private locators. For the
+1.0 design, locator translation uses an encrypted authenticated mapping and
+authenticated-index evidence, not a public zero-knowledge proof. This prevents
+outsiders from checking whether known plaintext appears in an encrypted realm
+by comparing public hashes or commitments.
 
 ## Encryption Honesty
 

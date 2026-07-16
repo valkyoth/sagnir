@@ -117,7 +117,7 @@ same as materializing a world.
 
 ## Non-Negotiable Engineering Rules
 
-- Rust stable `1.97.0`, edition 2024, workspace resolver `3`.
+- Rust stable `1.97.1`, edition 2024, workspace resolver `3`.
 - Latest stable Rust, crate versions, CI actions, and tooling are re-checked
   before dependency, toolchain, or release changes.
 - Core library crates use `#![no_std]` where practical.
@@ -384,10 +384,26 @@ Encryption rule:
 Privacy rule:
 
 - public mode may use plaintext content hashes for open verification;
-- sealed private mode uses private keyed object IDs and randomized ciphertext;
+- sealed private mode uses random-blinded immutable semantic commitments inside
+  the encrypted ledger, compartment-keyed private lookup locators, and
+  randomized ciphertext storage IDs;
+- blind-store metadata, logs, public proofs, and public storage receipts expose
+  none of the semantic commitment, blinding value, private locator, or
+  translation mapping;
+- locator translation uses encrypted authenticated mappings for the 1.0 design,
+  not an unadmitted public zero-knowledge proof;
 - path names, world names, change titles, author identity, facts, symbol names,
   and AI context packs are protected metadata in serious encrypted mode;
 - sync-visible operational metadata is minimized and documented.
+
+Redaction rule:
+
+- a signed tombstone and distinct `RedactedBody` state survive key destruction;
+- anti-entropy propagates admitted tombstones before body requests;
+- sync, repair, receipts, repack, partial clone, and archive restoration cannot
+  resurrect a redacted encryption instance;
+- stale ciphertext returned after redaction is quarantined and cannot satisfy
+  availability or repair policy.
 
 Post-quantum readiness rule:
 

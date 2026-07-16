@@ -1,5 +1,13 @@
-ARG RUST_VERSION=1.97.0
-FROM docker.io/library/rust:${RUST_VERSION}-bookworm@sha256:7d0723df719e7f213b69dc7c8c595985c3f4b060cfbee4f7bc0e347a86fe3b6a AS build
+ARG RUST_VERSION=1.97.1
+ARG SAGNIR_RUST_VERSION=1.97.1
+FROM docker.io/library/rust:1.97.0-bookworm@sha256:7d0723df719e7f213b69dc7c8c595985c3f4b060cfbee4f7bc0e347a86fe3b6a AS build
+ARG SAGNIR_RUST_VERSION
+
+RUN rustup toolchain install "${SAGNIR_RUST_VERSION}" --profile minimal \
+        --component clippy --component rustfmt \
+    && rustup default "${SAGNIR_RUST_VERSION}" \
+    && rustc +"${SAGNIR_RUST_VERSION}" --version \
+        | grep -F "rustc ${SAGNIR_RUST_VERSION} "
 
 WORKDIR /src/sagnir
 COPY . .

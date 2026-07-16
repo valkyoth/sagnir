@@ -169,7 +169,8 @@ Private realms use three non-interchangeable identity layers:
 
 Canonical object references and signatures bind immutable semantic commitments.
 Private locators and ciphertext IDs are storage and privacy projections linked
-to those commitments by authenticated encrypted indexes and scoped proofs.
+to those commitments by authenticated encrypted indexes and scoped translation
+evidence.
 Rotating a private-locator key never rewrites or impersonates the originally
 signed semantic history.
 
@@ -199,6 +200,28 @@ are advisory unless an admitted timestamp authority attests to them. Local
 monotonic clocks may control process-local session expiry, but wall-clock input,
 environment state, filesystem state, and network responses cannot influence a
 deterministic canonical policy decision.
+
+## Security Boundary Documentation Rule
+
+Every milestone that introduces or changes a parser, trust transition,
+cryptographic purpose, key lifecycle, persistence format, privilege boundary,
+network message, disclosure surface, recovery path, or release-signing boundary
+must update the corresponding `docs/threat-model.md` section and
+`docs/security-controls.md` entry before its release stop.
+
+The update must identify:
+
+- protected assets and security properties;
+- trusted and untrusted inputs, actors, processes, devices, and services;
+- misuse, compromise, rollback, replay, partition, resource-exhaustion, and
+  metadata-leakage cases relevant to the boundary;
+- preventive, detective, recovery, and residual-risk controls;
+- exact tests, models, vectors, benchmarks, or operational evidence that
+  exercise those controls.
+
+Later milestones inherit this rule automatically. A feature is not release-ready
+when its implementation exists but its boundary-specific threat model and
+control-map evidence are stale.
 
 ## Clean Stop And Pentest Rule
 
@@ -253,7 +276,7 @@ Goal: initialize the serious Rust workspace and policy baseline.
 
 Deliverables:
 
-- Rust stable `1.97.0` pinned.
+- Rust stable `1.97.1` pinned.
 - Focused workspace crates.
 - `saga` CLI scaffold.
 - `scripts/checks.sh`.
@@ -813,13 +836,27 @@ Deliverables:
 - pinned genesis fingerprint mode;
 - canonical signed invitation or capability schema carrying the exact
   realm/genesis commitment;
+- invitation issuer, intended audience or device, requested role and
+  capabilities, realm, governance epoch, nonce, issuance bound, expiry or
+  no-expiry policy, and one-time or bounded-use semantics;
+- invitation issuance, secure display/export, acceptance preview, explicit
+  user confirmation, consumption, rejection, expiry, revocation, supersession,
+  and audit states;
+- governance-authorized revocation and supersession records that remain
+  checkable after an invitation has been presented offline;
+- deterministic handling for duplicate acceptance, concurrent acceptance,
+  issuer key rotation, stale governance epochs, lost invitations, and
+  interrupted enrollment;
+- invitation acceptance never grants authority beyond the exact signed role,
+  capability, compartment, device, and expiry scope;
 - out-of-band fingerprint verification workflow;
 - explicitly warned trust-on-first-use mode;
 - persisted first-contact trust record and later mismatch detection;
 - no silent trust inheritance from DNS, URL, transport certificate, remote
   endpoint identity, or realm name;
-- fingerprint substitution, invitation replay, endpoint impersonation,
-  same-name realm, TOFU mismatch, and downgrade tests;
+- fingerprint substitution, invitation replay, duplicate or concurrent
+  acceptance, revoked or superseded invitation, stale issuer, endpoint
+  impersonation, same-name realm, TOFU mismatch, and downgrade tests;
 - explicit dependency that cryptographic invitation verification activates only
   after providers and live governance are admitted at v0.25.0.
 
@@ -834,6 +871,9 @@ Exit criteria:
 - A clone or invitation identifies a realm by its genesis commitment.
 - Users can distinguish pinned, invitation-backed, out-of-band, and warned TOFU
   trust states before any remote state is admitted.
+- Invitation parsing, preview, and rejection are safe before activation, while
+  issuance, authoritative acceptance, revocation, and enrollment become live
+  only through admitted governance.
 - Before v0.25.0, invitation bytes are schema fixtures and cannot establish live
   authority merely by parsing successfully.
 
@@ -1009,6 +1049,8 @@ Deliverables:
 - signed membership and role transitions;
 - threshold administrative actions over independent principals;
 - signed ownership transfer and emergency recovery;
+- live invitation issuance, acceptance, consumption, expiry, revocation, and
+  supersession transitions using the v0.19.0 lifecycle schema;
 - authenticated governance event chain and interim governance root;
 - transition result commits the exact previous and resulting governance roots;
 - no dependency on the later checkpoint schema for v0.25.0 validity;
@@ -1026,6 +1068,8 @@ Exit criteria:
 
 - No membership, role, policy authority, or key-registry mutation is accepted
   solely because it is well-formed.
+- An invitation can create authority only once, within its exact signed scope,
+  while its issuer and governance epoch remain admitted.
 - Every live governance mutation verifies against the admitted genesis and
   current governance root.
 - The initial governance and key-lifecycle state is admitted directly from the
@@ -2078,6 +2122,21 @@ Deliverables:
 
 - ordinary and emergency key rotation transactions;
 - threshold recovery authorization;
+- end-to-end recovery ceremony covering declaration, realm freeze or restricted
+  mode, independent participant verification, share collection, threshold
+  authorization, isolated provider execution, replacement-key admission,
+  recipient and session invalidation, epoch advancement, checkpointing, and
+  closure;
+- out-of-band identity and realm-fingerprint confirmation for every recovery
+  participant;
+- no reconstructed secret written to ordinary files, command arguments, logs,
+  shell history, or long-lived process memory;
+- dry-run, abort, timeout, participant replacement, unavailable participant,
+  compromised participant, lost device, and total-site-loss procedures;
+- post-recovery verification that old administrator, device, recipient,
+  session, and automation authority is rejected;
+- recovery evidence package suitable for independent audit without disclosing
+  recovery shares or replacement secrets;
 - ownership transfer workflow;
 - stale administrator and split-governance refusal;
 - recovery event and checkpoint commitments;
@@ -2087,12 +2146,16 @@ Deliverables:
 Verification:
 
 - `cargo test -p sagnir-crypto`
-- governance and recovery state-machine tests.
+- governance and recovery state-machine tests;
+- end-to-end software-fixture recovery ceremony.
 
 Exit criteria:
 
 - Emergency recovery is explicit, threshold-governed, auditable, and cannot be
   replayed as an ordinary administrative action.
+- A documented ceremony can recover a realm from admitted loss scenarios,
+  rotate every affected authority boundary, and prove that stale authority no
+  longer works without exposing recovery material.
 
 ### v0.65.0 - Checkpoint Anchoring And Rollback Detection
 
@@ -2899,32 +2962,68 @@ Deliverables:
 
 - immutable semantic commitment format used by canonical references,
   transitions, proofs, and signatures inside the encrypted semantic ledger;
+- normative random-blinded semantic commitment over length-framed format,
+  realm, compartment, object schema and type, canonical plaintext, and an
+  independently random 256-bit blinding value;
+- the blinding value comes from the v0.23.0 OS-CSPRNG boundary, is stored only
+  inside the encrypted semantic ledger, and is never derived from plaintext,
+  object hashes, locators, clocks, counters, or ancestor keys;
+- semantic-commitment domain separation from public object hashing, private
+  lookup locators, encryption, wrapping, signatures, proofs, and every other
+  cryptographic purpose;
+- deterministic compartment-keyed private locators provide authorized lookup
+  and deduplication without making the immutable semantic commitment
+  deterministic to outsiders;
+- independent known-answer vectors for semantic commitments, private locators,
+  ciphertext IDs, and every domain-separation label;
 - epoch-specific keyed private lookup locator format;
 - ciphertext storage ID format;
 - distinct non-interchangeable types for semantic commitment, private locator,
   and ciphertext storage ID;
-- authenticated encrypted mapping from private locator to exact semantic
+- encrypted authenticated mapping from private locator to exact semantic
   commitment and ciphertext record;
-- translation proof that binds one epoch-specific locator to the same canonical
-  plaintext commitment without disclosing a public membership oracle;
+- v1 translation evidence is the encrypted authenticated mapping plus
+  authenticated-index inclusion and canonical-plaintext verification, not a
+  publicly verifiable zero-knowledge proof;
+- actual zero-knowledge locator-translation proofs remain prohibited until a
+  separately reviewed proof system is admitted under the post-1.0
+  hidden-witness milestone;
+- exact visibility matrix: semantic commitments and translation mappings are
+  visible only inside an unlocked authorized semantic ledger or an explicitly
+  recipient-encrypted disclosure; blind stores receive ciphertext storage IDs,
+  opaque pack commitments, bounded availability metadata, and no semantic
+  commitments;
+- semantic commitments and translation mappings are prohibited from blind-store
+  metadata, unauthenticated protocol fields, telemetry, diagnostics, logs,
+  filenames, public proof summaries, and public storage receipts;
 - substitution resistance proving a locator translation cannot map to different
   canonical plaintext;
+- verification recomputes the semantic commitment from canonical plaintext and
+  its encrypted blinding value before a reference, transition, proof, or
+  signature is accepted;
 - deduplication identity policy scoped to one key domain;
 - randomized encryption requirement;
 - non-revealing private-locator formatting;
 - no public plaintext object hash in sealed-private metadata;
-- known-plaintext, cross-realm correlation, formatting, identity-confusion,
-  translation substitution, locator/ciphertext interchange, and semantic-root
-  preservation tests.
+- known-plaintext dictionary attack, low-entropy content, same-plaintext
+  cross-compartment and cross-realm correlation, formatting,
+  identity-confusion, translation substitution, locator/ciphertext interchange,
+  public-output leakage, and semantic-root preservation tests.
 
 Verification:
 
 - `cargo test -p sagnir-object`
 - `cargo test -p sagnir-crypto`
+- independent commitment and locator vector validator.
 
 Exit criteria:
 
 - Sealed-private formats can hide whether known plaintext content is present.
+- Equal plaintext receives unlinkable semantic commitments across compartments
+  or independent creation events unless authorized private-locator deduplication
+  intentionally resolves to an existing admitted object.
+- Possession of blind-store metadata, logs, public proofs, storage receipts, or
+  ciphertext IDs does not provide a semantic-commitment dictionary oracle.
 - Historical signatures and canonical graph references bind immutable semantic
   commitments, never rotatable private locators or ciphertext IDs.
 - No user-facing encryption command exists before these three identity layers
@@ -2965,6 +3064,10 @@ before encrypted realm creation.
 Deliverables:
 
 - two-layer public commitment and encrypted semantic ledger model;
+- public layer commits only to ciphertext packs, protocol epochs, and deliberate
+  availability or policy predicates; it contains no semantic object commitment,
+  private locator, translation mapping, path, actor, world, fact, or graph-edge
+  identity;
 - encrypted paths, worlds, actors, facts, graph edges, policies, and proofs;
 - fixed-size or bucketed record classes;
 - epoch batching and pack compaction;
@@ -2981,8 +3084,9 @@ Exit criteria:
 
 - Locked or blind-storage views expose only documented minimal commitments and
   availability metadata.
-- Public proof summaries are commitments or deliberate predicates, not
-  plaintext reports with fields removed.
+- Public proof summaries contain only deliberate predicates over explicitly
+  disclosed statements; they do not expose private semantic commitments or
+  translation mappings.
 
 ### v0.96.0 - Encrypted Object Envelope
 
@@ -2995,9 +3099,12 @@ Deliverables:
 - nonce field;
 - ciphertext length field;
 - authentication tag field;
-- associated-data binding for envelope format and suite, realm, compartment,
-  object schema and type, private commitment, crypto epoch, key ID,
-  compression/delta format, pack/segment, and record position;
+- public associated-data binding only for envelope format and suite, opaque
+  storage realm handle, crypto epoch, key ID, pack/segment, and record position;
+- encrypted authenticated header binding compartment, object schema and type,
+  immutable semantic commitment, blinding value, and compression/delta format;
+- no semantic commitment, blinding value, private locator, or canonical object
+  metadata in the externally visible envelope;
 - malformed envelope tests.
 
 Verification:
@@ -3073,14 +3180,25 @@ Deliverables:
 - per-device recipient keys;
 - recipient ID, kind, wrapping algorithm, and wrapped key metadata;
 - signed recipient authorization;
-- recipient and key-transparency records;
+- recipient and key-transparency records anchored in the v0.17.0 canonical
+  authenticated map and append-only event commitment;
+- canonical transparency-map key, leaf, empty value, inclusion, absence,
+  update, append-only consistency, and checkpoint encodings;
+- each leaf binds actor, device or recipient identity, key material, algorithm,
+  lifecycle state, governance epoch, sequence, authorization scope, and
+  supersession or revocation reference;
+- historical key states remain provable, while current absence and revocation
+  cannot be represented by silently deleting a leaf;
+- checkpoint anchoring, monitor replay, peer gossip, and split-view evidence for
+  key-map roots;
 - OS keychain, TPM, secure enclave, and hardware-token backend interfaces;
 - threshold and offline recovery metadata;
 - anonymous recipient slots where feasible;
 - key compromise and recovery evidence;
 - acknowledgement that removal cannot revoke already acquired keys;
-- backend-unavailable, duplicate slot, unauthorized recipient, and recovery
-  threshold tests.
+- backend-unavailable, duplicate slot, unauthorized recipient, ambiguous key,
+  false absence, stale map root, split view, inconsistent append, rollback, and
+  recovery threshold tests.
 
 Verification:
 
@@ -3091,6 +3209,9 @@ Exit criteria:
 
 - The format supports device-specific access, revocation evidence, and offline
   recovery without embedding a mandatory platform backend.
+- Key transparency has one authenticated-map meaning for inclusion, absence,
+  update history, and consistency, and cannot silently hide or rewrite an
+  admitted key state.
 
 ### v0.100.0 - Compartment Encryption Boundaries
 
@@ -3128,13 +3249,20 @@ encryption command.
 
 Deliverables:
 
-- full object-ID, metadata, index, pack, and compartment rewrite plan;
+- open-to-sealed migration plan that preserves the original public canonical
+  object bodies, IDs, roots, references, and historical signatures as the
+  history that was actually signed;
+- new random-blinded private semantic graph and encrypted lookup/storage
+  projections admitted through a signed migration transition binding the
+  original public roots to the new private roots;
 - crash-safe staged repack and rollback;
 - old plaintext identifier and metadata cleanup policy;
 - explicit leakage statement for information previously published, replicated,
   logged, cached, or observed;
 - prohibition on claiming that migration recalls prior disclosures;
-- old-to-new commitment map protected inside the encrypted ledger;
+- old-public-to-new-private commitment map protected inside the encrypted
+  ledger and never represented as proof that historical signatures originally
+  signed the new private graph;
 - interrupted migration, stale index, old-pack retention, rollback, and
   previously disclosed metadata tests.
 
@@ -3276,8 +3404,8 @@ Deliverables:
   custody until admitted old locator indexes and packs are retired;
 - historical verification mode that does not require distributing a
   compromised old membership-testing key to new peers;
-- scoped translation proofs allowing new peers to verify that old and new
-  projections resolve to the same semantic commitments;
+- scoped authenticated translation evidence allowing new peers to verify that
+  old and new projections resolve to the same semantic commitments;
 - mixed-epoch sync negotiation and bounded transition support while peers
   migrate;
 - retirement of the compromised private-locator key and old externally visible
@@ -3309,8 +3437,8 @@ Exit criteria:
 - The migration transition is new signed history; rewritten locator projections
   are never represented as the originally signed graph.
 - Old signatures remain verifiable from retained canonical commitments and
-  scoped proofs even after the compromised locator key is withheld from new
-  peers.
+  scoped authenticated translation evidence even after the compromised locator
+  key is withheld from new peers.
 - Peers on different private-locator epochs either use the admitted migration
   protocol or refuse trust; they do not guess identity equivalence.
 - Rotation protects future membership privacy but cannot erase correlations
@@ -3759,6 +3887,13 @@ Deliverables:
 
 - signed redaction transition identifying scope, authority, reason, and policy
   basis without embedding removed plaintext;
+- signed redaction tombstone binding the semantic commitment, encryption
+  instance, erasure-unit scope, redaction transition, policy and crypto epochs,
+  and effective causal frontier;
+- canonical `RedactedBody` state distinct from missing, promised, sparse,
+  unavailable, quarantined, corrupt, or never-fetched state;
+- redaction tombstones retained as authoritative history and propagated during
+  anti-entropy before any request for a body or repair source;
 - destruction of independently wrapped erasure-unit data keys or admitted
   punctures, plus recipient revocation where applicable;
 - enumeration and destruction of every wrapper, recovery share, escrow copy,
@@ -3770,6 +3905,14 @@ Deliverables:
 - legal-hold and retention conflict evaluation that blocks redaction explicitly;
 - copy-on-write separation before partial redaction of shared logical content;
 - compartment, object, metadata, index, cache, and repack handling;
+- redaction-aware sync rule prohibiting body requests, transfer admission,
+  availability repair, archive restoration, repack, or cache reconstruction
+  from resurrecting a tombstoned encryption instance;
+- pre-redaction ciphertext returned by a stale or offline peer enters
+  non-materializable quarantine, is recorded as stale redaction evidence, and
+  cannot satisfy a promise, receipt, repair, or availability requirement;
+- storage receipts and archive receipts for a redacted encryption instance are
+  revoked or superseded by the signed tombstone and cannot be refreshed;
 - preserved historical commitments and redaction evidence;
 - explicit distinction between redaction, logical removal, ciphertext deletion,
   and cryptographic erasure;
@@ -3778,13 +3921,17 @@ Deliverables:
 - interrupted purge, stale recipient, retained key copy, partial repack,
   historical proof, unauthorized redaction, surviving-ancestor reconstruction,
   private-locator-key retention, shared blob, shared tree, overlapping
-  compartment, multiple wrapper, legal-hold, and partial redaction tests.
+  compartment, multiple wrapper, legal-hold, partial redaction, redaction-first
+  anti-entropy, stale receipt, stale archive, attempted repair, and offline-peer
+  partition-return tests.
 
 Verification:
 
 - `cargo test -p sagnir-vault`
 - `cargo test -p sagnir-store`
-- cryptographic-erasure recovery suite.
+- `cargo test -p sagnir-sync`
+- cryptographic-erasure recovery suite;
+- deterministic partition and offline-peer return simulation.
 
 Exit criteria:
 
@@ -3796,6 +3943,9 @@ Exit criteria:
   separate encryption instance.
 - Redaction is denied while a governing retention or legal-hold obligation
   requires the encryption instance.
+- Missing, unavailable, and redacted bodies remain distinguishable, and no sync,
+  repair, archival, sparse-fetch, or GC path treats a redacted body as
+  recoverable data.
 - Cryptographic erasure is not reported successful if the erased data key can
   be derived again from any retained master, compartment, epoch, recipient, or
   private-locator key.
@@ -3811,6 +3961,7 @@ Deliverables:
 - canonical reachability roots;
 - user, policy, checkpoint, audit, and operation pins;
 - quarantine retention separation;
+- redaction tombstone roots and quarantined pre-redaction ciphertext handling;
 - partial-clone promises and promised-object roots;
 - grace periods and recent-object protection;
 - repack and compaction transactions;
@@ -3830,6 +3981,8 @@ Exit criteria:
 
 - Garbage collection deletes only objects proven unreachable from every
   admitted root, pin, promise, retention rule, and in-flight transaction.
+- Garbage collection preserves redaction evidence while allowing obsolete
+  ciphertext to be removed without changing `RedactedBody` into `Missing`.
 - Integrity and local availability are reported as separate properties.
 
 ### v0.124.0 - Remote Storage Receipts And Availability Semantics
@@ -3844,6 +3997,10 @@ Deliverables:
 - explicit acknowledgement-only response distinct from a storage receipt;
 - optional retrieval challenge and availability evidence;
 - receipt revocation, expiry, and remote-key compromise handling;
+- redaction-tombstone supersession of receipts and retrieval challenges for the
+  affected encryption instance;
+- refusal to issue or refresh a receipt for an encryption instance at or behind
+  an admitted redaction frontier;
 - no claim that one receipt proves indefinite availability;
 - forged, replayed, expired, partial-storage, and unavailable-remote tests.
 
@@ -3857,6 +4014,8 @@ Exit criteria:
 - Sagnir never reports remote acceptance as durable storage unless the remote
   returns an admitted signed receipt with defined semantics.
 - Availability claims state their time, scope, and witness assumptions.
+- A receipt predating redaction is historical evidence only and cannot make a
+  redacted body available again.
 
 ### v0.125.0 - Availability Replication And Repair
 
@@ -3871,10 +4030,14 @@ Deliverables:
 - receipt freshness and challenge scheduling;
 - missing or degraded replica detection;
 - repair planning and resumable re-replication;
+- tombstone-first repair planning that excludes redacted encryption instances,
+  stale receipts, quarantined ciphertext, and archives behind the redaction
+  frontier;
 - optional evaluated erasure-coding profile with shard commitment and repair
   semantics;
 - provider collusion, correlated failure, stale receipt, partial shard,
-  unavailable source, and repair interruption tests.
+  unavailable source, repair interruption, offline stale provider, and
+  redacted-instance resurrection tests.
 
 Verification:
 
@@ -3886,6 +4049,8 @@ Exit criteria:
 
 - Sagnir can detect when configured availability falls below policy and repair
   it from an admitted surviving source.
+- Availability repair never restores an encryption instance superseded by an
+  admitted redaction tombstone.
 - Provider count alone cannot satisfy diversity policy when providers share one
   administrative failure domain.
 
@@ -3903,6 +4068,10 @@ Deliverables:
 - archive manifest concept;
 - archive receipt and root commitment concept;
 - rehydrate/restore concept;
+- redaction-index and tombstone overlay concept preventing archive rehydration
+  from restoring superseded encryption instances;
+- stale archive bodies are quarantined and reported, not materialized or used
+  as repair sources;
 - receipt-only downstream clone concept;
 - policy notes for disabling archival in regulated realms.
 
@@ -3917,6 +4086,8 @@ Exit criteria:
   verifiable receipts.
 - Archive receipts cannot be treated as proof that missing archive bodies are
   available or valid.
+- A later archive implementation must apply admitted redaction tombstones before
+  body selection, restoration, or receipt validation.
 
 ### v0.127.0 - Malicious Corpus
 
@@ -4055,6 +4226,10 @@ Deliverables:
 - cryptographic known-answer and malformed-vector suites;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
+- wrapped-DEK creation, recipient rewrap, multi-wrapper enumeration, and
+  compartment-scale key-rotation benchmarks;
+- redaction preflight, wrapper destruction, tombstone propagation, stale-body
+  quarantine, repack, and partial-redaction copy-on-write benchmarks;
 - full-world verification and hostile-bundle rejection benchmarks;
 - p50/p95/p99 latency, memory, I/O amplification, and ciphertext-expansion
   budgets;
@@ -4070,6 +4245,8 @@ Exit criteria:
 - Canonical interoperability does not depend on one implementation.
 - Sagnir publishes explicit resource budgets and detects material regressions
   in its critical local and hostile-input paths.
+- Encryption and redaction claims include measured costs for realistic wrapper,
+  compartment, shared-object, and offline-peer scales.
 
 ### v0.133.0 - Cross-Platform Build Gate
 
@@ -4126,7 +4303,15 @@ Goal: make release outputs auditable.
 Deliverables:
 
 - SBOM generation;
-- release checksum checklist;
+- signed release checksums and detached release-artifact signatures;
+- provenance attestation binding source commit and signed tag, toolchain,
+  dependency lock, build command, target, artifact digests, SBOM digest,
+  release notes, and release-gate result;
+- offline verification instructions and machine-readable verification command;
+- release-signing key custody, rotation, revocation, compromise, and historical
+  verification policy;
+- refusal to publish when an artifact, checksum, signature, provenance
+  statement, SBOM, tag, or source commit does not match;
 - reproducible local release build check;
 - release notes validator;
 - signed tag checklist;
@@ -4135,11 +4320,14 @@ Deliverables:
 Verification:
 
 - `scripts/generate-sbom.sh`
-- release metadata validator.
+- release metadata validator;
+- release signature and provenance verification fixture.
 
 Exit criteria:
 
-- A release candidate produces auditable local evidence.
+- A release candidate produces independently verifiable signed artifacts,
+  checksums, SBOMs, and provenance tied to the exact admitted source and gate
+  result.
 
 ### v0.136.0 - 1.0 Release Candidate Gate
 
@@ -4158,6 +4346,8 @@ Deliverables:
 - known limitations document;
 - security controls updated;
 - threat model updated;
+- boundary-by-boundary threat-model and security-control map audit complete;
+- release artifact signatures and provenance attestations verify independently;
 - release notes for 1.0.0 draft.
 
 Verification:
@@ -4179,7 +4369,7 @@ Deliverables:
 - durable repository-format compatibility, golden fixtures, and transactional
   migration;
 - realm genesis-bound identity, first-contact trust bootstrap, governance,
-  membership, and trust roots;
+  full invitation lifecycle, membership, and trust roots;
 - normative canonical formats and independent vectors;
 - computed object hashes and body-derived references;
 - authenticated maps, append-only commitments, and complete checkpoints;
@@ -4194,6 +4384,7 @@ Deliverables:
 - stable worktree snapshots, incremental indexes, and recoverable
   materialization;
 - context-bound signatures, key lifecycle, and anti-replay;
+- threshold-governed end-to-end emergency recovery ceremony;
 - explicit causal/checkpoint time semantics;
 - canonical realm/world policy separated from local acceptance policy;
 - deterministic policy resource limits and historical evaluator migration;
@@ -4213,6 +4404,9 @@ Deliverables:
 - recipient metadata and rekeying;
 - encrypted indexes, authenticated pages, private locators, immutable semantic
   commitments, and metadata protection;
+- random-blinded confidential semantic commitments with explicit visibility
+  rules and encrypted authenticated locator translation;
+- authenticated key-transparency map semantics and split-view evidence;
 - no operational encryption mode before sealed-private prerequisites;
 - sealed-private migration and honest prior-leakage accounting;
 - crash-safe nonce and live-key session handling;
@@ -4230,11 +4424,13 @@ Deliverables:
   tokens;
 - explicit storage receipts and availability semantics;
 - replication diversity, retrieval challenges, and availability repair;
-- redaction and cryptographic erasure with explicit non-recall limits;
+- redaction and cryptographic erasure with signed tombstones, non-resurrection
+  across sync, repair, and archival, and explicit non-recall limits;
 - Git import/export interoperability without using Git as native storage;
 - optional daemon;
 - formal, crash, concurrency, partition, fuzz, and performance assurance;
 - complete release notes;
+- signed release artifacts, checksums, SBOM, and provenance attestation;
 - completed pentest report;
 - passing release gate.
 
@@ -4386,10 +4582,16 @@ Deliverables:
 - compressed archive pack and manifest;
 - immutable archive receipt and root commitment;
 - archive rehydrate and verify commands;
+- tombstone-first restore planning and `RedactedBody` preservation;
+- quarantine of archived ciphertext superseded by an admitted redaction
+  tombstone;
+- receipt supersession and refusal to use redacted bodies for availability
+  repair;
 - receipt-only downstream mode;
 - availability proof or explicit unavailable state;
 - regulated-policy retention controls;
-- missing, substituted, truncated, and unavailable archive tests.
+- missing, substituted, truncated, unavailable, stale-redacted,
+  offline-archive, and resurrection-attempt tests.
 
 Verification:
 
@@ -4400,6 +4602,8 @@ Exit criteria:
 
 - Cold history can be compacted and restored while missing archive bodies are
   detectable and never represented as locally available proof.
+- Archive restoration and availability repair cannot resurrect a redacted
+  encryption instance.
 
 ### v1.7.0 - Cross-Domain Causal Queries
 
