@@ -44,7 +44,7 @@ Current admitted third-party Rust dependencies must remain narrowly scoped,
 current, license-reviewed, and covered by release notes when they change.
 `getrandom` is admitted as Sagnir's cross-platform operating-system entropy
 boundary. Its current implemented use is new realm IDs; planned cryptographic
-uses include key generation, independently wrapped DEKs, private-ID keys,
+uses include key generation, independently wrapped DEKs, private-locator keys,
 nonces, salts, randomized signatures, and randomized encryption inputs.
 
 All entropy-dependent operations must fail closed when the operating-system

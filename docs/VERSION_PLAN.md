@@ -158,6 +158,21 @@ target. Sagnir must not expose a reusable generic verification token. Verified
 results must commit to the target, proof, scope, policy root and epoch, crypto
 epoch, verifier version, and verified frontier.
 
+Private realms use three non-interchangeable identity layers:
+
+- immutable semantic commitments identify canonical plaintext objects and
+  signed graph roots inside the protected semantic ledger;
+- epoch-specific private lookup locators allow keyed membership lookup without
+  becoming the identity signed by historical transitions;
+- ciphertext storage IDs identify randomized encrypted records or packs and may
+  change during re-encryption, repacking, or relocation.
+
+Canonical object references and signatures bind immutable semantic commitments.
+Private locators and ciphertext IDs are storage and privacy projections linked
+to those commitments by authenticated encrypted indexes and scoped proofs.
+Rotating a private-locator key never rewrites or impersonates the originally
+signed semantic history.
+
 Protected transitions require one validated compound result:
 
 - content integrity is valid;
@@ -552,8 +567,21 @@ Deliverables:
 - transactional, crash-safe upgrade protocol with preflight, dry-run, backup,
   staged writes, commit marker, and recovery;
 - explicit downgrade and old-writer refusal after upgrade;
-- migration provenance recording old format, new format, tool version, input
-  roots, and resulting roots;
+- storage migrations may rewrite indexes, object placement, encryption
+  envelopes, ciphertext IDs, and pack layout;
+- storage migrations must not silently reserialize canonical object bodies,
+  change immutable semantic commitments, rewrite signed references, or
+  invalidate historical signatures;
+- every canonical object version reachable from admitted history remains
+  decodable and verifiable;
+- dropping an old decoder is prohibited while any admitted reachable history
+  depends on it;
+- semantic changes create new signed transition objects and roots rather than
+  mutating old canonical objects;
+- migration provenance distinguishes a storage-layout-preserving migration
+  from a semantic transition, recording old format, new format, tool version,
+  input roots, resulting storage commitments, and any separately signed
+  semantic result roots;
 - mixed-version peer and repository fixtures;
 - golden repositories retained in CI for every released durable format.
 
@@ -576,6 +604,17 @@ Exit criteria:
   repository.
 - Every durable migration is attributable and its root transition is
   reproducible from retained golden fixtures.
+- A storage-layout migration preserves canonical semantic roots and historical
+  signature validity.
+- Any semantic root change is represented and authorized as a new native Sagnir
+  transition, never disguised as a repository-format upgrade.
+
+Inherited rule:
+
+- every later milestone that changes durable bytes, `.saga/FORMAT`, object or
+  envelope versions, index formats, pack formats, or migration metadata must
+  satisfy the v0.11.0 compatibility fixtures, decoder-retention rules,
+  provenance requirements, and crash-safe migration contract.
 
 ### v0.12.0 - Normative Canonical Protocol Specification
 
@@ -856,7 +895,10 @@ Goal: bind authoritative signatures to complete realm and transition context.
 Deliverables:
 
 - versioned transcript format per statement and action type;
-- realm, target, parent/frontier, base root, and result root commitments;
+- realm, target, parent/frontier, base root, and result root immutable semantic
+  commitments;
+- explicit prohibition on signing epoch-specific private lookup locators or
+  ciphertext storage IDs as canonical object identity;
 - source and target world commitments where applicable;
 - policy root and epoch, crypto suite and epoch, signer key and epoch;
 - per-key sequence number, verification scope, and algorithm-transition state;
@@ -872,6 +914,8 @@ Exit criteria:
 
 - A valid signature for one realm, action, epoch, world, scope, frontier, or
   algorithm state cannot authorize another.
+- Re-encryption, repacking, ciphertext relocation, or private-locator rotation
+  cannot invalidate a signature over unchanged semantic history.
 
 ### v0.23.0 - Signing And Verification Providers
 
@@ -2743,14 +2787,30 @@ Goal: define cryptographic key separation before encrypted bytes are written.
 
 Deliverables:
 
-- key-encryption-key, realm, compartment/world, private-ID, and erasure-unit
+- key-encryption-key, realm, compartment/world, private-locator, and erasure-unit
   key hierarchy;
 - explicit erasure-unit granularity: object, path group, compartment, epoch, or
   retention class;
+- an erasure unit owns one encryption instance and its DEK, not the immutable
+  logical object or semantic commitment;
+- one logical object referenced by scopes with incompatible retention,
+  compartment, legal-hold, or redaction policy uses separate encryption
+  instances and independently wrapped DEKs;
+- copy-on-write encryption instance creation when an existing shared instance
+  would cross an erasure-policy boundary;
 - random independently generated data-encryption key for every declared erasure
   unit, wrapped by the authorized compartment or recipient keys;
-- v0.23.0 OS-CSPRNG boundary used for every DEK, private-ID key, wrapping key,
-  salt, nonce seed, and randomized encryption input;
+- one DEK may have multiple wrappers only for recipients or recovery authorities
+  admitted to the same erasure unit and compatible retention policy;
+- erasure succeeds only after every wrapper, recovery share, escrow copy, and
+  admitted derivation path capable of recovering that DEK is destroyed or
+  cryptographically revoked;
+- removing one recipient, path, or reference cannot erase an encryption
+  instance still required by another admitted scope;
+- retention and legal-hold conflicts fail closed and block redaction or DEK
+  destruction;
+- v0.23.0 OS-CSPRNG boundary used for every DEK, private-locator key, wrapping
+  key, salt, nonce seed, and randomized encryption input;
 - no fallback from failed operating-system entropy to counters, timestamps,
   deterministic test RNGs, or ordinary pseudorandom generators;
 - fork/reseed, VM-clone, suspend/resume, and early-boot handling inherited from
@@ -2762,15 +2822,21 @@ Deliverables:
 - domain-separated derivation only for non-erasable purpose keys such as
   metadata indexing, WAL authentication context, wrapping context, and
   proof-disclosure context;
-- private-ID key lifecycle separated from encryption-key and data-key rotation;
-- ordinary rekeying does not require every private object ID to change;
+- private-locator key lifecycle separated from semantic commitments,
+  encryption-key rotation, and data-key rotation;
+- ordinary rekeying does not require semantic commitment or private-locator
+  changes;
 - key identifier and crypto epoch binding;
 - bounded KDF and derivation parameter admission;
 - cross-purpose key-reuse rejection;
 - known-answer derivation and wrapping vectors;
 - erased-key reconstruction tests using every surviving key and metadata
   combination;
-- private-ID stability tests across ordinary encryption rekeying;
+- shared blob, shared tree, overlapping compartment, multiple wrapper,
+  incompatible retention, legal hold, copy-on-write, and partial redaction
+  tests;
+- semantic commitment and private-locator stability tests across ordinary
+  encryption rekeying;
 - unavailable, repeated, compromised, fork-cloned, and VM-cloned entropy
   fault-injection tests.
 
@@ -2784,9 +2850,13 @@ Exit criteria:
 - Compromise or misuse of one derived purpose key does not silently authorize a
   different cryptographic purpose.
 - Destroyed erasure-unit data keys cannot be reconstructed from retained
-  ancestor keys, wrapped-key metadata, private-ID keys, or later crypto epochs.
-- Private object identity and ciphertext confidentiality can rotate under
-  separate governed lifecycles.
+  ancestor keys, wrapped-key metadata, private-locator keys, or later crypto
+  epochs.
+- Logical-object deduplication never merges encryption instances whose erasure,
+  retention, legal-hold, compartment, or recipient policies are incompatible.
+- Private lookup locators and ciphertext confidentiality can rotate under
+  separate governed lifecycles while immutable semantic identity remains
+  unchanged.
 - Vault creation and key rotation fail before persistence when production
   entropy requirements are not met.
 
@@ -2820,21 +2890,32 @@ Exit criteria:
   cannot cause two records under one key to reuse a forbidden nonce.
 - Wrong keys fail authentication without exposing parsed plaintext.
 
-### v0.93.0 - Sealed Private Object IDs
+### v0.93.0 - Sealed Private Locator And Storage Identity
 
 Goal: avoid known-plaintext membership leaks before any encrypted realm can be
 created.
 
 Deliverables:
 
-- private keyed object ID format;
+- immutable semantic commitment format used by canonical references,
+  transitions, proofs, and signatures inside the encrypted semantic ledger;
+- epoch-specific keyed private lookup locator format;
 - ciphertext storage ID format;
+- distinct non-interchangeable types for semantic commitment, private locator,
+  and ciphertext storage ID;
+- authenticated encrypted mapping from private locator to exact semantic
+  commitment and ciphertext record;
+- translation proof that binds one epoch-specific locator to the same canonical
+  plaintext commitment without disclosing a public membership oracle;
+- substitution resistance proving a locator translation cannot map to different
+  canonical plaintext;
 - deduplication identity policy scoped to one key domain;
 - randomized encryption requirement;
-- non-revealing private-ID formatting;
+- non-revealing private-locator formatting;
 - no public plaintext object hash in sealed-private metadata;
-- known-plaintext, cross-realm correlation, formatting, and identity-confusion
-  tests.
+- known-plaintext, cross-realm correlation, formatting, identity-confusion,
+  translation substitution, locator/ciphertext interchange, and semantic-root
+  preservation tests.
 
 Verification:
 
@@ -2844,7 +2925,10 @@ Verification:
 Exit criteria:
 
 - Sealed-private formats can hide whether known plaintext content is present.
-- No user-facing encryption command exists before this identity format.
+- Historical signatures and canonical graph references bind immutable semantic
+  commitments, never rotatable private locators or ciphertext IDs.
+- No user-facing encryption command exists before these three identity layers
+  and their authenticated mapping are admitted.
 
 ### v0.94.0 - Vault Metadata Model
 
@@ -2937,6 +3021,8 @@ Deliverables:
 - isolated compression contexts that never combine attacker-controlled input
   with secrets;
 - deduplication and delta bases scoped to one compartment and key domain;
+- deduplication and delta reuse additionally scoped to a compatible erasure
+  unit, retention class, and legal-hold policy;
 - authentication before decompression or plaintext parsing;
 - expanded-size and decompression-ratio limits;
 - ciphertext storage hash computed during encryption;
@@ -2952,6 +3038,9 @@ Exit criteria:
 
 - Status and index lookup can read bounded authenticated regions.
 - Secret and attacker-controlled bytes never share a compression context.
+- Shared semantic content with incompatible erasure policy remains in separate
+  encryption instances even when plaintext deduplication would otherwise be
+  possible.
 - Unauthenticated ciphertext never reaches decompression or canonical parsing.
 
 ### v0.98.0 - Passphrase Unlock Baseline
@@ -3083,8 +3172,9 @@ Verification:
 
 Exit criteria:
 
-- A user can enable sealed-private storage only after private IDs, protected
-  metadata, recipients, compartments, envelopes, and encrypted indexes exist.
+- A user can enable sealed-private storage only after private locators,
+  immutable semantic commitments, protected metadata, recipients, compartments,
+  envelopes, and encrypted indexes exist.
 - The command never labels metadata-visible encryption as sealed-private.
 
 ### v0.103.0 - Unlock Command
@@ -3158,10 +3248,10 @@ Exit criteria:
 - Users get honest warnings about plaintext and metadata risks while unlocked
   and after migration from an open realm.
 
-### v0.106.0 - Rekey And Private-ID Epoch Migration
+### v0.106.0 - Rekey And Private-Locator Epoch Migration
 
-Goal: rotate ciphertext keys and private-ID keys through separate governed,
-crash-safe protocols.
+Goal: rotate ciphertext keys and private lookup-locator keys without rewriting
+or impersonating immutable signed semantic history.
 
 Deliverables:
 
@@ -3169,15 +3259,28 @@ Deliverables:
 - crypto epoch transition;
 - `saga vault rekey`;
 - recipient and compartment rewrap plan;
-- encryption-key rotation independent from private-ID key rotation;
-- scheduled and compromise-triggered private-ID key rotation;
-- whole-graph private object ID and typed-reference rewriting;
-- old and new private-ID epoch admission rules;
-- crash-safe dual-commit migration binding old and new roots;
-- encrypted old-to-new ID mapping with no public correlation;
+- encryption-key rotation independent from private-locator key rotation;
+- scheduled and compromise-triggered private-locator key rotation;
+- preservation of the original canonical object bodies, semantic commitments,
+  signed graph roots, references, transitions, proofs, and signatures;
+- whole-index private-locator and ciphertext-placement rewriting without
+  rewriting canonical references;
+- old and new private-locator epoch admission rules;
+- signed migration transition binding the unchanged semantic roots, old locator
+  index root, new locator index root, and resulting ciphertext storage root;
+- crash-safe dual-commit migration for old and new locator projections;
+- encrypted old-to-new locator mapping with no public correlation;
+- old signatures remain verifiable against the original semantic commitments;
+- old private-locator keys are not required for historical signature
+  verification and may exist only in governed, isolated migration or recovery
+  custody until admitted old locator indexes and packs are retired;
+- historical verification mode that does not require distributing a
+  compromised old membership-testing key to new peers;
+- scoped translation proofs allowing new peers to verify that old and new
+  projections resolve to the same semantic commitments;
 - mixed-epoch sync negotiation and bounded transition support while peers
   migrate;
-- retirement of the compromised private-ID key and old externally visible
+- retirement of the compromised private-locator key and old externally visible
   packs after admitted peer and retention conditions;
 - explicit statement that membership relationships observed before rotation
   cannot be hidden retroactively;
@@ -3185,8 +3288,9 @@ Deliverables:
 - crash-safe staged key rotation;
 - rollback and interrupted-rotation recovery;
 - invalid epoch, partial compartment, stale recipient, restored snapshot,
-  interrupted graph rewrite, reference substitution, public mapping leakage,
-  mixed peer epoch, compromised-key reuse, and stale-pack tests.
+  interrupted locator rewrite, semantic-reference mutation, translation
+  substitution, public mapping leakage, mixed peer epoch, compromised-key reuse,
+  old-signature verification, new-peer verification, and stale-pack tests.
 
 Verification:
 
@@ -3197,11 +3301,17 @@ Verification:
 Exit criteria:
 
 - Key rotation is a signed transition model, not an in-place mutation.
-- Ordinary ciphertext rekeying does not force private object identity changes
-  unless a separate governed private-ID migration is explicitly requested.
-- Private-ID compromise has a complete migration protocol that rewrites every
-  affected identity and reference without publishing the old-to-new mapping.
-- Peers on different private-ID epochs either use the admitted migration
+- Ordinary ciphertext rekeying does not force semantic identity or private
+  locator changes.
+- Private-locator compromise has a complete migration protocol that replaces
+  lookup and storage projections without changing any signed semantic object or
+  reference.
+- The migration transition is new signed history; rewritten locator projections
+  are never represented as the originally signed graph.
+- Old signatures remain verifiable from retained canonical commitments and
+  scoped proofs even after the compromised locator key is withheld from new
+  peers.
+- Peers on different private-locator epochs either use the admitted migration
   protocol or refuse trust; they do not guess identity equivalence.
 - Rotation protects future membership privacy but cannot erase correlations
   already observed under the compromised epoch.
@@ -3651,8 +3761,14 @@ Deliverables:
   basis without embedding removed plaintext;
 - destruction of independently wrapped erasure-unit data keys or admitted
   punctures, plus recipient revocation where applicable;
+- enumeration and destruction of every wrapper, recovery share, escrow copy,
+  and admitted key path for the targeted encryption instance;
 - validation that no surviving ancestor key can recreate the erased key;
 - erasure-unit scope and granularity committed into the redaction transition;
+- reference and ownership check proving no other admitted scope still requires
+  the targeted encryption instance;
+- legal-hold and retention conflict evaluation that blocks redaction explicitly;
+- copy-on-write separation before partial redaction of shared logical content;
 - compartment, object, metadata, index, cache, and repack handling;
 - preserved historical commitments and redaction evidence;
 - explicit distinction between redaction, logical removal, ciphertext deletion,
@@ -3661,7 +3777,8 @@ Deliverables:
   exports cannot be recalled;
 - interrupted purge, stale recipient, retained key copy, partial repack,
   historical proof, unauthorized redaction, surviving-ancestor reconstruction,
-  and private-ID-key retention tests.
+  private-locator-key retention, shared blob, shared tree, overlapping
+  compartment, multiple wrapper, legal-hold, and partial redaction tests.
 
 Verification:
 
@@ -3674,9 +3791,14 @@ Exit criteria:
 - Authorized redaction can make retained ciphertext undecryptable where key
   destruction assumptions hold without erasing the signed fact that a
   redaction occurred.
+- Removing one recipient or reference does not erase content still required by
+  another admitted scope; incompatible partial redaction first creates a
+  separate encryption instance.
+- Redaction is denied while a governing retention or legal-hold obligation
+  requires the encryption instance.
 - Cryptographic erasure is not reported successful if the erased data key can
   be derived again from any retained master, compartment, epoch, recipient, or
-  private-ID key.
+  private-locator key.
 - Sagnir never claims erasure of data or keys already copied beyond its control.
 
 ### v0.123.0 - Reachability, Repack, And Safe Garbage Collection
@@ -4089,11 +4211,13 @@ Deliverables:
 - lock and unlock;
 - vault status and leak scanning;
 - recipient metadata and rekeying;
-- encrypted indexes, authenticated pages, private IDs, and metadata protection;
+- encrypted indexes, authenticated pages, private locators, immutable semantic
+  commitments, and metadata protection;
 - no operational encryption mode before sealed-private prerequisites;
 - sealed-private migration and honest prior-leakage accounting;
 - crash-safe nonce and live-key session handling;
-- independently wrapped erasure-unit data keys separated from private-ID keys;
+- independently wrapped erasure-unit data keys separated from private-locator
+  keys and immutable semantic commitments;
 - selective disclosure;
 - bundles;
 - encrypted bundles;
