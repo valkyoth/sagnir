@@ -71,6 +71,20 @@ alone. Compartment-only recipients verify inclusion, continuity, and required
 full-view signer/witness policy, while explicitly relying on those actors for
 hidden-compartment completeness.
 
+For 1.0, a full-rebuild proof is an authenticated deterministic replay
+certificate, not a succinct proof. It commits the ledger range/chunks,
+projection evaluator, resource bounds, independently reproduced roots/counts,
+and transcript. Verification requires canonical ledger availability and
+execution. Delta certificates are replayable transitions with hard
+chain/byte/work limits and mandatory rebuild cadence.
+
+Projection witnesses sign exact semantic/index roots, checkpoint, evaluator,
+replay transcript, policy, and declared replay mode. Full-replay and
+evidence-validation witnesses are distinct assurance levels. Threshold policy
+requires independent principals and administrative domains; key compromise,
+revocation, equivocation, Sybil enrollment, or unavailable threshold fails
+closed.
+
 An encryption-instance ID is a domain-separated hash over its realm, opaque
 compartment or neutral handle, semantic commitment, erasure unit, preallocated
 creation-operation ID, and an independent 256-bit random nonce. The signed
@@ -78,6 +92,13 @@ creation transition binds all inputs. Rewrap, re-encryption, repack, receipt
 renewal, and relocation preserve the ID; a new erasure unit, incompatible
 policy copy, redaction reintroduction, or erased-instance replacement requires a
 new ID.
+
+The creation-operation ID is a domain-separated hash over realm, actor/device,
+replica/incarnation, monotonic reservation sequence, independent random nonce,
+operation kind, and intended domain. Its authenticated reservation is durable
+before use. It becomes consumed by one exact idempotent transition or
+authenticated-cancelled; abandoned, expired, crashed, cancelled, or uncertain
+reservations are never reused.
 
 Each compartment has one logical root and commitment-key epoch. A fixed-depth or
 equivalently count-hiding authenticated realm manifest composes opaque

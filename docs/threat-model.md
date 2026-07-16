@@ -106,9 +106,18 @@ exposure.
 - encryption-instance ID collision, context substitution, local-counter/UUID
   replacement, or reuse after erasure/reintroduction aliasing distinct
   independently erasable state;
+- creation-operation reservation reuse after crash, abandonment, cancellation,
+  expiry, clone/rollback, or uncertain outcome, or one reservation authorizing
+  two different instance transitions;
 - an authorized manifest signer omitting or inventing logical entries while
   signing matching semantic and index roots, or a partial-access recipient
   mistaking signer authority for independently verified global completeness;
+- unbounded projection delta chains, oversized replay transcripts, missing
+  mandatory rebuilds, or ambiguous "proof" semantics causing verification-time
+  and storage amplification;
+- projection witnesses merely countersigning supplied roots, sharing one
+  administrative operator, multiplying nominal identities, becoming
+  unavailable, or equivocating without threshold failure;
 - canonical logical state being confused with replica/device/endpoint-local
   placement projections, including arrival-order overwrite of another
   endpoint's placement;
@@ -121,6 +130,15 @@ exposure.
 - timestamp/revocation authority rollback, split view, equivocation, stale
   staples, compromised keys, missing quorum, privacy-leaking requests, or
   offline verifiers claiming freshness they cannot establish;
+- admission prototypes writing durable bytes, entering production feature
+  graphs, emitting authority, or accidentally freezing experimental formats;
+- privacy profiles claiming timing/access-pattern protection without measured
+  bounds, or leaking operation shape through sizes, epochs, key IDs, pack
+  offsets, filesystem timestamps/churn, repeated I/O, or disabled/distinguishable
+  cover traffic;
+- model-check runs using different bounds, fairness assumptions, reductions,
+  seeds, timeouts, or incomplete state spaces while being reported as equivalent
+  assurance;
 - cross-compartment content being treated as a rename and retaining source
   identity, keys, recipients, or policy in the target compartment;
 - a recursively moved target tree retaining descendant source-compartment
@@ -227,9 +245,18 @@ exposure.
   instance creation;
 - context-bound random-nonce encryption-instance IDs with exact replacement
   lifecycle, collision refusal, and signed creation binding;
+- durable replica-bound creation-operation reservations with monotonic sequence,
+  independent nonce, single exact consumption, authenticated cancellation,
+  crash recovery, and permanent non-reuse;
 - deterministic semantic-ledger projection with full-rebuild/delta proofs,
   full-view replay, optional threshold witnesses, and explicit partial-access
   completeness trust;
+- authenticated replay-certificate semantics, hard delta-chain/work/storage
+  bounds, mandatory rebuild cadence, and preserved historical/equivocation
+  evidence;
+- canonical witness statements distinguishing independent replay from evidence
+  validation, with principal/domain independence, Sybil resistance, key
+  lifecycle, equivocation evidence, and fail-closed threshold unavailability;
 - compartment-scoped logical roots composed through a count-hiding opaque realm
   manifest with partial-access inclusion and consistency proofs;
 - keyed nonce-bound compartment handles with collision refusal, signed rotation,
@@ -281,6 +308,13 @@ exposure.
   redacted placeholders;
 - format-local fuzzing and early performance rejection before security-critical
   formats or live sync implementation.
+- isolated disposable admission prototypes rejected by production decoders and
+  unable to write durable state or enter production release graphs;
+- measurable privacy-profile leakage/overhead contracts and malicious local
+  storage-provider simulations;
+- reproducible model manifests recording exact bounds, assumptions, property
+  classes, reductions, explored states, resources, seeds, tool/model digests,
+  and completion status.
 - threshold-governed recovery ceremony with stale-authority invalidation;
 - signed redaction tombstones, distinct `RedactedBody` state, tombstone-first
   anti-entropy, and quarantine of stale ciphertext;

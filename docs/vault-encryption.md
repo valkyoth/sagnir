@@ -161,6 +161,11 @@ renewal, relocation, and endpoint projection changes; a new independently
 erasable or policy-incompatible instance, redaction reintroduction, or
 erased-instance replacement receives a new ID.
 
+The creation operation is itself a durable replica-incarnation-bound random
+reservation. It is consumed idempotently by one exact transition or cancelled
+through authenticated state. Crash, abandonment, expiry, cancellation, or
+uncertain outcome never makes the reservation reusable.
+
 The logical structure must be history-independent: every insertion, deletion,
 union, split, merge, and bulk-build ordering for one canonical entry set
 produces one root. A dedicated index-commitment key is domain- and epoch-bound,
@@ -187,6 +192,31 @@ their own compartment and the required signer/witness policy, but cannot
 independently establish completeness of hidden compartments; Sagnir reports
 that limitation rather than presenting signature authority as mathematical
 completeness.
+
+The 1.0 rebuild evidence is a Merkle-chunked authenticated replay certificate,
+not a succinct proof. Verifiers acquire every committed ledger chunk and run
+the frozen projection evaluator. Delta replay chains are bounded by count,
+bytes, changed entries, work, memory, and checkpoint gap, with mandatory full
+rebuilds.
+
+Witness statements identify whether the witness independently replayed the
+ledger or only validated supplied evidence. Threshold policy requires
+independent principals and administrative domains, rejects nominal Sybil
+witnesses, and fails closed on unavailable, revoked, compromised, stale, or
+equivocal witness state.
+
+## Measurable Privacy Profiles
+
+Each sealed-private profile declares observable ciphertext/pack sizes, epochs,
+key and endpoint fields, request timing/frequency, access order, repeated
+read/write linkability, filesystem timestamps and directory churn, padding and
+batching overhead, cover-traffic requirements, and residual leakage.
+
+The malicious local storage model may retain all old ciphertext and observe
+names, sizes, offsets, timestamps, journal/CoW behavior, and read/write timing.
+Profile tests use reproducible traces and statistical thresholds. Sagnir does
+not claim timing or access-pattern protection when cover traffic is disabled,
+unavailable, over budget, or distinguishable.
 
 Opaque compartment handles are keyed, random-nonce-bound, and epoch-versioned.
 Collision is a security failure, not an alias. Rotation uses a signed

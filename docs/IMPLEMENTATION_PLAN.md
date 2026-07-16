@@ -397,6 +397,10 @@ Privacy rule:
   creation-operation ID, and an independent OS-CSPRNG nonce; they remain stable
   across rewrap/re-encryption/placement changes and change when erasure identity
   changes;
+- creation-operation IDs are replica-incarnation-bound random reservations
+  durably recorded before use; consumption is idempotent for one exact
+  transition, cancellation is authenticated, and abandoned/cancelled/uncertain
+  IDs are never reused;
 - logical leaves contain only stable candidate identity and object kind;
   ciphertext IDs, packs, receipts, and positions live solely in mutable
   encrypted placement/reverse indexes, so re-encryption and relocation do not
@@ -415,6 +419,14 @@ Privacy rule:
   complete forward/reverse index entries is verified by full rebuild or chained
   delta proofs; a signature alone cannot authorize omitted or invented entries,
   and partial-access results state their full-view signer/witness dependency;
+- the 1.0 full-rebuild evidence is a bounded authenticated deterministic replay
+  certificate, not a succinct proof; verifiers obtain committed ledger chunks,
+  execute the frozen evaluator, and compare independently reproduced roots;
+- delta replay certificates have hard chain/byte/work limits and mandatory full
+  rebuild cadence, preserving historical and equivocation evidence;
+- projection witness statements bind exact roots, evaluator/checkpoint,
+  transcript and replay mode; policy enforces principal/administrative-domain
+  independence, key lifecycle, threshold unavailability, and Sybil resistance;
 - each compartment has its own logical root and commitment-key epoch; a
   count-hiding authenticated realm manifest composes opaque compartment-root
   references and supports scoped inclusion/continuity proofs without disclosing
@@ -579,9 +591,27 @@ Format-admission rule:
 - v0.121.1 admits the irreversible erasure state machine, evidence formats, and
   provider contracts before any destructive dispatch, including
   format-specific fuzzing and early evidence/recovery performance thresholds;
+- admission work uses disposable non-production prototypes with experimental
+  bytes: they cannot write durable realm state, enter production feature graphs,
+  emit authority, or create compatibility promises, and are replaced/deleted or
+  explicitly promoted only after admission;
 - v0.115.1 composes every sealed-private distributed invariant, malicious
   manifest publisher, authority/revocation partition, endpoint placement,
-  neutral object, and redacted-placeholder state before live sync transfer.
+  neutral object, and redacted-placeholder state before live sync transfer; its
+  artifact records exact bounds, assumptions, property classes, reductions,
+  explored states, resources, seeds/configuration, and completion status.
+
+Privacy-profile rule:
+
+- sealed-private profiles define measurable size, timing, frequency,
+  access-pattern, filesystem metadata/churn, and repeated-operation linkability
+  visible to blind or malicious local storage;
+- padding, batching, and cover traffic have explicit latency/bandwidth/storage
+  overhead budgets and cannot be claimed to hide timing/access patterns beyond
+  measured profile bounds;
+- profile tests use reproducible traces and statistical thresholds, and policy
+  warns or refuses when required cover traffic or provider capabilities are
+  unavailable.
 
 Post-quantum readiness rule:
 

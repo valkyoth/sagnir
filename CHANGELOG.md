@@ -40,6 +40,9 @@ All notable Sagnir changes are recorded here.
   exact encryption-instance and opaque compartment-handle lifecycles,
   semantic-ledger/index completeness proofs, a full authoritative
   time/revocation substrate, and format-local fuzzing and performance rejection.
+- Defined bounded projection replay certificates, independent witness
+  governance, non-reusable creation-operation reservations, reproducible model
+  coverage, isolated admission prototypes, and measurable privacy profiles.
 
 ## 0.10.0
 

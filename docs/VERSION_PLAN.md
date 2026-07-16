@@ -3117,7 +3117,20 @@ composition, and placement ownership before v0.93.0 admits durable formats.
 
 Deliverables:
 
-- reviewed algorithm/format admission document with no implementation claim;
+- reviewed algorithm/format admission document with no production
+  implementation or compatibility claim;
+- disposable non-production reference prototypes are required for canonical
+  vectors, parser experiments, fuzz targets, models, and benchmarks;
+- prototypes cannot write or migrate durable realm data, cannot be reachable
+  from production crate feature graphs or release binaries, cannot emit
+  authoritative manifests or signatures, and carry no wire/storage
+  compatibility promise;
+- prototype bytes use an unmistakable experimental magic/version and are
+  rejected by production decoders;
+- after admission, prototypes are deleted/replaced or explicitly promoted
+  through reviewed production implementation, independent vectors, migration
+  policy, and release-gate coverage; admission does not silently bless
+  prototype code;
 - canonical logical entry key
   `(locator_epoch, private_locator, semantic_commitment,
   encryption_instance_id)`;
@@ -3133,6 +3146,32 @@ Deliverables:
   transition, preventing a circular transition-hash dependency; that transition
   binds the resulting instance ID, every hash input, actor/replica authority,
   policy root, causal parents, and resulting semantic/index roots;
+- canonical creation-operation ID bytes
+  `(format_version, hash_algorithm, 32-byte digest)`, where the digest is a
+  domain-separated hash over realm ID, actor/device principal, replica ID and
+  incarnation, reservation sequence, independently random 256-bit reservation
+  nonce from the v0.23.0 OS-CSPRNG, operation kind, and intended compartment or
+  neutral-domain handle;
+- reservation sequence is monotonically allocated under the replica's
+  concurrent-writer lock and the random nonce prevents restored/cloned local
+  state from producing an alias; both are bound into the signed replica event
+  chain;
+- before use, a creation-operation ID is durably recorded as an authenticated
+  `Reserved` operation with exact intended purpose, policy/membership epoch,
+  causal frontier, and expiry/no-expiry rule;
+- reservation lifecycle is `Reserved`, `Consumed`, or `Cancelled`; consumption
+  atomically binds exactly one instance-creation transition, while cancellation
+  is an authenticated transition preserving the ID and reason;
+- abandoned, crashed, cancelled, expired, or uncertain reservations are never
+  reusable for another operation; recovery may idempotently resume the exact
+  intended operation or cancel it, but cannot recycle the ID;
+- replay of an already consumed reservation is idempotent only for the exact
+  canonical creation transition and result; any different transition, instance,
+  policy, or compartment is reservation equivocation and is rejected;
+- duplicate reservation IDs with different canonical reservation records,
+  nonce/sequence rollback, cloned replica state, two-process allocation, crash
+  before/after reservation durability, and cancel/consume races produce
+  explicit conflict evidence rather than aliasing;
 - instance nonces and IDs are never derived from plaintext, clocks, counters,
   storage positions, ciphertext, DEKs, wrapping keys, or local process IDs;
 - collision and duplicate handling: an already admitted byte-identical
@@ -3197,9 +3236,40 @@ Deliverables:
   forward root, reverse root, total entry/instance counts, and either a
   canonical full-rebuild proof or a chain of deterministic delta-transition
   proofs from the prior admitted manifest;
+- for 1.0, a canonical full-rebuild proof is an authenticated deterministic
+  replay certificate, not a succinct or zero-knowledge proof: it binds
+  projection version and executable evaluator digest, exact semantic-ledger
+  checkpoint/range, ordered Merkle-chunk roots and counts, declared resource
+  bounds, independently recomputed forward/reverse roots and counts, transcript
+  root, verifier result, and checkpoint;
+- verification obtains or already possesses every ledger chunk committed by
+  the certificate, validates canonical bytes/signatures/causal admission,
+  executes the frozen projection function, and compares independently produced
+  roots/counts with the manifest; trusting the publisher's computed root or
+  transcript without replay is insufficient for a full-view verifier;
+- rebuild-certificate soundness assumes collision and second-preimage
+  resistance of admitted hashes, unforgeability of admitted signatures,
+  canonical decoding, deterministic evaluator execution, complete ledger
+  availability for the bound range, and correct verifier implementation; it
+  does not claim succinct-proof soundness;
 - delta proof binds exact added, removed, and retained ledger transitions,
   prior/new semantic roots, prior/new index roots, and projection output; it
   cannot omit, invent, duplicate, or substitute an entry;
+- delta certificates are canonical replayable transition transcripts binding
+  prior rebuild/checkpoint certificate, ordered admitted ledger transitions,
+  affected entry keys and old/new values, unaffected authenticated range
+  boundaries, evaluator digest, resource counters, and resulting roots/counts;
+- format and policy impose hard maximum delta-chain length, cumulative delta
+  bytes, transitioned ledger entries, affected index entries, verification
+  work, memory, and elapsed-budget units; over-limit chains require a new full
+  rebuild certificate before further authoritative publication;
+- mandatory full-rebuild cadence is bound by maximum admitted checkpoint gap,
+  delta count, cumulative bytes/work, projection-version change, evaluator
+  change, detected inconsistency, witness policy, and protected-world policy,
+  whichever triggers first;
+- delta-chain compaction never discards the last admitted full-rebuild
+  certificate, manifests/checkpoints required for historical verification, or
+  evidence of an invalid or equivocal projection;
 - full-view verifiers independently replay the projection or validate the
   complete delta/rebuild proof before signing or accepting a manifest;
 - partial-access recipients can verify their compartment inclusion,
@@ -3209,6 +3279,31 @@ Deliverables:
 - protected policy may require threshold full-view projection witnesses from
   independent governance roles before a manifest is authoritative for
   partial-access recipients;
+- canonical projection-witness statement and signing transcript bind realm,
+  compartment/realm-manifest scope, witness principal and key epoch, projection
+  version/evaluator digest, semantic-state root/checkpoint, forward/reverse
+  roots and counts, rebuild/delta transcript root, replay mode, completed
+  resource counters, policy root/epoch, nonce, prior witness statement, and
+  signature;
+- a full-replay witness independently obtains and executes the committed ledger
+  projection; an evidence-validation witness verifies a supplied replay
+  certificate without independent ledger acquisition, and policies distinguish
+  these non-equivalent assurance levels;
+- threshold policy declares required full-replay/evidence-validation counts,
+  principal independence, administrative/operator domain diversity, hardware or
+  process isolation where required, and prohibited shared control;
+- witness enrollment inherits governance and key-transparency controls; one
+  actor, device, organization, beneficial operator, or administrative domain
+  cannot satisfy multiple independent slots through nominal identities;
+- witness key rotation, revocation, compromise, retirement, stale checkpoint,
+  conflicting statement, and equivocation preserve immutable evidence and
+  trigger fail-closed threshold reevaluation;
+- threshold unavailability yields `projection assurance unavailable` and
+  quarantine/refusal for policies requiring witnesses; it never lowers the
+  threshold or treats publisher signatures as witness substitutes;
+- witnesses sign only after their declared replay mode succeeds, and concurrent
+  witness statements over different roots at one bound checkpoint produce
+  witness-equivocation evidence;
 - a malicious authorized publisher that omits or invents an entry produces
   invalid projection evidence or publisher/witness equivocation evidence rather
   than an apparently valid complete index;
@@ -3227,7 +3322,8 @@ Deliverables:
   manifests, projection/rebuild/delta proofs, opaque compartment handles and
   rotations, and endpoint placement projections;
 - format-specific reference decoders, seed corpus, and fuzz targets for
-  instance IDs, composite keys, logical nodes/proofs, projection deltas,
+  creation-operation reservations, instance IDs, composite keys, logical
+  nodes/proofs, rebuild/delta replay certificates, witness statements,
   compartment handles, realm manifests, partial-access proofs, logical-root
   manifests, and endpoint placement projections;
 - early go/no-go benchmark thresholds for sealed-private no-op status, one-file
@@ -3239,14 +3335,17 @@ Deliverables:
   declared threshold; v0.132.0 later supplies comprehensive production-scale
   characterization;
 - threat-model review covering instance fanout, compartment-count leakage,
-  endpoint projection confusion, root substitution, and noncanonical tree
-  shape;
+  operation-ID reuse, projection-certificate amplification, witness Sybil and
+  equivocation, endpoint projection confusion, root substitution, and
+  noncanonical tree shape;
 - explicit implementation stop: v0.93.0 and v0.97.0 may not persist private
   index bytes until this admission is complete.
 
 Verification:
 
 - independent private-index and realm-manifest vector validator;
+- independent creation-operation, projection-certificate, and witness-statement
+  vector validator;
 - unique-representation and amplification model review;
 - partial-access disclosure fixture review;
 - endpoint-placement reconciliation model;
@@ -3269,6 +3368,14 @@ Exit criteria:
 - A signed manifest cannot establish index completeness without deterministic
   ledger projection evidence; partial-access verification reports its reliance
   on admitted full-view signers or witnesses.
+- Projection evidence has one canonical replay meaning with bounded chains,
+  verification work, storage, and mandatory rebuild cadence; it is not
+  represented as a succinct proof.
+- Required witnesses have explicit replay assurance, independence, lifecycle,
+  threshold, and unavailability semantics resistant to nominal Sybil
+  enrollment.
+- Creation-operation reservations are crash-safe, idempotent for one exact
+  operation, and never silently reused after abandonment or cancellation.
 - The selected formats pass early usability and scale rejection thresholds
   before implementation begins.
 
@@ -3494,9 +3601,14 @@ Deliverables:
   malformed range, non-logarithmic proof, union/split divergence, amplification
   overflow, missing/duplicate encryption instance, instance-key substitution,
   instance-ID collision/context substitution, wrong replacement lifecycle,
+  creation-reservation sequence/nonce rollback, cross-operation replay,
+  abandoned/cancelled reservation reuse, consume/cancel race,
   duplicate-right/instance-right confusion, instance-fanout exhaustion,
   semantic-ledger projection omission/invention, malicious manifest signer,
-  partial-access completeness overclaim,
+  partial-access completeness overclaim, missing ledger chunk, forged replay
+  transcript, excessive delta chain/bytes/work, mandatory rebuild bypass,
+  witness replay-mode misstatement, nominal witness Sybil, unavailable
+  threshold downgrade, stale/revoked witness, witness equivocation,
   insertion/deletion/union/split/bulk-build permutation divergence,
   normalization amplification, unauthorized root publication, commitment-key
   compromise and rotation, historical-manifest verification, placement-only
@@ -3513,6 +3625,8 @@ Verification:
 - independent canonical B+ tree node, split/merge, proof, logical-root,
   encrypted-envelope, and storage-ID vector validator.
 - independent history-independent representation and operation-permutation
+  validator;
+- independent creation-reservation, projection replay/delta, and witness
   validator.
 
 Exit criteria:
@@ -3545,6 +3659,9 @@ Exit criteria:
 - A signed manifest is authoritative only after admitted projection evidence
   proves its forward/reverse roots are complete for the bound semantic ledger
   state; partial-access recipients receive explicit signer/witness trust status.
+- Reservation non-reuse, bounded replay/delta verification, mandatory rebuilds,
+  and required witness threshold are enforced by implementation tests before
+  encrypted index persistence.
 - Conflicting representative selections remain explicit multi-head state until
   an authorized resolution binds every admitted conflict parent.
 - Possession of blind-store metadata, logs, public proofs, storage receipts, or
@@ -3597,13 +3714,52 @@ Deliverables:
 - fixed-size or bucketed record classes;
 - epoch batching and pack compaction;
 - configurable object-count and transfer-size padding;
+- normative privacy profiles such as baseline private, padded private, and
+  high-security cover-traffic mode, with machine-readable profile IDs and
+  parameters committed by local/realm policy where authoritative;
+- per-profile observable leakage contract covering exact envelope/header fields,
+  ciphertext and pack size buckets, object/record count bounds, crypto/key/pack
+  epochs, endpoint/receipt identifiers, operation frequency, request/response
+  timing resolution, batching windows, access-order leakage, repeated-read/write
+  linkability, and error/refusal distinguishability;
+- filesystem leakage contract covering file and directory names, entry count,
+  creation/removal/rename churn, allocation size, sparse extents where visible,
+  modification/change/access/birth timestamps, journal/CoW effects, and pack
+  replacement cadence visible to a malicious local storage provider;
+- profile-specific maximum padding overhead, minimum/maximum batch size,
+  maximum batching latency, cover-traffic bandwidth/storage budget, dummy
+  request ratio, read/write coalescing window, and acceptable availability or
+  latency tradeoff;
+- explicit statement of which protections require continuously or
+  schedule-driven cover traffic and which leakage remains when cover traffic is
+  disabled, interrupted, rate-limited, or distinguishable;
+- repeated operation linkability matrix for no-op status, one-file edit, object
+  read, proof verification, unlock/lock, repack, receipt renewal, sync, and
+  failed lookup under each profile;
+- malicious local storage-provider model observing all ciphertext bytes,
+  filenames, directory operations, filesystem metadata/timing, block and pack
+  offsets, read/write frequency, process-visible I/O where in scope, crashes,
+  and retention of old ciphertext copies, while lacking authorized plaintext
+  keys;
+- measurable leakage tests and traces compare observed size/timing/frequency/
+  access-pattern distributions against profile bounds rather than relying only
+  on prose review;
+- deterministic test fixtures and statistical methodology with declared sample
+  counts, tolerated variance, clock resolution, false-positive threshold, and
+  reproducible seeds for timing/traffic-shape assertions;
+- profile downgrade, unsupported cover traffic, exceeded padding/latency budget,
+  and local-provider capability mismatch produce explicit warning or refusal
+  according to policy;
 - metadata leakage inventory and profile-specific defaults;
-- tests that public summaries do not expose redacted plaintext fields.
+- tests that public summaries do not expose redacted plaintext fields and
+  profile fixtures do not exceed declared observable bounds.
 
 Verification:
 
 - `cargo test -p sagnir-vault`
 - encrypted metadata fixture review.
+- privacy-profile trace and leakage-budget test suite;
+- malicious local storage-provider simulation.
 
 Exit criteria:
 
@@ -3612,6 +3768,12 @@ Exit criteria:
 - Public proof summaries contain only deliberate predicates over explicitly
   disclosed statements; they do not expose private semantic commitments or
   translation mappings.
+- Every privacy profile states measurable leakage and overhead limits, including
+  what remains visible without cover traffic and to a malicious local storage
+  provider.
+- Sagnir does not describe padding or batching as protection against timing or
+  access-pattern correlation unless the selected profile's measured contract
+  supports that claim.
 
 ### v0.96.0 - Encrypted Object Envelope
 
@@ -3626,6 +3788,9 @@ Deliverables:
 - authentication tag field;
 - public associated-data binding only for envelope format and suite, opaque
   storage realm handle, crypto epoch, key ID, pack/segment, and record position;
+- each externally visible associated-data field is listed in the v0.95.0
+  profile leakage contract, including linkability and rotation behavior; no
+  field is treated as harmless merely because it is non-plaintext;
 - encrypted authenticated header binding compartment, object schema and type,
   immutable semantic commitment, blinding value, and compression/delta format;
 - private-index node envelope variant binding the v0.93.0 canonical logical node
@@ -3734,8 +3899,11 @@ Deliverables:
   position, wrong endpoint projection, cross-endpoint overwrite, compartment-
   root omission/substitution, partial-proof disclosure, instance omission,
   instance aliasing, instance-ID collision, malicious signed manifest,
-  projection omission/invention, delta/rebuild mismatch, node omission, range
-  overlap or gap, excessive height, noncanonical split or separator,
+  projection omission/invention, unavailable replay chunk, delta/rebuild
+  mismatch, overlong delta chain, cumulative proof/work overflow, skipped
+  mandatory rebuild, witness threshold/Sybil/revocation/equivocation failure,
+  node omission, range overlap or gap, excessive height, noncanonical split or
+  separator,
   composite-key ordering mismatch, candidate-register linear scan regression,
   union/split divergence, logical/ciphertext root confusion,
   randomized-envelope root mismatch, local-budget interruption, amplification
@@ -3851,7 +4019,14 @@ identity, and redacted-placeholder formats before v0.100.0 implements them.
 
 Deliverables:
 
-- reviewed algorithm/format admission document with no implementation claim;
+- reviewed algorithm/format admission document with no production
+  implementation or compatibility claim;
+- inherit the v0.92.1 disposable prototype boundary: reference decoders, fuzz
+  harnesses, models, and benchmark prototypes cannot write durable realm data,
+  enter production feature graphs, emit authoritative transitions, or create a
+  compatibility promise, and use experimental bytes rejected by production;
+- prototype code is replaced/deleted or explicitly promoted only through
+  post-admission production review and release-gate coverage;
 - inheritance of the v0.92.1 realm manifest, compartment logical-root,
   commitment-key epoch, and partial-access proof formats;
 - compartment recipient authorization binds the exact opaque compartment
@@ -4754,6 +4929,37 @@ Deliverables:
   availability, and partition assumptions;
 - counterexample corpus and deterministic bounded model-check command required
   by the v0.116.0 release gate;
+- immutable model-run manifest records model source digest, tool and solver
+  versions, exact command/configuration, random or search seeds, host resource
+  limits, wall-clock timeout, state/depth/transition limits, and result digest;
+- model bounds explicitly record active/retired replicas and incarnations,
+  actors/devices, compartments and neutral domains, semantic commitments,
+  encryption instances per commitment, endpoints, placement generations,
+  authorities and quorum size, witnesses and threshold, worlds/heads, events,
+  checkpoints, delta-chain length, messages, partitions, retries, and failures;
+- assumptions document reliable/unreliable delivery, eventual delivery,
+  fairness for enabled actions and schedulers, crash/recovery, Byzantine versus
+  honest roles, authority availability, bounded storage/resources, and whether
+  a liveness result depends on each assumption;
+- every property is classified as safety, invariant, refinement, bounded
+  reachability, or liveness; successful safety exploration is never reported as
+  proof of liveness;
+- symmetry reduction, partial-order reduction, state hashing, abstraction,
+  omitted data domains, and any other state-space reduction are declared with
+  justification and a check that the reduction preserves each claimed
+  property;
+- run artifact records explored/distinct states, generated transitions, maximum
+  depth, queue/frontier size, collisions if applicable, pruned states by
+  reduction, elapsed time, peak memory, completion versus timeout/exhaustion,
+  and uncovered bounds;
+- two successful runs are comparable only when their model/configuration,
+  assumptions, reductions, bounds, and completion status match; a smaller or
+  timed-out run cannot silently replace a stronger release-gate artifact;
+- deterministic CI smoke bounds and larger release bounds are separate named
+  profiles, both reproducible from versioned manifests; release claims name the
+  exact profile and explored coverage;
+- counterexamples retain the complete reproducer trace, seed/configuration,
+  model/tool versions, and minimized trace where available;
 - explicit implementation stop: live sync transfer cannot begin until every
   invariant passes and no unresolved counterexample remains.
 
@@ -4763,7 +4969,9 @@ Verification:
 - malicious manifest-publisher model;
 - authoritative-time/revocation partition model;
 - partial-access and endpoint-placement disclosure review;
-- model invariant review.
+- model invariant review;
+- reproducibility rerun from the recorded model-run manifest;
+- model coverage and assumption audit.
 
 Exit criteria:
 
@@ -4775,6 +4983,9 @@ Exit criteria:
   through a redacted placeholder.
 - v0.116.0 begins only after the composed model has no known counterexample
   within admitted bounds.
+- "Within admitted bounds" is a reproducible machine-readable claim naming
+  exact bounds, assumptions, reductions, property classes, explored-state
+  counts, completion status, timeout/resources, and model/tool digests.
 
 ### v0.116.0 - Sync Transfer
 
@@ -5015,8 +5226,15 @@ provider contracts before v0.122.0 dispatches any destructive operation.
 
 Deliverables:
 
-- reviewed algorithm/format admission document with no destructive
-  implementation claim;
+- reviewed algorithm/format admission document with no destructive production
+  implementation or compatibility claim;
+- inherit the v0.92.1 disposable prototype boundary: provider simulators,
+  reference decoders, fuzz harnesses, models, and benchmarks cannot dispatch a
+  real destructive request, write durable realm data, enter production feature
+  graphs, emit authoritative evidence, or create a compatibility promise;
+- prototype code and experimental bytes are replaced/deleted or explicitly
+  promoted only through post-admission production review, independent vectors,
+  and release-gate coverage;
 - canonical monotonic operation-phase and orthogonal component-result schema;
 - complete transition table covering preparation, tombstone commitment,
   destructive dispatch, uncertain outcomes, confirmed destruction, controlled
@@ -5644,7 +5862,9 @@ Deliverables:
 - private locator search node and proof, quota record and carry-forward,
   escrow-right allocation/transfer/spend/conflict, logical-node commitment,
   multi-instance composite key, randomized node envelope, endpoint ciphertext
-  placement, compartment-root/realm-manifest/partial-access proof, reverse-index,
+  placement, creation-operation reservation, projection rebuild/delta replay
+  certificate, projection-witness statement,
+  compartment-root/realm-manifest/partial-access proof, reverse-index,
   duplicate-equivalence, equivalence-conflict, Merkle-chunked recursive
   compartment-move manifest/typed proof/conflict/resume state, target-only
   attestation, neutral-domain object/key metadata, redacted placeholder,
@@ -5677,7 +5897,9 @@ Deliverables:
 - pack and encrypted-envelope fuzz targets;
 - private locator search node/proof, quota record/carry-forward, and
   escrow-right allocation/transfer/spend/conflict, logical/encrypted/storage
-  index identity, multi-instance key, endpoint placement,
+  index identity, multi-instance key, creation-operation reservation,
+  projection rebuild/delta replay certificate, projection-witness statement,
+  endpoint placement,
   compartment-root/realm-manifest/partial-access proof, and reverse-index fuzz
   targets;
 - duplicate-equivalence, equivalence-conflict, Merkle-chunked recursive
@@ -5726,6 +5948,10 @@ Deliverables:
 - encryption-instance identity model proving exact context binding, collision
   refusal, stability across projection changes, and mandatory replacement when
   erasure identity changes;
+- creation-operation reservation model proving durable preallocation,
+  monotonic/random identity, one exact idempotent consumption, authenticated
+  cancellation, crash recovery, clone/rollback conflict, and permanent
+  non-reuse;
 - private-index identity model separating deterministic keyed logical roots,
   randomized encrypted node envelopes, and public ciphertext storage IDs, with
   convergence required only for the logical root;
@@ -5742,6 +5968,12 @@ Deliverables:
 - semantic-ledger projection model proving complete forward/reverse rebuild and
   delta transitions, malicious publisher omission/invention refusal, witness
   equivocation, and explicit partial-access trust;
+- projection replay-certificate model proving canonical verification semantics,
+  hard delta-chain/bytes/work limits, mandatory rebuild cadence, transcript
+  retention, and refusal of unavailable ledger chunks;
+- projection-witness governance model proving full-replay versus
+  evidence-validation assurance, principal/domain independence, nominal-Sybil
+  refusal, key lifecycle, threshold unavailability, and equivocation handling;
 - endpoint-placement model proving canonical logical convergence with divergent
   replica/device/endpoint projections and no arrival-order overwrite;
 - authoritative quota-expiry model covering pre-expiry creation with late
@@ -5789,7 +6021,9 @@ Deliverables:
   admitted, no unsafe retired-right redistribution, no retroactive quota
   validity, no history-dependent logical root, no mutable-placement root drift,
   no instance alias/omission or quota-class confusion, no compartment-proof
-  disclosure, no endpoint-placement overwrite, no clock-derived quota validity,
+  disclosure, no creation-reservation reuse, no unbounded projection
+  verification/storage amplification, no witness-threshold/Sybil bypass, no
+  endpoint-placement overwrite, no clock-derived quota validity,
   no commitment-key authority escalation, no logical/ciphertext index identity
   confusion, no private quota or translation relationship leakage, no target
   attestation overclaim, no neutral lifecycle bypass, no placeholder proof or
@@ -5801,6 +6035,9 @@ Deliverables:
   resurrection, no stale restore admission, no stale admission, and eventual
   convergence under documented assumptions;
 - model execution instructions and CI smoke bounds.
+- model-run manifests inherit v0.115.1 exact bounds, assumptions, property
+  classes, reductions, coverage counters, resources, seeds/configuration, and
+  completion-status requirements.
 
 Verification:
 
@@ -5813,7 +6050,9 @@ Exit criteria:
   exhaustion, linear-proof amplification, quota-right double-spend, offline
   overdraw, unsafe rights reclamation, retroactive ratification,
   operation-history root divergence, instance alias/omission, quota-class
-  substitution, compartment-root disclosure, endpoint-placement overwrite,
+  substitution, creation-reservation reuse, projection-chain amplification,
+  witness Sybil/equivocation/unavailability bypass, compartment-root disclosure,
+  endpoint-placement overwrite,
   authoritative-expiry failure, placement-root coupling, unauthorized manifest
   publication, commitment-key rotation, quota/translation metadata leakage,
   target-attestation overclaim, neutral-lifecycle bypass, placeholder
@@ -5841,6 +6080,12 @@ Deliverables:
 - atomic forward/reverse private-index update and rebuild interruption tests;
 - multi-instance forward/reverse update tests proving no instance is lost,
   aliased, or charged to the wrong quota class;
+- creation-operation reservation crash tests across allocation, file/database
+  durability, event-chain commit, consume, cancel, restart, clone/rollback,
+  expiration, and concurrent consume/cancel;
+- projection replay crash tests across delta-certificate durability,
+  manifest publication, mandatory rebuild trigger, chunk availability, witness
+  replay/signature, threshold commit, and equivocation recording;
 - crash tests across private logical node commit, randomized envelope write,
   ciphertext storage-ID assignment, placement-root commit, and logical-root
   publication;
@@ -5909,6 +6154,9 @@ Exit criteria:
 - No interruption loses one policy-separated encryption instance, reveals an
   unrelated compartment through a partial proof, lets one endpoint replace
   another's placement, or upgrades a redacted placeholder into content.
+- No interruption reuses a creation reservation, publishes a manifest without
+  complete bounded replay evidence, skips a required rebuild, or counts a stale,
+  unavailable, compromised, or non-independent witness toward threshold.
 - Recovery is forward-only after `DestroyingKeys`; uncertain provider outcomes
   remain explicit and cannot be converted into success or failure by restart.
 - Permanently uncertain operations can compact into signed
@@ -5939,8 +6187,10 @@ Deliverables:
   authenticated locator-index reconciliation, actor/device aggregate quota
   evasion, locator-rotation carry-forward, new-incarnation evasion, concurrent
   search-tree union/split, multi-instance fanout and quota-class separation,
-  compartment-root proof reconciliation, divergent endpoint placement, and
-  local operation-budget interruption;
+  creation-operation reservation replay/cancel/consume races, projection
+  delta-chain limit and rebuild enforcement, witness threshold/Sybil/
+  equivocation states, compartment-root proof reconciliation, divergent
+  endpoint placement, and local operation-budget interruption;
 - partitioned escrow-right consumption, causal transfer races, double-spent
   rights, aggregate overdraw quarantine, signed surrender, final spent-root
   acknowledgement, retirement cutoff, unseen offline spend, uncertain-right
@@ -5999,6 +6249,9 @@ Exit criteria:
 - Multiple encryption instances for one semantic commitment remain distinct,
   endpoint placement remains local, and partial-compartment peers converge
   without learning unrelated compartment state.
+- Creation reservations remain single-use across partitions, projection
+  certificates remain bounded and rebuildable, and witness threshold cannot be
+  satisfied by replay, one administrative operator, or conflicting statements.
 - Delivery order, offline observation, or local clock state cannot extend quota
   rights or turn an ambiguous expiry race into authoritative admission.
 - Concurrent compartment moves preserve every contender and never leave a
@@ -6033,7 +6286,10 @@ Deliverables:
 - authenticated logarithmic inclusion/absence proofs, immutable path-copy
   updates, history-independent normalization across insertion/deletion/union/
   split/merge/bulk-build permutations, logical-root computation, signed manifest
-  admission, commitment-key rotation, randomized node encryption and placement,
+  admission, creation-operation reserve/consume/cancel, full-rebuild replay,
+  bounded delta-chain verification, mandatory rebuild, witness full replay and
+  evidence validation, commitment-key rotation, randomized node encryption and
+  placement,
   placement-only re-encryption/repack/receipt/relocation, escrow-right
   allocation/transfer/spend/surrender/burn, quota-conflict merge and
   authoritative-expiry evaluation, non-retroactive ratification,
@@ -6058,6 +6314,13 @@ Deliverables:
 - full-world verification and hostile-bundle rejection benchmarks;
 - p50/p95/p99 latency, memory, I/O amplification, and ciphertext-expansion
   budgets;
+- per-privacy-profile measured no-op/edit/read/write/unlock/repack/sync traces
+  covering size, timing, frequency, access-pattern and repeated-operation
+  linkability, filesystem timestamp/directory churn, batching latency, padding
+  overhead, and cover-traffic bandwidth/storage cost;
+- malicious local storage-provider benchmark/simulation that retains old
+  ciphertext and observes filenames, metadata, offsets, journals/CoW effects,
+  and I/O timing/frequency under every supported privacy profile;
 - explicit locator-index maximum read, write, proof, node, path-copy, split,
   normalization, rebalance, and concurrent-union amplification thresholds at
   small, million-entry, and adversarial distributions;
@@ -6081,6 +6344,10 @@ Exit criteria:
 - Private identity performance budgets include bounded reverse lookup and
   logarithmic authenticated lookup and duplicate reconciliation rather than
   assuming one locator maps to one object or accepting linear page scans.
+- Projection verification and witness assurance have explicit bounded replay,
+  delta-chain, rebuild, transcript-storage, and threshold costs.
+- Privacy claims are tied to measured profile leakage and overhead; failed or
+  absent cover traffic does not inherit stronger profile claims.
 
 ### v0.133.0 - Cross-Platform Build Gate
 
@@ -6184,12 +6451,23 @@ Deliverables:
 - no supporting architecture document weakens the normative roadmap;
 - v0.92.1, v0.99.1, and v0.121.1 admission artifacts, independent vectors,
   disclosure reviews, and model results are complete and match implementation;
+- no admission prototype or experimental magic is reachable from production
+  feature graphs, release binaries, durable decoders, migration paths, or
+  authoritative signing/manifest APIs unless explicitly promoted and reviewed;
 - v0.115.1 sealed-private distributed invariant model artifact passes with no
-  unresolved counterexample and is reproduced by the release gate;
+  unresolved counterexample, records complete bounds/assumptions/reductions/
+  coverage/resources/completion metadata, and is reproduced by the release
+  gate;
+- projection replay certificates, delta-chain bounds/rebuild cadence,
+  creation-reservation non-reuse, and projection-witness governance pass
+  independent vectors, crash, partition, and adversarial tests;
 - canonical and cryptographic vectors pass independently;
 - formal models complete within admitted bounds;
 - crash, concurrency, partition, and hostile-network suites pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
+- privacy-profile leakage traces, malicious local storage-provider simulations,
+  padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
+  behavior meet declared release thresholds;
 - known limitations document;
 - security controls updated;
 - threat model updated;
@@ -6265,6 +6543,9 @@ Deliverables:
 - context-bound random-nonce encryption-instance IDs, keyed nonce-bound opaque
   compartment handles with signed rotation, and deterministic semantic-ledger
   projection completeness proofs with explicit partial-access trust;
+- durable single-use creation-operation reservations, bounded authenticated
+  projection replay/delta certificates with mandatory rebuild cadence, and
+  independent governed projection witnesses;
 - signed escrowed replica quota rights, actor/device aggregate limits,
   safe surrender/fencing/cutoff/burning on retirement, merge-time
   overdraw/double-spend quarantine, authoritative causal/checkpoint expiry,
@@ -6281,6 +6562,12 @@ Deliverables:
 - pre-implementation algorithm/format admission stops for private indexing,
   compartment translation, and irreversible erasure evidence;
 - pre-sync sealed-private distributed invariant closure gate;
+- reproducible model assurance with exact bounds, assumptions, property classes,
+  reductions, explored-state coverage, resources, seeds/configuration, and
+  completion status;
+- measurable sealed-private privacy profiles covering size/timing/frequency/
+  access-pattern and filesystem leakage, malicious local storage observation,
+  padding/batching overhead, and cover-traffic requirements;
 - authenticated key-transparency map semantics and split-view evidence;
 - no operational encryption mode before sealed-private prerequisites;
 - sealed-private migration and honest prior-leakage accounting;
