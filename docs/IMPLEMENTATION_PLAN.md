@@ -392,6 +392,11 @@ Privacy rule:
   encryption_instance_id)` so every policy-separated instance has logarithmic
   inclusion and absence proofs; it freezes only after the
   unique-representation gate passes;
+- encryption-instance IDs are context-bound hashes over realm, opaque
+  compartment/neutral handle, semantic commitment, erasure unit, preallocated
+  creation-operation ID, and an independent OS-CSPRNG nonce; they remain stable
+  across rewrap/re-encryption/placement changes and change when erasure identity
+  changes;
 - logical leaves contain only stable candidate identity and object kind;
   ciphertext IDs, packs, receipts, and positions live solely in mutable
   encrypted placement/reverse indexes, so re-encryption and relocation do not
@@ -406,10 +411,17 @@ Privacy rule:
 - a dedicated governed index-commitment key and signed checkpointed manifest
   bind each logical root to admitted semantic state; key possession alone is
   not root-admission authority;
+- a deterministic versioned projection from admitted semantic-ledger state to
+  complete forward/reverse index entries is verified by full rebuild or chained
+  delta proofs; a signature alone cannot authorize omitted or invented entries,
+  and partial-access results state their full-view signer/witness dependency;
 - each compartment has its own logical root and commitment-key epoch; a
   count-hiding authenticated realm manifest composes opaque compartment-root
   references and supports scoped inclusion/continuity proofs without disclosing
   other compartments;
+- opaque compartment handles are keyed, random-nonce-bound, epoch-versioned
+  values with collision refusal, signed rotation, encrypted translation, and an
+  honest statement that rotation cannot erase previously observed correlation;
 - a history-independent normalization proof must show that insert, delete,
   union, split, merge, and bulk-build permutations produce one root for one
   entry set; otherwise a uniquely represented trie or key-derived tree replaces
@@ -425,6 +437,10 @@ Privacy rule:
   signed history rather than rewriting the original quarantined event;
 - quota-right expiry uses causal/checkpoint frontiers or an admitted timestamp
   authority, never local wall clocks or delivery time;
+- the timestamp/revocation substrate uses monotonic signed statements,
+  append-only consistency proofs, governed trust roots and key lifecycle,
+  optional quorum/diversity, explicit unavailable/conflict behavior, private
+  requests, and offline freshness bounds;
 - duplicate-amplification detection and quota carry-forward prevent identity or
   locator rotation from exhausting candidate sets, while local limits may
   quarantine but never silently discard admitted history;
@@ -553,11 +569,19 @@ Compartment movement rule:
 Format-admission rule:
 
 - v0.92.1 admits private-index, realm-manifest, compartment-proof, and
-  endpoint-placement formats before private index persistence;
+  endpoint-placement formats before private index persistence, including
+  format-specific fuzzing and early no-op/edit/unwrap/proof/rebuild performance
+  rejection thresholds;
 - v0.99.1 admits compartment translation, target-only attestation, neutral
-  lifecycle, and redacted-placeholder formats before implementation;
+  lifecycle, and redacted-placeholder formats before implementation, including
+  revocation staples, format-specific fuzzing, and early translation/proof
+  performance thresholds;
 - v0.121.1 admits the irreversible erasure state machine, evidence formats, and
-  provider contracts before any destructive dispatch.
+  provider contracts before any destructive dispatch, including
+  format-specific fuzzing and early evidence/recovery performance thresholds;
+- v0.115.1 composes every sealed-private distributed invariant, malicious
+  manifest publisher, authority/revocation partition, endpoint placement,
+  neutral object, and redacted-placeholder state before live sync transfer.
 
 Post-quantum readiness rule:
 

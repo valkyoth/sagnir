@@ -63,11 +63,32 @@ commitments. Root authority comes from a signed checkpointed manifest binding
 the logical root to semantic state, policy, membership, and structure version,
 not from possession of that key.
 
+The semantic ledger has one versioned canonical projection to complete forward
+and reverse logical entries. Manifests bind full-rebuild or deterministic delta
+proofs, and full-view verifiers replay them before acceptance. A malicious
+authorized signer cannot make an omission or invented entry valid by signature
+alone. Compartment-only recipients verify inclusion, continuity, and required
+full-view signer/witness policy, while explicitly relying on those actors for
+hidden-compartment completeness.
+
+An encryption-instance ID is a domain-separated hash over its realm, opaque
+compartment or neutral handle, semantic commitment, erasure unit, preallocated
+creation-operation ID, and an independent 256-bit random nonce. The signed
+creation transition binds all inputs. Rewrap, re-encryption, repack, receipt
+renewal, and relocation preserve the ID; a new erasure unit, incompatible
+policy copy, redaction reintroduction, or erased-instance replacement requires a
+new ID.
+
 Each compartment has one logical root and commitment-key epoch. A fixed-depth or
 equivalently count-hiding authenticated realm manifest composes opaque
 compartment-root references. Scoped proofs let a compartment-only recipient
 verify inclusion and continuity without learning other compartment identities,
 counts, names, or tree shape.
+
+Opaque compartment handles are keyed, nonce-bound, and epoch-versioned.
+Collisions never alias compartments. Rotation is a signed realm-manifest
+transition with encrypted old/new mapping; it limits future correlation but
+cannot recall relationships already observed.
 
 Canonical logical manifests are shared realm state. Placement and
 reverse-resolution manifests are scoped to one replica incarnation, device, or
@@ -100,6 +121,13 @@ Quota expiry is bound to causal/checkpoint frontiers or an admitted timestamp
 authority. A provably pre-expiry spend may arrive later; an offline candidate
 that cannot prove pre-expiry creation is quarantined. Local clock rollback,
 skew, or delivery delay never extends a right.
+
+Authoritative time and revocation use signed monotonic statements, append-only
+checkpoints and consistency proofs, governed authority keys, explicit quorum or
+diversity policy, and bounded offline freshness. Required unavailable,
+conflicting, stale, revoked, or equivocal authority state yields unknown or
+quarantine. Requests use opaque handles and configured batching/padding rather
+than disclosing source paths or object identities.
 
 Optional encrypted duplicate-equivalence evidence may guide future references,
 but it cannot rewrite historical signatures or collapse different plaintext
@@ -139,6 +167,10 @@ accepted under a named policy. It is not independent cryptographic proof of
 hidden source equality or isomorphism. Policies requiring that stronger claim
 must grant bridge/opening access or wait for an admitted post-1.0 hidden-witness
 proof system.
+
+Current target-attestation validity requires a stapled issuer checkpoint,
+revocation root, and consistency proof within policy freshness. An offline
+verifier can claim only the state covered by its latest admitted staple.
 
 The transition compares and swaps the expected source frontier/root, target
 absence or admitted replacement, and target policy root. Stale source, occupied

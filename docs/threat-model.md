@@ -103,13 +103,24 @@ exposure.
 - one semantic commitment's policy-separated encryption instances aliasing,
   overwriting, disappearing from reverse lookup, or consuming the wrong quota
   class;
+- encryption-instance ID collision, context substitution, local-counter/UUID
+  replacement, or reuse after erasure/reintroduction aliasing distinct
+  independently erasable state;
+- an authorized manifest signer omitting or inventing logical entries while
+  signing matching semantic and index roots, or a partial-access recipient
+  mistaking signer authority for independently verified global completeness;
 - canonical logical state being confused with replica/device/endpoint-local
   placement projections, including arrival-order overwrite of another
   endpoint's placement;
 - partial-access proofs disclosing other compartment identities, counts,
   locators, names, or authenticated-tree shape;
+- opaque compartment-handle collision, cross-epoch correlation leakage, or
+  rotation being presented as recall of previously observed relationships;
 - local wall-clock rollback, skew, delivery delay, or offline observation gaps
   extending expired quota rights or invalidating provably pre-expiry spends;
+- timestamp/revocation authority rollback, split view, equivocation, stale
+  staples, compromised keys, missing quorum, privacy-leaking requests, or
+  offline verifiers claiming freshness they cannot establish;
 - cross-compartment content being treated as a rename and retaining source
   identity, keys, recipients, or policy in the target compartment;
 - a recursively moved target tree retaining descendant source-compartment
@@ -214,8 +225,15 @@ exposure.
 - exact semantic-commitment/encryption-instance composite keys, distinct
   duplicate-identity and instance-fanout rights, and bounded policy-separated
   instance creation;
+- context-bound random-nonce encryption-instance IDs with exact replacement
+  lifecycle, collision refusal, and signed creation binding;
+- deterministic semantic-ledger projection with full-rebuild/delta proofs,
+  full-view replay, optional threshold witnesses, and explicit partial-access
+  completeness trust;
 - compartment-scoped logical roots composed through a count-hiding opaque realm
   manifest with partial-access inclusion and consistency proofs;
+- keyed nonce-bound compartment handles with collision refusal, signed rotation,
+  encrypted translation, and honest residual-correlation accounting;
 - canonical logical manifests separated from replica/device/endpoint-local
   placement and reverse-resolution projections with no arrival-order overwrite;
 - signed surrender, acknowledged final spent roots, explicit retirement
@@ -225,6 +243,9 @@ exposure.
   conflicts, and actor/device activity;
 - causal/checkpoint or admitted timestamp-authority expiry for quota rights,
   with late-delivery and offline-observation quarantine rules;
+- canonical monotonic time/revocation statements, append-only consistency
+  proofs, governed authority key lifecycle, quorum/diversity policy, request
+  privacy, and bounded offline freshness;
 - expected-root representative compare-and-swap, explicit conflict heads,
   multi-parent resolution, and prohibition on randomness-derived winner
   selection;
@@ -254,6 +275,12 @@ exposure.
   no proof/availability role, stale-body refusal, and explicit reintroduction;
 - pre-implementation admission stops for private-index, compartment-translation,
   and irreversible erasure formats;
+- pre-sync v0.115.1 composed model gate covering multi-instance indexes,
+  Byzantine projection publishers, compartment roots, endpoint placement,
+  authoritative expiry/revocation, target attestations, neutral objects, and
+  redacted placeholders;
+- format-local fuzzing and early performance rejection before security-critical
+  formats or live sync implementation.
 - threshold-governed recovery ceremony with stale-authority invalidation;
 - signed redaction tombstones, distinct `RedactedBody` state, tombstone-first
   anti-entropy, and quarantine of stale ciphertext;

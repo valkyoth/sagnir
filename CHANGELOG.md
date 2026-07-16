@@ -36,6 +36,10 @@ All notable Sagnir changes are recorded here.
   endpoint-local placement, partial-access root composition, authoritative
   quota expiry, honest target attestations, neutral-object lifecycle, and
   canonical redacted-placeholder requirements.
+- Expanded the roadmap with a pre-sync sealed-private invariant closure gate,
+  exact encryption-instance and opaque compartment-handle lifecycles,
+  semantic-ledger/index completeness proofs, a full authoritative
+  time/revocation substrate, and format-local fuzzing and performance rejection.
 
 ## 0.10.0
 

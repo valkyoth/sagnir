@@ -153,6 +153,14 @@ instance consumes separately governed fanout capacity, not a duplicate-semantic-
 identity right. Exact forward and reverse keys include the instance ID, so
 lookup never assumes one instance per commitment.
 
+The instance ID is a domain-separated hash over the realm, opaque compartment
+or neutral handle, semantic commitment, erasure unit, preallocated creation
+operation, and an independent 256-bit random nonce. Its signed creation
+transition binds every field. It survives rewrap, re-encryption, repack, receipt
+renewal, relocation, and endpoint projection changes; a new independently
+erasable or policy-incompatible instance, redaction reintroduction, or
+erased-instance replacement receives a new ID.
+
 The logical structure must be history-independent: every insertion, deletion,
 union, split, merge, and bulk-build ordering for one canonical entry set
 produces one root. A dedicated index-commitment key is domain- and epoch-bound,
@@ -172,6 +180,19 @@ reverse-resolution manifests belong to one replica/device/storage endpoint.
 They may differ across authorized replicas and are reconciled separately from
 logical sync; no endpoint's projection wins by arrival order.
 
+Every logical manifest carries deterministic full-rebuild or delta proof
+evidence from the admitted semantic ledger to all forward/reverse entries.
+Full-view verifiers replay that projection. Partial-access recipients can verify
+their own compartment and the required signer/witness policy, but cannot
+independently establish completeness of hidden compartments; Sagnir reports
+that limitation rather than presenting signature authority as mathematical
+completeness.
+
+Opaque compartment handles are keyed, random-nonce-bound, and epoch-versioned.
+Collision is a security failure, not an alias. Rotation uses a signed
+realm-manifest transition and encrypted mapping. It protects future discovery
+but cannot hide correlations already observed.
+
 Aggregate actor/device quotas are escrowed into signed rights allocations for
 replica incarnations. Offline replicas consume only held rights, and causal
 transfers cannot double-spend. Merge-time overdraw or double-spend remains
@@ -187,6 +208,13 @@ Expiry is authoritative only through causal/checkpoint order or an admitted
 timestamp authority. Late delivery does not invalidate a provably pre-expiry
 spend, while an offline spend that cannot establish its pre-expiry creation
 frontier remains quarantined. Local clock behavior cannot extend capacity.
+
+Timestamp and revocation authorities publish monotonic signed statements,
+append-only checkpoints, and consistency proofs under governed rotating keys.
+Profiles may require authority quorum and administrative diversity. Missing,
+conflicting, stale, revoked, or equivocal evidence fails closed, and offline
+verification has an explicit freshness ceiling. Timestamp requests use opaque
+handles and privacy-preserving batching/padding where configured.
 
 In sealed-private realms, allocations, spent-right references, conflict roots,
 replica topology, and actor/device activity remain encrypted from blind stores,
@@ -232,6 +260,10 @@ admitted issuer that the target was accepted under a named policy. It does not
 independently prove hidden source equality or graph isomorphism. A policy that
 requires independent equivalence must require bridge/opening access or refuse
 until a post-1.0 hidden-witness proof system is admitted.
+
+Its current validity requires a stapled issuer checkpoint, revocation root, and
+consistency proof within policy freshness. Offline verification reports the
+staple's covered state and becomes unknown when freshness is exceeded.
 
 The transition compares and swaps the expected source frontier/root, expected
 target absence or replacement, and target policy root. Concurrency produces an
