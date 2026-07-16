@@ -70,12 +70,21 @@ exposure.
   private content;
 - locator equality collapsing distinct independently signed semantic
   commitments or keyed-locator collisions aliasing different plaintext;
-- an authorized replica exhausting a locator candidate set through repeated blinded
-  duplicates, creating new incarnations, rotating locator epochs, replaying
-  quota state, or forcing linear proof/reconciliation work;
+- an authorized replica exhausting a locator candidate set through repeated
+  blinded duplicates, creating new incarnations, rotating locator epochs,
+  replaying quota state, or forcing linear proof/reconciliation work;
+- disconnected replicas each remaining below a stale aggregate counter while
+  collectively overdrawing actor/device quota at merge;
+- replayed, overlapping, or double-spent escrow quota rights admitting
+  dependent private identities across partitions;
 - malformed authenticated search ranges, excessive tree height, adversarial
   splits, or amplification declarations causing unbounded locator-index reads,
   writes, proofs, or rebuilds;
+- deterministic encrypted index nodes leaking equality, or randomized
+  ciphertext/storage IDs being confused with the deterministic private logical
+  root;
+- one large encoded candidate register turning nominal tree lookup into linear
+  proof work or producing non-interoperable roots across implementations;
 - concurrent equivalence transitions choosing different future
   representatives, with arrival order or grindable blinded values deciding the
   result;
@@ -86,6 +95,11 @@ exposure.
 - a recursively moved target tree retaining descendant source-compartment
   references, inheriting source reviews or approvals, or overwriting concurrent
   source/target state through stale CAS;
+- a container translation falsely claiming byte equality after child
+  commitments changed, omitting a reference mapping, or hiding transformed
+  metadata;
+- sparse, unavailable, promised, or redacted descendants bypassing recursive
+  translation, or partial chunked manifests becoming authoritative;
 - recipient removal being mistaken for retroactive access revocation.
 - replayed, duplicated, expired, revoked, superseded, or over-scoped
   invitations;
@@ -110,6 +124,9 @@ exposure.
   success or failure without durable evidence;
 - unsigned, replayed, downgraded, revoked, compromised, retired-provider, or
   wrong-request destruction evidence satisfying an erasure claim;
+- destruction-evidence IDs, provider/key-slot identity, timing/checkpoint, or
+  assurance levels leaking through blind storage, logs, telemetry, filenames,
+  crash reports, or locked status;
 - permanently uncertain destruction accumulating unbounded journals or being
   administratively closed as verified erasure;
 - concurrent or causally later events, merge order, replay, receipts, or repair
@@ -153,9 +170,11 @@ exposure.
   ledger;
 - compartment-keyed private locators and encrypted authenticated translation
   mappings separated from ciphertext storage IDs;
-- persistent content-addressed authenticated locator search trees with committed
-  ranges, logarithmic proofs, deterministic union/split, bounded amplification,
-  per-replica and actor/device aggregate quota continuity,
+- a frozen canonical persistent authenticated locator B+ tree with committed
+  ranges, composite candidate keys, logarithmic proofs, deterministic
+  union/split, bounded amplification, separate logical/encrypted/storage
+  identity layers, signed escrow quota rights, per-replica and actor/device
+  aggregate quota continuity,
   duplicate-amplification detection, authenticated semantic reverse indexes,
   and duplicate-equivalence transitions that preserve old signed identities;
 - expected-root representative compare-and-swap, explicit conflict heads,
@@ -171,9 +190,11 @@ exposure.
   checkpoint, monitor, and split-view evidence;
 - key epochs and rekey operations;
 - signed recursive cross-compartment graph translations with complete descendant
-  mappings, no reachable source identity, source/target/policy CAS, explicit
-  conflicts, new target commitments, locators, encryption instances, DEKs,
-  selectors, and target-policy checks;
+  mappings, typed leaf-equality/container-isomorphism proofs, Merkle-chunked
+  resumable manifests, sparse/redacted refusal, temporary GC pins, no reachable
+  source identity, source/target/policy CAS, explicit conflicts, new target
+  commitments, locators, encryption instances, DEKs, selectors, and target-
+  policy checks;
 - threshold-governed recovery ceremony with stale-authority invalidation;
 - signed redaction tombstones, distinct `RedactedBody` state, tombstone-first
   anti-entropy, and quarantine of stale ciphertext;
@@ -189,6 +210,8 @@ exposure.
   query handling, explicit `DestructionUncertain`, signed terminal
   `ResidualUncertainty`, and separate local, controlled-copy, remote-
   acknowledgement, and uncontrolled-residual results;
+- encrypted destruction-evidence visibility with no blind-store or ordinary
+  diagnostic correlators and audience-/purpose-bound minimal disclosure;
 - concurrent historical redaction references resolve to `RedactedBody`, while
   authorized reintroduction requires a new encryption instance;
 - privacy-padded mixed-pack replacement before old-pack deletion;

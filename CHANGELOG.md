@@ -23,6 +23,9 @@ All notable Sagnir changes are recorded here.
 - Added local wrapper-remnant protections, canonical destruction-evidence
   envelopes, terminal residual uncertainty, logarithmic authenticated locator
   indexes, quota continuity, and recursive CAS-bound compartment translation.
+- Added escrowed offline quota rights, canonical composite-key B+ tree identity
+  layers, typed and chunked compartment-translation proofs, sparse/redacted
+  translation refusal, and private destruction-evidence visibility rules.
 
 ## 0.10.0
 

@@ -35,18 +35,23 @@ Encrypted bundles must be verified before decrypt or import.
 ## Private Identity Reconciliation
 
 Private locators are deterministic lookup values, not signed object identity.
-One locator maps through a persistent content-addressed authenticated B-tree,
-trie, or equivalent search structure to multiple independently blinded semantic
-commitments created while peers were offline. Committed key ranges and bounded
-immutable nodes provide logarithmic inclusion and absence proofs. Deterministic
-path-copy union and split preserve admitted candidates without linear page
-chains.
+The 1.0 format freezes one persistent authenticated B+ tree keyed by
+`(locator_epoch, private_locator, semantic_commitment)`. Every candidate is its
+own leaf key, so inclusion and absence remain logarithmic. Canonical ordering,
+node encoding, split/merge rules, and logical-root derivation are protocol
+formats rather than implementation choices.
 
-Canonical per-replica and aggregate actor/device creation quotas plus
-duplicate-amplification evidence limit authorized principals. Quota state is
-carried through replica incarnation and locator epoch changes. Over-quota
-candidates are refused before admission or kept in authenticated quarantine,
-never silently removed after admission.
+The deterministic keyed logical root is visible only to authorized peers.
+Randomized encrypted node envelopes authenticate that logical identity, and
+blind stores address those envelopes by public ciphertext storage IDs. Equal
+logical entry sets converge to one private logical root without requiring equal
+ciphertext.
+
+Aggregate actor/device quotas use signed escrow rights assigned to replica
+incarnations. Offline replicas consume only locally held rights; rights transfer
+through causal compare-and-swap transitions. Merge detects double-spend or
+aggregate overdraw and keeps the candidate and dependent transitions in
+authenticated quota-conflict quarantine.
 
 Optional encrypted duplicate-equivalence evidence may guide future references,
 but it cannot rewrite historical signatures or collapse different plaintext
@@ -64,12 +69,14 @@ monitor metadata.
 
 Compartment identity is committed into sealed-private semantic identity.
 Copying or moving content to another compartment therefore creates a signed
-recursive graph-translation transition with new target semantic commitments,
-private locators, encryption instances, DEKs, selectors, and target-policy
-evaluation for every compartment-bound reachable descendant. Shared subgraphs
-translate once per compatible target-policy domain, and the target root proves
-that no source-compartment identity remains reachable. It is not an ordinary
-rename.
+Merkle-chunked recursive graph-translation transition with new target semantic
+commitments, private locators, encryption instances, DEKs, selectors, and
+target-policy evaluation for every compartment-bound reachable descendant.
+Leaf proofs establish authenticated content equality. Tree/container proofs
+establish structural isomorphism under the manifest mapping and commit every
+transformed metadata field; rewritten containers are not claimed byte-identical.
+Shared subgraphs translate once per compatible target-policy domain, and the
+target root proves that no source-compartment identity remains reachable.
 
 The transition compares and swaps the expected source frontier/root, target
 absence or admitted replacement, and target policy root. Stale source, occupied
@@ -78,6 +85,13 @@ becomes durable and verifiable before a move records logical removal from the
 source. Historical source references remain unchanged, and source reviews or
 proofs do not automatically authorize target identities. Removing or
 cryptographically erasing source ciphertext is a separate redaction operation.
+
+Translation fetches and verifies every required promised body and commitment
+opening. Missing, unavailable, or redacted descendants cannot be treated as
+equivalent target content. Only an explicitly compartment-neutral typed opaque
+boundary may remain untranslated. Construction and verification are bounded,
+resumable, cancellable, GC-pinned, and authoritative only at the atomic final
+manifest/root commit.
 
 ## Redaction Projection
 
@@ -110,6 +124,12 @@ signature, hardware attestation, or governed local key agent and binds the exact
 operation, provider/key epoch, key or slot, idempotency token, request
 transcript, result, assurance level, and checkpoint. TLS caching, unsigned API
 results, file absence, or logs are not transferable proof.
+
+The full evidence envelope and provider/key/timing metadata remain encrypted
+inside authorized semantic views. Blind stores and ordinary logs, telemetry,
+filenames, crash output, or locked status receive no evidence ID or stable
+correlator. Selective disclosure creates a separate audience- and purpose-bound
+minimal statement.
 
 Deleting or overwriting a local DEK wrapper is not erasure while a surviving
 parent key can decrypt recovered journal, snapshot, CoW, or media remnants.

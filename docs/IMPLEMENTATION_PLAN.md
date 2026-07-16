@@ -387,16 +387,21 @@ Privacy rule:
 - sealed private mode uses random-blinded immutable semantic commitments inside
   the encrypted ledger, compartment-keyed private lookup locators, and
   randomized ciphertext storage IDs;
-- private locators map through persistent content-addressed authenticated
-  search trees because disconnected peers may create equal plaintext with
-  different immutable semantic commitments; committed key ranges and bounded
-  nodes provide logarithmic inclusion and absence proofs;
+- private locators use one frozen canonical persistent authenticated B+ tree
+  keyed by `(locator_epoch, private_locator, semantic_commitment)` so each
+  candidate has logarithmic inclusion and absence proofs;
+- private index identity has three layers: deterministic keyed logical node/root
+  commitments for authorized peers, randomized encrypted node envelopes, and
+  public ciphertext storage IDs for blind stores; convergence applies only to
+  the logical root;
 - deterministic path-copy union/split semantics and declared read, write, proof,
   and rebalance amplification budgets avoid linear page chains;
-- canonical per-replica and aggregate actor/device admission quotas plus
-  duplicate-amplification detection prevent identity or locator rotation from
-  exhausting candidate sets, while local limits may quarantine but never
-  silently discard admitted history;
+- aggregate actor/device quotas use signed escrow rights preallocated to replica
+  incarnations; offline admission consumes only held rights, causal transfers
+  cannot double-spend, and merge-time overdraw remains explicit quarantine;
+- duplicate-amplification detection and quota carry-forward prevent identity or
+  locator rotation from exhausting candidate sets, while local limits may
+  quarantine but never silently discard admitted history;
 - duplicate identities remain valid signed history; optional encrypted
   equivalence evidence may guide future references but cannot rewrite old ones;
 - representative changes use expected-root compare-and-swap; concurrent choices
@@ -430,6 +435,10 @@ Redaction rule:
   local-agent envelope bound to provider/key epoch, operation, key, idempotency
   token, request transcript, result, assurance level, and checkpoint; transport
   authentication or an unsigned API response is insufficient;
+- full destruction evidence remains encrypted in authorized semantic views;
+  blind stores, logs, telemetry, filenames, and locked status expose no evidence
+  ID, provider/key metadata, timing, or assurance level, while selective
+  disclosure uses separate audience- and purpose-bound minimal statements;
 - local wrapper unlink or overwrite is not erasure: local storage uses an
   independently destroyable erasure-unit KEK/key slot or rotates the parent
   wrapping epoch, rewraps every surviving DEK, and destroys the old epoch;
@@ -476,8 +485,17 @@ Compartment movement rule:
 - the target receives a new random-blinded semantic commitment, private
   locator, encryption instance, DEK, selector, and target-policy evaluation for
   every compartment-bound reachable descendant;
-- a recursive authenticated translation manifest handles shared subgraphs and
-  proves no source-compartment commitment remains reachable from the target;
+- typed translation proves leaf content equality and container structural
+  isomorphism under exact source-to-target reference mapping; transformed
+  metadata is explicit and containers are never claimed byte-identical;
+- a Merkle-chunked recursive authenticated translation manifest handles shared
+  subgraphs, bounded streaming verification, durable resume, cancellation,
+  temporary GC pins, and atomic final commit while proving no
+  source-compartment commitment remains reachable from the target;
+- promised descendants and openings must be fetched and verified; unavailable
+  or redacted descendants refuse translation unless an explicitly
+  compartment-neutral opaque boundary or typed redacted placeholder is admitted
+  without claiming content equality;
 - source frontier, exact root, target absence/replacement, and target policy use
   compare-and-swap; concurrent changes become explicit conflict heads;
 - source-bound reviews, proofs, and approvals do not automatically authorize

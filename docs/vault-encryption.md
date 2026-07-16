@@ -130,17 +130,22 @@ the storage ID identifies ciphertext placement.
 One private locator can map to multiple semantic commitments. Disconnected peers
 may independently create equal plaintext with different random blinding values,
 and both signed identities remain valid. The encrypted forward index therefore
-uses a persistent content-addressed authenticated B-tree, trie, or equivalent
-search structure with committed key ranges and logarithmic inclusion and
-absence proofs. An authenticated encrypted reverse index maps each semantic
-commitment directly to its locator epoch and ciphertext record.
+uses one canonical persistent authenticated B+ tree keyed by
+`(locator_epoch, private_locator, semantic_commitment)`. Each candidate is a
+separate leaf key with logarithmic inclusion and absence proofs.
 
-Per-replica and aggregate actor/device canonical quotas plus
-duplicate-amplification detection prevent an authorized principal from
-exhausting a locator through new replicas or locator rotation. Authenticated
-quota state carries across replica incarnations and locator epochs. Local
-resource limits may quarantine unadmitted candidates but cannot discard
-admitted search nodes.
+The B+ tree has three identity layers. Authorized peers converge on a
+deterministic keyed logical node/root commitment. Nodes are stored in randomized
+encrypted envelopes that authenticate the logical commitment. Blind stores see
+only public ciphertext storage IDs for those envelopes. Re-encryption changes
+ciphertext identity without changing the private logical root.
+
+Aggregate actor/device quotas are escrowed into signed rights allocations for
+replica incarnations. Offline replicas consume only held rights, and causal
+transfers cannot double-spend. Merge-time overdraw or double-spend remains
+authenticated quota-conflict quarantine. Duplicate-amplification detection and
+quota carry-forward prevent new replicas or locator rotation from resetting
+limits.
 
 Optional private duplicate-equivalence evidence can guide future references but
 cannot rewrite historical signatures or references. Representative changes bind
@@ -159,10 +164,16 @@ by comparing public hashes or commitments.
 
 Because the compartment is an input to every semantic commitment and locator
 domain, a cross-compartment directory copy or move recursively translates every
-compartment-bound reachable descendant. A signed manifest binds source and
-target commitments, references, locators, encryption instances, DEKs, selectors
-and shared-subgraph mappings, and proves the target reaches no source-
-compartment identity.
+compartment-bound reachable descendant. A Merkle-chunked signed manifest binds
+source and target commitments, references, locators, encryption instances,
+DEKs, selectors and shared-subgraph mappings, and proves the target reaches no
+source-compartment identity.
+
+Typed proofs establish authenticated content equality for leaves and structural
+isomorphism for trees/containers under the manifest reference mapping.
+Transformed metadata is explicit; rewritten container bytes are not claimed
+equal. Construction and verification are streaming, bounded, resumable,
+cancellable, temporarily GC-pinned, and committed atomically at the final root.
 
 The transition compares and swaps the expected source frontier/root, expected
 target absence or replacement, and target policy root. Concurrency produces an
@@ -171,6 +182,12 @@ source. A move records source logical removal only after the complete target
 graph and encrypted indexes are durable. Source reviews, proofs, and approvals
 do not automatically authorize target identities. Destroying source DEKs
 requires a separate redaction operation.
+
+Sparse or partial clones fetch and verify every required promised descendant
+and commitment opening before translation. Missing, unavailable, or redacted
+descendants cause refusal unless a specifically typed compartment-neutral
+opaque boundary or redacted placeholder is admitted without claiming content
+equivalence.
 
 ## Redaction And Restore Projections
 
@@ -226,6 +243,12 @@ provider signature, hardware attestation, or governed local key agent. Cached
 TLS responses, unsigned API results, logs, exit codes, and file absence are not
 transferable proof. Revocation, compromise, provider retirement, replay, and
 contradiction reevaluate assurance without rewriting historical evidence.
+
+Full destruction evidence remains encrypted inside the authorized semantic
+ledger. Blind stores, filenames, logs, telemetry, crash reports, and locked
+status reveal no evidence ID, provider/key metadata, timestamp/checkpoint, or
+assurance level. Public or selective disclosure creates a separate audience-,
+purpose-, target-, policy-, and expiry-bound minimal statement.
 
 If an outcome can never be resolved, a signed `ResidualUncertainty` disposition
 closes operational work without claiming erasure. It retains the tombstone and
