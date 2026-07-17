@@ -49,6 +49,11 @@ All notable Sagnir changes are recorded here.
 - Restored the simple solo-maintainer release loop: Codex implements and fixes,
   the maintainer pentests and reports CI status, and tagging waits for both to
   be green plus explicit instruction.
+- Expanded the roadmap with shared audited store backends, cumulative decode
+  budgets and atomic encoding, continuous first-admission fuzzing, body-derived
+  typed graph admission, explicit filesystem durability profiles, opaque secret
+  handles, deterministic fact/query semantics, exact cryptographic suite IDs,
+  and honest blind-remote bundle claims.
 
 ## 0.10.0
 

@@ -229,6 +229,38 @@ Later milestones inherit this rule automatically. A feature is not release-ready
 when its implementation exists but its boundary-specific threat model and
 control-map evidence are stale.
 
+## Assurance At First Admission Rule
+
+Security testing belongs to the release that first admits a parser, state
+machine, concurrent authority path, or cryptographic construction. The late
+hardening phase expands scale and cross-system composition; it is never the
+first time a security-critical format is fuzzed or a durability protocol is
+modelled.
+
+Each applicable milestone must add and run its own proportionate assurance:
+
+- parser and format releases add canonical/malformed vectors, corpus-backed
+  fuzz smoke, cumulative resource-budget tests, and permanent regression seeds;
+- arithmetic and bounded-state releases add Kani or an equivalent bounded proof
+  for no-panic, no-overflow, state-space, and impossible-state properties where
+  the tool is suitable;
+- concurrent state machines add Loom or equivalent schedule exploration around
+  leases, publication, cache replacement, and consume/cancel races;
+- durability and distributed protocols add a reproducible TLA+/PlusCal or
+  equivalent model before implementation, with exact bounds, assumptions,
+  explored-state counts, tool digest, and completion status;
+- canonical algorithms add differential tests against a separately implemented
+  reference before their output becomes authoritative;
+- cryptographic formats/providers add standards vectors, malformed vectors,
+  fault injection, side-channel regression evidence, and secret-copy lifetime
+  review at admission;
+- every crash, counterexample, differential disagreement, or fuzz finding is
+  minimized where practical and retained as a permanent regression fixture.
+
+CI uses short deterministic or time-bounded smoke profiles. Pentest and release
+gates use longer profiles declared by the milestone. Nightly or scheduled
+campaigns may add depth without becoming a separate human approval process.
+
 ## Solo Maintainer Release Workflow
 
 Sagnir uses one simple release loop. Codex performs implementation, local
@@ -499,6 +531,7 @@ Verification:
 
 - `cargo test -p sagnir-object`
 - `cargo check --manifest-path fuzz/Cargo.toml --bins`
+- v0.12.2 corpus replay and bounded fuzz smoke for every object-body decoder.
 
 Exit criteria:
 
@@ -608,6 +641,58 @@ Exit criteria:
 - Windows initialization has the same fail-closed attachment and commit
   guarantees as the Unix backend.
 
+### v0.10.2 - Shared Audited Store Platform Boundary
+
+Goal: move durable filesystem authority out of the CLI so every frontend uses
+one audited store implementation before WAL and object persistence expand.
+
+Deliverables:
+
+- split canonical store metadata and transaction formats from operating-system
+  filesystem execution, using focused crates such as `sagnir-store-format` and
+  `sagnir-store-fs` when the final dependency review confirms those names;
+- move Unix secure initialization and metadata persistence from private CLI
+  modules into the shared platform store boundary without weakening retained-
+  handle, no-follow, ownership, attachment, hard-link, sync, and atomic-publication
+  checks;
+- move the admitted Windows backend into the same shared abstraction after
+  v0.10.1, retaining native handle and reparse-point semantics rather than
+  reducing both platforms to path strings;
+- `sagnir-store` owns platform-neutral store plans, verified canonical bytes,
+  immutable IDs, transaction intents, and durability results; it does not
+  depend on CLI output, policy evaluation, daemon transport, or UI types;
+- `sagnir-store-fs` depends only on the store/format layers and narrow platform
+  APIs; frontends depend inward on the shared store and cannot provide alternate
+  durable write implementations;
+- `saga`, `sagad`, tests, migration tools, and future key agents use the same
+  audited store boundary for every authoritative read, write, lock, sync, and
+  publication operation;
+- path/display conversion remains at frontend edges and cannot replace an open
+  root/store handle with a newly resolved path;
+- compile-time dependency-direction checks reject cycles from store crates back
+  to CLI, daemon, policy, sync, or presentation crates;
+- parity fixtures run identical initialization, metadata, lock, recovery, and
+  refusal cases through library, CLI, and daemon callers;
+- no duplicate private secure-store implementation remains reachable after the
+  migration.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-cli`
+- `cargo test -p sagad`
+- workspace dependency-direction validator;
+- Unix and hosted Windows platform-boundary fixture suites.
+
+Exit criteria:
+
+- CLI and daemon persistence cannot diverge because both use one shared audited
+  platform store implementation.
+- Store format code remains portable and deterministic, while unsafe platform
+  assumptions are isolated behind native retained-handle implementations.
+- No authoritative store method accepts a display path or unverified raw bytes
+  as a substitute for an admitted handle and canonical object identity.
+
 ### v0.11.0 - Architecture And Store Compatibility Contracts
 
 Goal: make the architecture documents agree and define durable repository
@@ -708,6 +793,102 @@ Exit criteria:
   reject the same non-canonical inputs.
 - No later signature or hash transcript depends on undocumented serialization.
 
+### v0.12.1 - Unified Decode Budgets And Atomic Encoding
+
+Goal: make every nested decoder share one cumulative hostile-input budget and
+make every encoder failure leave caller output unchanged.
+
+Deliverables:
+
+- mandatory mutable `DecodeBudget` or equivalent capability containing at
+  least remaining input bytes, decoded items, nesting depth, references,
+  objects, allocations, and abstract work units;
+- one budget is threaded through every nested scalar, list, object, event,
+  proof, pack, bundle, WAL, encrypted-envelope, decompression, and extension
+  decoder instead of resetting independent per-field maxima;
+- budget constructors accept only policy-admitted limits and enforce hard
+  implementation ceilings so callers cannot request effectively unbounded
+  parsing;
+- checked addition, multiplication, integer conversion, offset, and range
+  arithmetic before any slice, allocation, hash, decompression, loop, or
+  reference expansion;
+- debit-before-work semantics: failed allocation, malformed nested input, and
+  early return cannot restore budget in a way that permits repeated work
+  amplification;
+- explicit distinction between consumed wire bytes, retained decoded bytes,
+  allocation bytes, cryptographic work, decompressed bytes, and graph/query
+  expansion units;
+- deterministic budget-exhaustion errors that identify the exhausted class
+  without reflecting secret or attacker-controlled diagnostics;
+- encoder `encoded_len`/preflight with checked arithmetic, or encode-to-bounded-
+  scratch then commit, so insufficient output never writes a prefix into the
+  caller's destination;
+- success writes exactly one canonical byte sequence; failure preserves every
+  byte of the destination and returns the exact required capacity when it can
+  be reported safely;
+- nested exhaustion, cumulative-small-field amplification, depth, conversion,
+  multiplication, decompression, hashing, and stale-output-reuse tests;
+- bounded proof over admitted scalar/list arithmetic, no-panic behavior, budget
+  monotonicity, and failure atomicity.
+
+Verification:
+
+- `cargo test -p sagnir-codec`
+- `cargo test -p sagnir-object`
+- Kani or equivalent bounded codec proof suite;
+- independent budget-accounting and atomic-writer vectors.
+
+Exit criteria:
+
+- No production decoder can process nested untrusted data without sharing the
+  caller's admitted cumulative budget.
+- A sequence of individually valid lengths cannot exceed aggregate bytes,
+  items, allocations, references, objects, depth, decompression, or work limits.
+- Encoder failure is observationally atomic for caller-owned output buffers.
+
+### v0.12.2 - Continuous Parser Fuzz And Regression Baseline
+
+Goal: execute parser fuzz evidence continuously before canonical body formats
+multiply, without making nightly tooling part of the stable workspace.
+
+Deliverables:
+
+- deterministic corpus-backed smoke runner for every parser and format fuzz
+  target admitted through v0.12.1;
+- short bounded smoke profile on pull requests and ordinary CI;
+- longer sanitizer-enabled pentest/release profile with declared time, corpus,
+  memory, and worker budgets;
+- optional scheduled campaign profile for deeper exploration, with failures
+  treated as ordinary findings rather than a separate approval ceremony;
+- stable root workspace remains latest stable Rust; `cargo fuzz`/sanitizer
+  nightly tooling remains isolated in the standalone fuzz workspace and pinned
+  independently;
+- seed corpus includes canonical values, malformed/non-canonical values, exact
+  limits, one-past limits, truncated prefixes, duplicate fields, trailing data,
+  nested-budget exhaustion, and prior release findings;
+- crash artifacts are minimized, classified, assigned a stable corpus name,
+  and committed as permanent regression inputs before closure;
+- CI rejects a parser fuzz target that only compiles but has no smoke corpus,
+  bounded execution command, or regression replay test;
+- fuzz command, engine/toolchain digest, target list, corpus digest, duration,
+  executions, crashes, timeouts, and out-of-memory outcomes are recorded in
+  release evidence.
+
+Verification:
+
+- standalone fuzz workspace build and dependency policy;
+- deterministic corpus replay command;
+- bounded CI fuzz smoke command;
+- release-profile sanitizer smoke on supported hosts.
+
+Exit criteria:
+
+- Every admitted parser has executed hostile-input evidence before a later
+  release depends on its format.
+- Fuzz crashes become reproducible tests and cannot disappear with temporary
+  runner artifacts.
+- Stable production builds do not acquire a nightly Rust dependency.
+
 ### v0.13.0 - Canonical Object Body Decoders
 
 Goal: make object bodies authoritative instead of trusting caller-supplied
@@ -757,6 +938,59 @@ Exit criteria:
   authoritative edge was derived from its body.
 - Caller-supplied edge lists are diagnostic input only, never the source of
   truth.
+
+### v0.14.1 - Body-Derived Typed Graph Admission
+
+Goal: replace the bounded scaffold's caller-described graph with an efficient
+typed admission engine derived exclusively from verified canonical bodies.
+
+Deliverables:
+
+- graph admission input accepts hash-verified canonical bodies and immutable
+  IDs, never authoritative caller-supplied edges;
+- every edge is independently extracted by the canonical object-kind decoder
+  and checked against a versioned source-kind, edge-role, target-kind, cardinality,
+  and optionality schema matrix;
+- supplied manifests and edge inventories are optimization hints only; omitted,
+  extra, reordered, or mistyped hints cannot change the derived graph or produce
+  `Complete`;
+- duplicate references and duplicate canonical edges are rejected or
+  canonicalized according to the object schema before traversal, with no
+  duplicate-work amplification or alternate graph representation;
+- immutable sorted ID table plus bounded compact adjacency offsets, or an
+  equivalently reviewed structure, replaces repeated linear target scans;
+- checked cumulative graph budget covers objects, unique edges, references,
+  parents, unresolved promises, bytes, depth, hash work, and traversal work;
+- graph class is explicit: content, event, world-transition, and other
+  authority graphs enforce their admitted DAG/topological rules, while
+  dependency and impact graphs may contain cycles and deterministically collapse
+  strongly connected components;
+- cycle diagnostics distinguish malformed authority cycles from valid
+  dependency SCCs and remain bounded on adversarial input;
+- independently implemented small-graph reference verifier derives edges from
+  the same canonical bodies without sharing the optimized adjacency engine;
+- differential property tests compare acceptance, derived edges, roots,
+  topological order/SCC partition, diagnostics, and budget outcomes across
+  optimized and reference implementations;
+- malformed-body, omitted-edge, duplicate-edge, wrong-role, wrong-kind,
+  high-fanout, long-chain, dense-SCC, hash-collision simulation, and budget-edge
+  corpus cases.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- object graph corpus-backed fuzz smoke;
+- optimized/reference differential graph suite;
+- Kani or equivalent bounded no-panic/overflow checks for adjacency arithmetic.
+
+Exit criteria:
+
+- `Complete` means canonical bodies, hashes, every derived typed reference,
+  closure, and the graph-class rule were independently verified.
+- A caller cannot hide an edge, invent an edge, exploit duplicate edges, or
+  choose a graph policy inappropriate for the object layer.
+- Repository-scale admission uses bounded indexed lookup rather than quadratic
+  scans while remaining equivalent to the independent reference verifier.
 
 ### v0.15.0 - Identifier Privacy And Realm Scoping
 
@@ -1310,7 +1544,13 @@ Deliverables:
 - write, rename, file-sync, and directory-sync failure points;
 - stale checkpoint and missing-body states;
 - counterexamples for partial commit and alias-before-body behavior;
-- bounded model-check command required by the release gate.
+- bounded model-check command required by the release gate;
+- versioned model-run manifest records model/tool digest, exact bounds, write/
+  rename/sync failure points, fairness assumptions, state-space reductions,
+  explored states/transitions/depth, completion versus timeout, resources, and
+  counterexample traces;
+- CI smoke and pentest/release profiles have distinct declared bounds and a
+  smaller or timed-out run cannot replace the required release artifact.
 
 Verification:
 
@@ -1331,14 +1571,25 @@ Deliverables:
 
 - WAL magic;
 - WAL format and version;
+- segment/log identity and segment generation;
 - frame kind;
 - transaction ID;
-- monotonic frame sequence;
+- reserved monotonic LSN and per-segment frame sequence;
 - payload length;
-- CRC or equivalent corruption check;
+- prior-frame commitment;
+- CRC over the exact serialized magic, version, segment/log identity,
+  generation, LSN/sequence, transaction ID, kind, payload length, prior
+  commitment, and payload;
+- strict frame and transaction byte/count/work limits before CRC/hash work;
 - ordered payload digest commitment;
 - previous committed transaction or checkpoint commitment;
-- commit marker with expected resulting realm frontier;
+- commit marker binding ordered frame digests, frame/byte counts, expected old
+  realm frontier, resulting realm frontier, and previous committed transaction
+  or checkpoint;
+- encrypted-realm WAL authentication profile using admitted AEAD or keyed MAC in
+  addition to non-adversarial torn-write/corruption detection;
+- explicit statement that CRC and an attacker-recomputable local hash chain are
+  not proof against a malicious storage controller;
 - malformed frame tests.
 
 Verification:
@@ -1360,13 +1611,29 @@ Goal: make committed local transactions recoverable.
 Deliverables:
 
 - begin transaction;
+- acquire one shared-store writer lease and reserve a monotonically ordered
+  transaction/LSN before append;
 - append frame;
 - commit transaction;
-- ignore incomplete transaction;
+- sync WAL bytes and commit frame before reporting durability;
+- ignore only a provably incomplete final transaction;
+- quarantine checksum failure, authentication failure, sequence discontinuity,
+  unexpected segment transition, or malformed bytes inside committed history;
+  recovery never scans forward for a convenient next frame;
 - replay committed frames;
+- replay idempotently into immutable content-addressed files using no-replace
+  publication;
+- publish aliases, roots, and checkpoints only after all referenced bodies are
+  durable, using expected-old-value CAS, file sync, atomic rename, and directory
+  sync;
+- retire a WAL segment only after a durably published checkpoint proves every
+  committed effect in that segment is represented;
 - file and directory synchronization at required durability boundaries;
 - recovery tests for torn writes and every write/rename/sync boundary;
-- refusal when a committed alias lacks any referenced immutable body.
+- refusal when a committed alias lacks any referenced immutable body;
+- Loom or equivalent writer-lease and publication schedule tests;
+- process-kill recovery after every append, commit, sync, replay, CAS, rename,
+  directory-sync, checkpoint, and segment-retirement boundary.
 
 Verification:
 
@@ -1377,6 +1644,60 @@ Exit criteria:
 - Startup can recover committed operations and ignore incomplete ones.
 - Recovery cannot apply a committed frontier or alias before all transaction
   bodies are present and verified.
+- Recovery is deterministic and idempotent: repeated restart yields all and
+  only committed transactions, never a skipped committed frame or partial
+  authority update.
+
+### v0.32.1 - Filesystem Durability Profiles And Publication Boundaries
+
+Goal: state and test what local durability means on each admitted filesystem
+instead of claiming guarantees that hardware or kernels cannot provide.
+
+Deliverables:
+
+- named machine-readable durability profiles for tested local filesystems,
+  explicitly degraded filesystems, read-only inspection, and unsupported
+  storage;
+- each profile states assumptions for file data, metadata, rename, no-replace,
+  file sync, directory sync, parent-directory sync, write caches, barriers,
+  copy-on-write behavior, network mounts, removable media, and kernel honesty;
+- creation of `.saga/` synchronizes the already-open parent root directory after
+  the new directory entry and required initialization state are durable;
+- every newly created nested directory has a defined parent-sync boundary;
+  syncing only `.saga/` cannot be presented as proving the root entry survived;
+- store-open preflight detects known unsupported or degraded filesystem/mount
+  capabilities where the operating system exposes them and warns or refuses
+  according to policy;
+- lying disks, unsafe volatile write caches, hostile kernels, and unobservable
+  network-filesystem semantics are explicit residual assumptions, not covered
+  by an `absolute durability` claim;
+- crash harness injects short writes, `EINTR`, allocation failures, write
+  failures, rename failures, file-sync failures, directory-sync failures, and
+  process death at every publication boundary;
+- admitted integration matrix for ext4, XFS, Btrfs, APFS, and NTFS where test
+  infrastructure is available, with unsupported configurations documented
+  rather than silently generalized;
+- recovery result reports the active durability profile and any degraded
+  guarantee without treating degraded storage as cryptographic proof failure;
+- root/store handle identity and attachment are rechecked before and after
+  critical publication so mount or namespace replacement cannot upgrade a
+  degraded path into an admitted one.
+
+Verification:
+
+- platform filesystem crash-injection suite;
+- parent-root and nested-parent directory durability fixtures;
+- repeated deterministic recovery test for every injected boundary;
+- durability-profile capability and refusal tests.
+
+Exit criteria:
+
+- Sagnir can state exactly which crash-durability property was tested on the
+  active storage profile and where hardware/kernel assumptions begin.
+- A successful initialization cannot omit the parent-directory sync needed to
+  make the `.saga/` directory entry durable under its admitted profile.
+- Unsupported or degraded storage never inherits a stronger durability claim
+  merely because ordinary tests happened to pass.
 
 ### v0.33.0 - Loose Object Store
 
@@ -1550,13 +1871,24 @@ Deliverables:
 - parent traversal rejection;
 - Windows separator rejection policy;
 - root-bound directory handle traversal;
+- Linux resolver uses `openat2` with `RESOLVE_BENEATH`,
+  `RESOLVE_NO_MAGICLINKS`, and the configured symlink/mount policy when the
+  running kernel supports the admitted semantics; fallback and other platforms
+  retain and walk native directory handles component by component with
+  no-follow behavior;
 - symlink and reparse-point policy;
-- resolver output bound to the exact root, path, and file identity;
+- resolver returns an opened directory/file handle or a non-authoritative
+  display result, never a reusable path-detached "verified path" token;
+- opened-handle capability is bound to the exact root, relative path, file
+  identity, type, mount/volume identity where available, and policy for its
+  lifetime;
 - no reusable zero-sized symlink proof capability;
 - special-file rejection;
 - tracked symlink-as-data semantics without silently following the target;
 - sparse-file and hard-link classification policy;
 - replacement-race tests around scan and materialization;
+- case-folding, Unicode normalization, Windows 8.3 alias, reparse point,
+  hard-link, mount/volume boundary, and concurrent component replacement tests;
 - path tests for Linux, Windows-style separators, BSD, MacOS, Android, and iOS.
 
 Verification:
@@ -1570,6 +1902,10 @@ Exit criteria:
   materialization.
 - A path admitted under one root cannot be reused as proof for another root or
   after the underlying file identity changes.
+- Documentation states that a malicious process under the same user identity
+  may ptrace, signal, or mutate user-owned state; stronger isolation requires a
+  separate service account, sandbox, or privileged key agent and is not implied
+  by handle-relative traversal alone.
 
 ### v0.39.0 - Ignore Rules
 
@@ -1601,6 +1937,7 @@ Deliverables:
 - open-handle-based streaming file hashing;
 - pre/post file identity, size, and metadata validation;
 - retry or refusal when a file changes during hashing;
+- bounded reads from the retained handle rather than reopening the display path;
 - hard-link deduplication policy without confusing path identity;
 - sparse-file logical-content policy;
 - symlink target bytes stored as link data;
@@ -1620,6 +1957,9 @@ Exit criteria:
 - Equivalent worktrees produce equivalent tree object bytes.
 - A file changed during snapshot cannot be sealed under a digest from a mixed
   or unstable read.
+- Later materialization writes a temporary file through the already-opened
+  destination directory and atomically publishes it; Sagnir never mutates an
+  existing hard-linked worktree file in place.
 
 ### v0.41.0 - Incremental Worktree Index
 
@@ -2311,6 +2651,63 @@ Exit criteria:
 - Provider or key-agent failure cannot leave an operation partially authorized
   or secrets intentionally exposed through logs, debug output, or crash dumps.
 
+### v0.63.1 - Opaque Secret Handles And Memory-Lifetime Boundary
+
+Goal: prevent ordinary application code from owning cloneable raw private-key
+or session-secret buffers and document the limits of portable zeroization.
+
+Deliverables:
+
+- non-cloneable opaque provider handles for private signing keys, KEM secret
+  keys/shared secrets, AEAD keys, DEKs, KEKs, KDF outputs, signing nonces/scalars,
+  recovery shares, and decrypted high-value key material;
+- provider operations accept canonical transcripts and return public results or
+  bounded authenticated plaintext through closure-scoped access; secret bytes
+  are not returned as `Vec<u8>`, printable/debuggable values, serializable DTOs,
+  command arguments, environment values, or long-lived async task state;
+- closure-scoped secret access cannot cross an async suspension point, escape
+  through a borrowed reference, or be stored in a general-purpose cache;
+- caller-owned import buffers have an explicit ownership/cleanup contract;
+  scrubbing a provider copy is never described as scrubbing the caller's
+  original bytes;
+- audited secret arena or provider-owned memory uses locked/guarded pages where
+  supported and reports unsupported page-lock, fork, dump, or swap controls;
+- every normal and error path cleans provider scratch buffers through the
+  admitted sanitization crate and provider-specific cleanup APIs;
+- inventory and tests cover moves, stack/heap temporaries, allocator copies,
+  FFI/provider buffers, registers where observable, panic/unwind/abort,
+  process termination, core dumps, swap, fork, and suspend/resume limitations;
+- no claim of complete immediate erasure from portable safe Rust: compiler
+  optimization, previous stack frames, provider internals, registers, allocator
+  history, swap, dumps, and terminated processes remain explicit residual risks;
+- optional short-lived isolated signer/key-agent process keeps private keys out
+  of the main `saga`/`sagad` process and returns only context-bound public
+  outputs;
+- privilege and same-UID attack model states when ptrace, process memory access,
+  signals, or direct file mutation require service-account, sandbox, HSM/TPM,
+  OS-keystore, or privileged-agent isolation;
+- compile-fail tests reject `Clone`, `Debug`, serialization, unrestricted byte
+  extraction, thread/task escape where prohibited, and use after session close;
+- fault-injection tests cover allocation failure, provider error, cancellation,
+  panic boundary, agent disconnect, fork, dump configuration, and cleanup
+  failure without producing an authorized result.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- secret-handle compile-fail suite;
+- provider scratch/copy lifetime audit fixtures;
+- isolated key-agent integration tests where supported.
+
+Exit criteria:
+
+- Mainline callers authorize cryptographic operations through opaque handles,
+  not raw private-key buffers.
+- Sagnir precisely states which copies it can clean and never equates best-
+  effort zeroization with proof that all historical copies vanished.
+- Provider failure, cleanup failure, or agent loss cannot produce partial
+  authority or silently downgrade to an in-process raw-key path.
+
 ### v0.64.0 - Governed Rotation And Emergency Recovery
 
 Goal: implement governance-backed rotation and recovery without creating a
@@ -2444,8 +2841,8 @@ Exit criteria:
 - Large worlds can be proven by composing bounded chunk proofs instead of
   loading every object into one graph.
 - Protected worlds can require full-world proofs when policy demands it.
-- General relationship cycles remain representable while dependency cycles are
-  rejected.
+- Authority graph classes enforce their admitted DAG rules, while dependency
+  and impact cycles remain representable as deterministic SCCs.
 
 ### v0.68.0 - Proof Artifact And Soundness Suite
 
@@ -2499,12 +2896,15 @@ Deliverables:
 - `saga fsck` integration for stale-cache diagnostics;
 - deterministic cache deletion and rebuild;
 - stale, substituted, partially written, and epoch-change cache tests;
-- cache deletion and deterministic rebuild behavior.
+- cache deletion and deterministic rebuild behavior;
+- concurrent reader/rebuilder/publication schedule exploration proving a stale
+  or partial generation cannot become authoritative.
 
 Verification:
 
 - `cargo test -p sagnir-proof`
 - `cargo test -p sagnir-store`
+- Loom or equivalent proof-cache publication schedule tests.
 
 Exit criteria:
 
@@ -2525,13 +2925,19 @@ Deliverables:
 - validated compound admission result combining integrity, signatures, causal
   closure, policy decision, and discharged obligations;
 - impossible-state prevention for `allow` with unsatisfied obligations;
+- `Allow` is unconstructible while any required obligation is absent, failed,
+  stale, target-mismatched, or evaluated under another policy, crypto, realm,
+  checkpoint, or frontier context;
 - evaluator-version and policy-root binding;
 - explicit denial source and missing-obligation diagnostics;
-- invalid policy tests.
+- invalid policy tests;
+- exhaustive or bounded verification of all 65,536 obligation-bit patterns and
+  impossible aggregate-result states.
 
 Verification:
 
 - `cargo test -p sagnir-policy`
+- Kani or equivalent compound-admission state proof.
 
 Exit criteria:
 
@@ -2921,6 +3327,75 @@ Exit criteria:
 
 - Deleting indexes does not delete truth; Sagnir can rebuild memory projections
   from canonical objects, events, and facts.
+
+### v0.85.1 - Deterministic Fact Language And Snapshot Query Contract
+
+Goal: bound causal derivation and make every explanation/query reproducible
+against one immutable source-state snapshot before user-facing explanations
+become authoritative evidence.
+
+Deliverables:
+
+- canonical facts are derived only from admitted signed events and verified
+  canonical objects, retaining every source ID, compiler/evaluator version,
+  policy/crypto epoch where relevant, and derivation rule ID;
+- a versioned stratified, terminating Datalog-like subset or equivalently
+  reviewed monotone fact language with explicit type, arity, ordering, and
+  resource semantics;
+- recursive derivation is admitted only within declared strata and bounded
+  fixpoint work; negation is stratified and cannot observe a partially computed
+  lower stratum or uncommitted remote state;
+- non-monotone aggregates, unrestricted function symbols, dynamic code,
+  wall-clock predicates, environment reads, network calls, and unbounded
+  recursion are excluded from canonical fact evaluation;
+- semantic causal cycles are either refused by the rule stratifier or represented
+  as deterministic dependency SCCs; an acyclic event DAG alone is not treated
+  as proof that fact derivation terminates;
+- rebuildable subject/predicate, path/symbol, reverse-provenance, world-frontier,
+  and forward-impact projections with versioned schemas and deterministic
+  rebuild roots;
+- query result transcript binds realm, snapshot/state root, causal frontier,
+  fact/index roots, query kind, normalized query, deterministic plan digest,
+  evaluator version, policy/redaction context, budgets, evidence IDs, result
+  digest, uncertainty class, and missing/redacted evidence;
+- pagination cursor is authenticated and binds the same snapshot, plan, sort
+  order, filters, audience, budget class, and expiry; a cursor cannot continue
+  against a newer snapshot or wider disclosure scope;
+- `saga why` returns bounded minimal causal evidence sets plus explicit
+  alternative sets rather than one arbitrary traversal path;
+- `saga explain` replays the exact decision/transition transcript, obligations,
+  discharge evidence, missing requirements, and redactions;
+- `saga impact` traverses typed forward dependencies, distinguishes `must
+  affect` from `may affect`, and collapses dependency SCCs deterministically;
+- borrowed/zero-copy query views are permitted only over immutable fully
+  validated owned bytes such as `Arc<[u8]>` or sealed authenticated pack pages;
+  direct mmap of attacker-mutable/truncatable files is not an admitted trusted
+  query boundary because it can change after validation or cause `SIGBUS`;
+- immutable sorted index segments have validated offset tables, bounded slices,
+  page checksums/authenticated roots, and generation binding before borrowed
+  access;
+- all 65,536 obligation-bit patterns, stratification boundaries, fixpoint work,
+  SCCs, cursor replay, snapshot mismatch, index corruption, mutable mmap
+  substitution, and budget exhaustion receive exhaustive/bounded tests where
+  practical.
+
+Verification:
+
+- `cargo test -p sagnir-fact`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-proof`
+- Kani or equivalent obligation and evaluator-state bounded proofs;
+- production/reference evaluator differential suite;
+- query transcript and pagination vectors.
+
+Exit criteria:
+
+- Fact derivation terminates deterministically within admitted budgets and
+  cannot construct `Allow` while required obligations remain unsatisfied.
+- Every why, explain, impact, trace, or paginated query result identifies the
+  exact immutable snapshot and evidence from which it was derived.
+- Rebuildable indexes and borrowed views improve performance without becoming
+  an alternate source of truth or trusting mutable mapped storage.
 
 ### v0.86.0 - Explanation Object
 
@@ -4072,11 +4547,17 @@ Goal: support one local unlock method for development and tests.
 Deliverables:
 
 - passphrase-based key wrapping metadata;
-- admitted memory-hard KDF and bounded parameter ranges;
+- Argon2id or a later explicitly admitted memory-hard password KDF with exact
+  suite/revision identity, bounded memory/time/parallelism/salt/output parameters,
+  and policy floors/ceilings informed by current standards at implementation;
 - key-encryption-key metadata;
 - realm-master-key wrapping model;
 - denial-of-service limits for untrusted KDF parameters;
-- no passphrase in logs or debug output tests.
+- domain-separated labeled context binding realm, compartment/scope, crypto
+  epoch, slot purpose, KDF suite, and wrapper suite;
+- no passphrase in logs or debug output tests;
+- standards known-answer, malformed parameter, weak-parameter downgrade,
+  over-budget, cancellation, and wrong-passphrase response-shape tests.
 
 Verification:
 
@@ -4093,7 +4574,16 @@ Goal: define device access and recovery without one shared user secret.
 Deliverables:
 
 - per-device recipient keys;
-- recipient ID, kind, wrapping algorithm, and wrapped key metadata;
+- recipient ID, kind, exact wrapping suite, and wrapped key metadata;
+- admitted HPKE-style labeled suite/context construction binds KEM, KDF, AEAD,
+  mode, opaque recipient selector, encapsulated key, wrapped DEK, realm,
+  compartment, crypto/key epoch, manifest root, slot ordinal, and purpose in
+  canonical associated data; bespoke unlabelled concatenation is prohibited;
+- post-quantum or hybrid recipient wrapping uses its own admitted specification
+  and cannot claim RFC 9180 compatibility merely by copying its field shape;
+- recipient slots are padded to declared buckets and shuffled canonically or
+  randomly according to the privacy profile so raw slot count and stable order
+  are not unintentionally public;
 - signed recipient authorization;
 - recipient and key-transparency records anchored in the v0.17.0 canonical
   authenticated map and append-only event commitment;
@@ -4122,7 +4612,10 @@ Deliverables:
 - acknowledgement that removal cannot revoke already acquired keys;
 - backend-unavailable, duplicate slot, unauthorized recipient, ambiguous key,
   false absence, stale map root, split view, inconsistent append, rollback, and
-  recovery threshold tests.
+  recovery threshold tests;
+- suite/context substitution, slot reorder/ordinal confusion, selector replay,
+  cross-realm/compartment/epoch replay, stripping, padding, and recipient-count
+  leakage tests.
 
 Verification:
 
@@ -4724,6 +5217,56 @@ Exit criteria:
 - Sagnir is ready to admit hybrid classical plus post-quantum providers without
   changing object formats.
 
+### v0.107.1 - Exact Cryptographic Suite Identity Admission
+
+Goal: ensure no generic post-quantum or hybrid identifier leaves parameter sets,
+standard revisions, component binding, or errata policy to length inference.
+
+Deliverables:
+
+- suite IDs identify algorithm family, exact parameter set, standard/revision,
+  encoding, prehash/pure mode where applicable, provider profile, and admission
+  epoch;
+- ML-DSA identifiers distinguish ML-DSA-44, ML-DSA-65, and ML-DSA-87 and pin
+  the admitted FIPS 204 revision plus reviewed errata/pending-update policy;
+- ML-KEM identifiers distinguish ML-KEM-512, ML-KEM-768, and ML-KEM-1024 and
+  pin the admitted FIPS 203 revision plus reviewed errata/pending-update policy;
+- signature or ciphertext length is validated after suite selection and can
+  never select the suite or parameter set by itself;
+- hybrid signature/wrapping suite IDs enumerate both component suites, order,
+  combiner, transcript/context binding, downgrade rule, and required all-
+  components verification semantics;
+- hybrid canonical transcript binds suite ID, each component algorithm and
+  parameter set, component count/order/length, message/context digest, realm,
+  action, policy/crypto epoch, and result; merely splitting concatenated bytes
+  is not verification;
+- unknown revisions, unreviewed errata states, generic `PQ`/`MlDsa` ambiguity,
+  component stripping/reordering/substitution, length-selected algorithms,
+  mixed-epoch components, and classical-only downgrade fail closed;
+- algorithm registry can retire one parameter/revision/provider combination
+  without making historical statements unverifiable or silently admitting a
+  sibling parameter set;
+- NIST standards known-answer and malformed vectors plus provider differential
+  vectors for every admitted exact suite;
+- operational promotion remains disabled for placeholder-only suites until the
+  exact provider, vectors, lifecycle, and policy admission are complete.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- exact-suite registry and transcript vector validator;
+- NIST known-answer/malformed vector suite;
+- hybrid component-binding differential tests.
+
+Exit criteria:
+
+- A parser, signature verifier, recipient wrapper, policy, and audit report all
+  agree on one exact cryptographic suite without inferring it from byte length.
+- Hybrid acceptance proves the admitted binding of every required component and
+  cannot degrade to one surviving component.
+- Standards errata and revisions are explicit admission state, not undocumented
+  dependency behavior.
+
 ### v0.108.0 - Selective Disclosure Proofs
 
 Goal: disclose only policy or evidence claims required by a recipient.
@@ -4768,6 +5311,10 @@ Deliverables:
 - pack manifest hash;
 - total compressed and expanded byte limits;
 - per-object size and reference-count limits;
+- one inherited v0.12.1 decode budget covers total records, objects, references,
+  offsets, allocation, checksum/hash work, decompression expansion, and delta
+  materialization across the whole pack, not only each individually valid
+  object;
 - compression and delta format admission;
 - maximum decompression ratio and delta-chain depth;
 - compartment-local delta base rule;
@@ -4808,6 +5355,12 @@ Deliverables:
 - policy refs;
 - encrypted bundle marker;
 - visible versus encrypted metadata policy;
+- opaque padded outer manifest contains only framing, protocol/suite versions,
+  randomized bundle/storage identity, coarse padded length/count classes,
+  ciphertext chunk commitments, and declared transport/preflight limits;
+- encrypted authenticated canonical inner manifest contains semantic inventory,
+  object/fact/policy roots, world heads, causal frontier, policy/evaluator/crypto
+  epochs, signatures, closure evidence, and exact resource requirements;
 - resource estimate metadata;
 - compressed and expanded byte estimates;
 - ancestry depth, reference fanout, concurrent-head, and proof-complexity
@@ -4825,6 +5378,72 @@ Exit criteria:
 - Sagnir can describe what a bundle claims before loading bundle bodies.
 - Sagnir can estimate whether local verification settings are sufficient before
   import or materialization.
+
+### v0.110.1 - Blind-Remote Claims And Bundle Admission Contract
+
+Goal: freeze honest proof names, blind-storage visibility, and two-phase bundle
+admission before bundle verification or live sync can imply semantic trust.
+
+Deliverables:
+
+- normative claim taxonomy separates outer framing validity, ciphertext chunk
+  integrity, Merkle inclusion, storage-ID binding, upload capability/quota,
+  replication receipt, and availability evidence from decrypted semantic object,
+  graph, signature, policy, and world-transition verification;
+- blind `sagad` can issue only claims derivable from opaque ciphertext/framing
+  and never labels them object-integrity, graph, policy, promotion, or semantic
+  proofs;
+- 1.0 semantic acceptance occurs only on an authorized client after decryption
+  and complete typed ingest, or through an explicitly trusted witness whose
+  statement and trust assumptions are shown; TEE and zero-knowledge alternatives
+  remain separate future trust models unless explicitly admitted;
+- opaque outer and encrypted inner manifest schemas from v0.110.0 receive exact
+  canonical bytes, visibility tables, padding buckets, audience/purpose/epoch
+  binding, replay context, and malformed vectors;
+- blind-visible fields exclude realm ID where policy requires opacity, paths,
+  world names, actors, recipients, signatures, semantic roots/commitments,
+  private locators, graph edges, policies, facts, and recipient-slot topology;
+- two-phase admission state machine: bounded outer preflight, isolated
+  quarantine write, recipient authorization/decryption, canonical inner decode,
+  body-derived graph verification, signature/revocation/time verification,
+  compound policy/obligation admission, WAL transaction, and final trusted
+  publication;
+- fetching, storing, checksum verification, receipt issuance, or blind-server
+  acceptance never grants worktree materialization or trusted-reference
+  resolution;
+- split-trust summaries disclose only explicitly selected claims and bind
+  audience, purpose, realm/opaque scope, policy/crypto epoch, freshness,
+  revocation context, nonce, and replay window;
+- one cumulative bundle decode/work budget covers outer and inner bytes,
+  ciphertext chunks, objects, facts, parents, heads, references, proofs,
+  decompression, delta expansion, signatures, causal expansion, allocations,
+  unresolved promises, and verification work;
+- quota privacy contract: a remote cannot claim both per-identity enforcement
+  and identity unlinkability unless clients spend pre-issued unlinkable,
+  epoch-scoped quota rights/nullifiers or another admitted construction;
+  ordinary stable quota accounts are documented correlation handles;
+- malformed outer/inner manifest, padding downgrade, semantic-field exposure,
+  false blind proof name, receipt-as-trust confusion, decrypt failure,
+  quarantine bypass, partial admission, replay, and quota-correlation tests;
+- disposable decoder/reference prototype and early benchmark/fuzz gate inherit
+  the v0.92.1 prototype-isolation rule before durable bundle bytes freeze.
+
+Verification:
+
+- independent outer/inner manifest vector validator;
+- claim-taxonomy API and CLI golden-output tests;
+- blind-store visibility and traffic-shape fixtures;
+- two-phase admission state-machine model;
+- bundle format fuzz smoke and cumulative-budget tests.
+
+Exit criteria:
+
+- Every bundle or blind-server proof name states exactly what ciphertext-visible
+  evidence establishes and cannot be confused with semantic acceptance.
+- No remote byte influences trusted roots, policy, aliases, or materialization
+  before the full local typed-ingest and WAL admission pipeline succeeds.
+- Privacy documentation does not promise unlinkable per-identity quotas while
+  exposing a stable account or selector.
 
 ### v0.111.0 - Bundle Create And Verify
 
@@ -4852,6 +5471,9 @@ Exit criteria:
 
 - A bundle can be verified before import, and encrypted bundle metadata is
   checked before decrypt.
+- Pre-decryption verification reports only v0.110.1 outer/ciphertext claims;
+  semantic verification requires successful authorized decryption and complete
+  inner typed-ingest verification.
 - Bundle verification reports when local budgets cannot satisfy the bundle's
   minimum verification mode.
 - Manifest estimates are treated as untrusted preflight hints; streaming local
@@ -4902,6 +5524,10 @@ Deliverables:
 - streaming enforcement independent of manifest estimates;
 - cancellation and resumable import;
 - decrypt-before-import policy;
+- explicit v0.110.1 state progression from outer preflight to quarantine,
+  decryption, canonical inner decode, body-derived graph closure, signature/
+  revocation/time checks, compound policy/obligation admission, WAL commit, and
+  trusted publication;
 - world alias import policy;
 - resource-budget comparison before trust;
 - refusal when bundle policy requires stronger verification than local config;
@@ -4918,6 +5544,9 @@ Exit criteria:
 - Import can place data in quarantine for inspection without trusting or
   materializing it.
 - Budget refusal leaves no partially trusted alias, index, or worktree state.
+- Failure or cancellation at any pre-commit stage leaves only bounded
+  quarantine state; recovery cannot resume at a later trust stage without
+  revalidating the bound transcript and all prior capabilities.
 
 ### v0.114.0 - Sync Negotiation
 
@@ -5333,7 +5962,15 @@ Deliverables:
 - `sagad serve`;
 - remote object store;
 - remote fact store;
-- policy-light acceptance;
+- policy-light opaque storage acceptance limited to canonical outer framing,
+  declared quotas, ciphertext chunk/hash/Merkle integrity, storage capability,
+  and receipt semantics;
+- blind daemon APIs and CLI output use the v0.110.1 claim taxonomy and never
+  report semantic object, graph, signature, policy, world, or promotion validity
+  without an explicitly configured trusted/decrypting verifier role;
+- stable-account quota mode documents identity correlation; unlinkable quota
+  mode requires pre-issued epoch-scoped rights/nullifiers and is not simulated
+  by hiding an account label;
 - graceful shutdown;
 - restart tests.
 
@@ -5345,6 +5982,9 @@ Verification:
 Exit criteria:
 
 - A minimal Sagnir remote exists for sync testing.
+- A blind remote can prove ciphertext integrity and availability within its
+  declared assumptions without being mistaken for an authorized semantic
+  verifier.
 
 ### v0.121.1 - Erasure Evidence Format Admission Stop
 
@@ -5981,7 +6621,10 @@ Goal: make hostile input testing part of normal development.
 Deliverables:
 
 - canonical codec corpus;
+- cumulative decode-budget, atomic-encoder failure, and nested-work corpus;
 - object corpus;
+- body-derived typed-edge, duplicate-edge, authority-cycle, dependency-SCC, and
+  optimized/reference disagreement corpus;
 - WAL corpus;
 - pack corpus;
 - bundle corpus;
@@ -5999,6 +6642,9 @@ Deliverables:
   intent/private evidence/minimal disclosure/terminal disposition, private
   tombstone, opaque storage-notice, and pre-erasure receipt corpus;
 - proof and sync-message corpus;
+- deterministic fact rule/query-plan, snapshot cursor, immutable-index offset,
+  exact cryptographic suite/hybrid transcript, opaque bundle outer/inner
+  manifest, and blind-claim corpus;
 - decompression and delta-chain bomb corpus;
 - fork-bomb and causal-fanout corpus;
 - regression tests for every accepted corpus case.
@@ -6019,7 +6665,9 @@ Deliverables:
 
 - fuzz target workspace;
 - codec fuzz target;
+- cumulative decode-budget and atomic-encoder target set;
 - every canonical object-body fuzz target;
+- body-derived typed graph and SCC target set;
 - WAL and recovery-state fuzz targets;
 - pack and encrypted-envelope fuzz targets;
 - private locator search node/proof, quota record/carry-forward, and
@@ -6035,6 +6683,11 @@ Deliverables:
   evidence/minimal disclosure/terminal disposition, private tombstone, opaque
   storage-notice, and pre-erasure receipt fuzz targets;
 - bundle parser fuzz target;
+- opaque outer/encrypted inner manifest, two-phase admission state, blind-claim,
+  and cumulative bundle-work target set;
+- fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
+  index offset target set;
+- exact cryptographic suite and hybrid transcript target set;
 - proof and sync-message fuzz targets;
 - bounded decompression and delta-chain fuzz targets;
 - documentation for running fuzz targets.
@@ -6042,11 +6695,13 @@ Deliverables:
 Verification:
 
 - parser unit tests;
-- documented optional fuzz command.
+- v0.12.2 CI smoke, pentest/release, and scheduled campaign profiles.
 
 Exit criteria:
 
-- New parsers have a standard place to add fuzz coverage.
+- New parsers inherit executable fuzz coverage at first admission; this
+  milestone broadens duration, sanitizer coverage, cross-format composition,
+  and corpus scale rather than introducing fuzzing for the first time.
 
 ### v0.129.0 - Full-System Formal Model Composition
 
@@ -6058,6 +6713,9 @@ Deliverables:
 - composed WAL recovery, alias CAS, merge/promotion, private duplicate identity,
   key rotation, redaction projection, restricted restore, checkpoint, GC, and
   partition models;
+- composition of cumulative decoder/work budgets, body-derived graph-class
+  admission, durability-profile publication, deterministic fact stratification/
+  queries, opaque secret sessions, and two-phase bundle quarantine/admission;
 - duplicate-equivalence representative CAS, conflict-head preservation,
   anti-grinding selection, replica/actor/device quota continuity, and persistent
   authenticated index union/split models;
@@ -6202,8 +6860,15 @@ Deliverables:
 
 - crash-consistency fault injection at every write, rename, file sync, and
   directory sync;
+- v0.32.1 parent-root/nested-parent publication, durability-profile detection,
+  short-write/`EINTR`, process-kill, checkpoint, and WAL-segment-retirement
+  matrix replay;
 - state-machine property tests for recovery;
 - loom or equivalent tests for writers, proof caches, and alias updates;
+- two-phase bundle quarantine/decrypt/typed-ingest/WAL-publication crash and
+  cancellation tests proving no skipped trust stage;
+- secret-handle/provider-session cancellation, panic, agent-disconnect, cleanup,
+  and process-boundary tests proving no partial authorization result;
 - atomic forward/reverse private-index update and rebuild interruption tests;
 - multi-instance forward/reverse update tests proving no instance is lost,
   aliased, or charged to the wrong quota class;
@@ -6401,6 +7066,14 @@ Deliverables:
 
 - independent canonical-codec reference implementation;
 - differential canonical bytes and object-ID tests;
+- cumulative decode-budget and atomic-encoder benchmarks across nested objects,
+  packs, bundles, proofs, WAL, and encrypted envelopes;
+- optimized/reference body-derived graph benchmarks covering sorted lookup,
+  typed edge schemas, duplicate refusal, authority DAGs, dependency SCCs, and
+  adversarial sparse/dense distributions;
+- deterministic fact evaluator and snapshot-query benchmarks covering
+  stratification, fixpoint work, provenance alternatives, SCC impact, cursor
+  continuation, and immutable validated index segments;
 - cryptographic known-answer and malformed-vector suites;
 - independently developed reference projection evaluator built from the
   normative projection specification and canonical vectors without importing,
@@ -6461,6 +7134,9 @@ Deliverables:
   wrapping-epoch rewrap, private-evidence encryption, minimal selective
   disclosure, and all-recovery-path evidence aggregation benchmarks;
 - full-world verification and hostile-bundle rejection benchmarks;
+- opaque outer/inner bundle preflight, quarantine, decrypt, typed-ingest,
+  cumulative-work-budget, blind-claim, and stable-versus-unlinkable quota-mode
+  benchmarks;
 - p50/p95/p99 latency, memory, I/O amplification, and ciphertext-expansion
   budgets;
 - per-privacy-profile measured no-op/edit/read/write/unlock/repack/sync traces
@@ -6613,6 +7289,14 @@ Deliverables:
 - no admission prototype or experimental magic is reachable from production
   feature graphs, release binaries, durable decoders, migration paths, or
   authoritative signing/manifest APIs unless explicitly promoted and reviewed;
+- shared store platform boundary is the only authoritative filesystem path used
+  by CLI, daemon, migration, and recovery code, with no private frontend fork;
+- cumulative decode budgets, atomic encoders, body-derived typed graph admission,
+  graph-class DAG/SCC semantics, and optimized/reference differential results
+  pass their first-admission and release profiles;
+- every parser/format has corpus-backed fuzz smoke from first admission, every
+  applicable concurrent state machine has schedule exploration, and every
+  durability/distributed model has reproducible release-profile evidence;
 - v0.115.1 sealed-private distributed invariant model artifact passes with no
   unresolved counterexample, records complete bounds/assumptions/reductions/
   coverage/resources/completion metadata, and is reproduced by the release
@@ -6631,6 +7315,15 @@ Deliverables:
   excluded-adversary statements are complete;
 - formal models complete within admitted bounds;
 - crash, concurrency, partition, and hostile-network suites pass;
+- filesystem durability profiles, parent-directory sync, crash injection, and
+  deterministic recovery pass on the admitted platform matrix;
+- opaque secret-handle compile-fail tests and secret-copy lifetime audits pass;
+- deterministic fact-language stratification, obligation-state proof, snapshot-
+  bound queries, pagination, SCC, and mutable-storage refusal suites pass;
+- exact cryptographic suite/parameter/revision IDs, hybrid transcript binding,
+  standards vectors, and errata admission state pass;
+- opaque bundle outer/inner visibility, blind claim taxonomy, cumulative bundle
+  budget, and two-phase quarantine/admission suites pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -6662,15 +7355,23 @@ Goal: first serious production-ready `saga` CLI.
 Deliverables:
 
 - local realm initialization;
+- one shared audited native store platform boundary used by every frontend;
 - durable repository-format compatibility, golden fixtures, and transactional
   migration;
 - realm genesis-bound identity, first-contact trust bootstrap, governance,
   full invitation lifecycle, membership, and trust roots;
 - normative canonical formats and independent vectors;
+- cumulative nested decode budgets, atomic encoders, and continuous corpus-backed
+  parser fuzz evidence from first format admission;
 - computed object hashes and body-derived references;
+- typed body-derived graph admission with indexed lookup, duplicate-edge
+  refusal, authority DAGs, dependency/impact SCCs, and independent differential
+  verification;
 - authenticated maps, append-only commitments, and complete checkpoints;
 - checkpoint-anchored chained WAL, signed event DAG, and rollback/equivocation
   evidence;
+- named filesystem durability profiles, complete parent-directory publication,
+  failure injection, and deterministic idempotent recovery;
 - world and change workflow;
 - convergent multi-head worlds and deterministic multi-parent merges;
 - all-active-replica causal stability with explicit retirement cutoffs;
@@ -6680,6 +7381,8 @@ Deliverables:
 - stable worktree snapshots, incremental indexes, and recoverable
   materialization;
 - context-bound signatures, key lifecycle, and anti-replay;
+- opaque non-cloneable secret-provider handles with bounded memory-lifetime and
+  zeroization claims;
 - threshold-governed end-to-end emergency recovery ceremony;
 - explicit causal/checkpoint time semantics;
 - canonical authoritative time and revocation statements with monotonic
@@ -6693,6 +7396,8 @@ Deliverables:
 - operation undo;
 - local facts;
 - event log and deterministic fact compiler;
+- stratified terminating fact evaluation, deterministic SCC-aware causal
+  indexes, and snapshot/plan/evidence-bound query transcripts and pagination;
 - auditable explanations;
 - why, explain, trace, and impact;
 - bounded context packs;
@@ -6701,6 +7406,8 @@ Deliverables:
 - lock and unlock;
 - vault status and leak scanning;
 - recipient metadata and rekeying;
+- exact cryptographic suite, parameter-set, standards-revision, errata, and
+  hybrid-component transcript identity;
 - encrypted indexes, authenticated pages, private locators, immutable semantic
   commitments, and metadata protection;
 - random-blinded confidential semantic commitments with explicit visibility
@@ -6750,6 +7457,9 @@ Deliverables:
 - selective disclosure;
 - bundles;
 - encrypted bundles;
+- opaque padded outer/encrypted inner manifests, cumulative bundle work budgets,
+  two-phase quarantine admission, and honest blind ciphertext-integrity/
+  availability claim names;
 - bounded quarantine, sparse materialization, and partial clone;
 - isolated quarantine, safe repack/GC, promises, and retention roots;
 - resumable transport-independent sync;
