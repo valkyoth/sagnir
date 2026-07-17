@@ -8088,11 +8088,11 @@ quarantine capacity indefinitely before a durable candidate exists.
 
 Deliverables:
 
-- canonical local `QuarantineReservationLease` state binds a random reservation
-  ID, exact item/encoded-byte/captured-byte/signature/page/node/work counters,
-  store, opaque realm scope where available, peer/endpoint, authenticated actor
-  where known, transport session, bundle, transfer, destination generation, and
-  originating preflight transcript;
+- versioned deterministic local `QuarantineReservationLease` record binds a
+  random reservation ID, exact item/encoded-byte/captured-byte/signature/page/
+  node/work counters, store, opaque realm scope where available, peer/endpoint,
+  authenticated actor where known, transport session, bundle, transfer,
+  destination generation, and originating preflight transcript;
 - each lease records creation generation, monotonic progress counter, monotonic
   idle deadline, absolute maximum lifetime, and the original cumulative
   lifetime consumed; wall-clock time, canonical event time, and signed policy
@@ -8154,6 +8154,91 @@ Exit criteria:
 - Lease expiry and scheduling affect only local resource availability; they
   cannot create, delete, select, or reinterpret authority evidence.
 
+### v0.111.2 - Quarantine Lease Clock And Metadata Closure
+
+Goal: make persisted lease expiry safe across restart and protect temporary
+resource metadata from becoming a sealed-private activity ledger.
+
+Deliverables:
+
+- random process-scoped `ClockEpoch` generated from the v0.23.0 OS-CSPRNG at
+  daemon/process start and bound to every lease creation, progress, deadline,
+  conversion, expiry, and cleanup record; entropy failure refuses new leases;
+- monotonic values are comparable only within one exact `ClockEpoch`; a process
+  replacement always creates a new epoch even on the same boot, and an OS boot
+  identifier is diagnostic context only and cannot substitute for the random
+  epoch or authorize deadline comparison;
+- an admitted platform clock table names the exact API used on Linux, Windows,
+  each supported BSD, macOS, Android, iOS, and later Aesynx, its resolution,
+  wrap behavior, whether it advances during suspend, and the tested fallback or
+  refusal behavior; no generic `Instant` or "monotonic" claim hides platform
+  differences;
+- within one epoch, clock read failure, backward movement, wrap, impossible
+  discontinuity, or source change conservatively expires/refuses affected
+  incomplete leases and cannot extend an idle or absolute deadline;
+- after process restart or `ClockEpoch` mismatch, a completely committed
+  `BoundedQuarantinedCandidate` and its durable quota charge remain intact,
+  while every incomplete pre-candidate lease, partial destination, resume state,
+  and reservation charge is atomically cleaned and released before retry;
+- 1.0 does not resume a pre-candidate transfer across process epochs; a peer may
+  start a new bounded attempt only after old cleanup. Any future cross-restart
+  lease resume requires a separately admitted trusted-time protocol and cannot
+  reconstruct downtime from unauthenticated wall-clock time;
+- candidate publication state is determined by the atomic publication/charge
+  transaction, never by a deadline comparison, file presence, progress counter,
+  or best-effort cleanup record;
+- known encrypted-realm lease records, progress indexes, and cleanup metadata
+  use the admitted encrypted metadata/WAL boundary and key epoch; they never
+  downgrade to cleartext when realm metadata keys are locked or unavailable;
+- before realm identification or authorized decryption, a daemon-local metadata
+  protection key encrypts identifiable lease state and indexes while records use
+  opaque scoped handles; protected profiles refuse new reservations if that key
+  is unavailable, while any profile permitting cleartext operational metadata
+  must declare the exact leakage before transfer;
+- encrypted lease associated data binds record kind/version, store, daemon
+  incarnation, `ClockEpoch`, destination generation, reservation ID, and key
+  epoch so records cannot be replayed across stores, processes, generations, or
+  reservations;
+- actor, realm, peer, endpoint, bundle, and transfer identifiers never appear
+  directly in filenames, directory topology, lock names, temporary paths, logs,
+  metrics, traces, process titles, or public abuse receipts; filesystem names use
+  unlinkable opaque handles with collision-safe creation;
+- v0.95.0 privacy profiles define whether lease counters, timing, progress, and
+  cleanup are exact, bucketed, padded, delayed, or suppressed; logs, metrics,
+  and abuse receipts expose only opaque handles and coarse profile-approved
+  values, while detailed identity/activity inspection requires authenticated
+  privileged local access and is audited;
+- expiry/cancellation cleanup removes lease records, indexes, partial bytes,
+  derived telemetry, and temporary key references according to one declared
+  retention policy; retained aggregate abuse statistics cannot reconstruct the
+  removed identity or transfer timeline;
+- blind and split-trust deployment documentation names network endpoint,
+  connection timing, traffic volume, and host-observer leakage that encryption,
+  opaque handles, bucketing, padding, or cleanup cannot retroactively hide;
+- reboot, suspend/resume per admitted platform, process replacement, boot-ID
+  reuse/substitution, clock failure/backward movement/wrap, epoch substitution,
+  restart with complete versus partial publication, metadata-key unavailable,
+  cross-store ciphertext replay, filename/topology leakage, log/metric leakage,
+  counter/timing bucketing, and cleanup-retention tests.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-sync`
+- per-platform clock adapter and suspend/restart fixtures;
+- encrypted operational-metadata and malicious local-observer leakage suite;
+- process-kill complete/partial publication recovery matrix.
+
+Exit criteria:
+
+- A monotonic deadline is never interpreted outside its originating process
+  epoch, and restart cannot extend or ambiguously preserve an incomplete lease.
+- Complete candidate publication survives restart, while partial work is cleaned
+  without consulting unauthenticated wall-clock time.
+- Protected or blind profiles do not expose collaboration identities or precise
+  lease activity through durable metadata, filenames, logs, metrics, or cleanup
+  artifacts beyond their explicit measurable leakage contract.
+
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
 Goal: ensure untrusted remote data cannot influence trusted state before full
@@ -8182,7 +8267,8 @@ Deliverables:
   connections, and concurrent sessions under store/realm ceilings; identity or
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
-  lease and converts it into the candidate's durable quota charge while
+  lease under the v0.111.2 clock/privacy contract and converts it into the
+  candidate's durable quota charge while
   publishing either one complete `BoundedQuarantinedCandidate`/bundle generation
   or no durable quarantine object; expiry, short writes, crashes, cancellation,
   and `ResourceLimit` clean partial bytes, resume state, and accounting without
@@ -8192,8 +8278,9 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1 and cannot move a partially staged bundle into trusted
-  storage, infer a completed trust stage, or retain an orphan reservation;
+  lease under v0.111.1/v0.111.2 and cannot move a partially staged bundle into
+  trusted storage, infer a completed trust stage, retain an orphan reservation,
+  or compare a prior process epoch's monotonic deadline;
 - shadowing, index poisoning, trusted-reference substitution, quota, and
   materialization-bypass tests.
 
@@ -8220,6 +8307,8 @@ Exit criteria:
   partial cleanup leave no candidate or authority claim.
 - Slow, reconnecting, or trickle-progress senders cannot hold pre-candidate
   capacity beyond the bounded idle and absolute lease lifetimes.
+- Restart retains only atomically complete charged candidates; incomplete leases
+  expire and clean up without wall-clock reconstruction or privacy downgrade.
 
 ### v0.113.0 - Bundle Import
 
@@ -8391,7 +8480,9 @@ Deliverables:
   progress only after charged consumption, non-resettable reconnect/resume/
   transfer lineage, per-peer/store concurrency and aggregate ceilings, fair
   scheduling, work-before-use debit, atomic candidate-charge conversion, and
-  startup orphan reconciliation;
+  startup orphan reconciliation; every persisted deadline carries a process
+  `ClockEpoch`, epoch mismatch cleans incomplete state without wall-clock
+  reconstruction, and complete candidate publication is retained independently;
 - checkpoint, policy epoch, evidence, and key-rotation interactions;
 - equivocation and bounded fork handling;
 - invariants for no lost heads, no lost duplicate identity, no locator-based
@@ -8402,7 +8493,8 @@ Deliverables:
   session/bundle fanout, no resource refusal as authority evidence, no arrival-
   order authority selection, no stalled or trickle-progress reservation beyond
   its absolute lifetime, no reconnect/resume deadline reset, no work before
-  charge, no orphan reservation after recovery, no linear locator-proof
+  charge, no cross-epoch monotonic comparison, no orphan reservation after
+  recovery, no operational-metadata privacy downgrade, no linear locator-proof
   requirement, no stale admission, no partial trust, and eventual convergence
   under documented assumptions;
 - bounded model-check command required by the release gate.
@@ -8469,7 +8561,10 @@ Deliverables:
   non-eviction of admitted ambiguous/superseded authority evidence; reservation
   leases retain original deadlines/counters across reconnect, resume-token and
   session replacement, charge progress/work before use, expire atomically, and
-  convert exactly once into durable candidate quota;
+  convert exactly once into durable candidate quota; process-epoch mismatch
+  retains complete charged candidates but cleans incomplete leases, and
+  protected profiles keep lease identity/activity inside encrypted opaque
+  operational metadata;
 - model invariants for no lost encryption instance, no semantic/index
   completeness gap, no Byzantine manifest omission accepted, no hidden
   compartment disclosure, no endpoint-placement overwrite, no clock-derived
@@ -8478,9 +8573,11 @@ Deliverables:
   resurrection, no unbounded receiver quarantine from signed/Sybil/resubmit
   floods, no slow sender retaining pre-candidate capacity past its hard lifetime,
   no reconnect or one-byte progress extending that lifetime, no pre-admission
-  refusal interpreted as shared authority evidence, no arrival-order transition
-  selection, and eventual convergence under documented authority, availability,
-  and partition assumptions;
+  refusal interpreted as shared authority evidence, no cross-process monotonic
+  deadline reuse, no lease-metadata identity/timing leak beyond the selected
+  profile contract, no arrival-order transition selection, and eventual
+  convergence under documented authority, availability, and partition
+  assumptions;
 - counterexample corpus and deterministic bounded model-check command required
   by the v0.116.0 release gate;
 - immutable model-run manifest records model source digest, tool and solver
@@ -8567,6 +8664,10 @@ Deliverables:
   actor/device/replica identity changes, and valid-signature floods share the
   store/realm aggregate ceilings; they cannot multiply capacity or evict already
   admitted ambiguous/superseded authority evidence;
+- live transfer reservations inherit v0.111.2 process-epoch expiry and metadata-
+  protection rules; process restart cleans incomplete transfer leases before a
+  new attempt, and protocol/log output exposes only profile-approved opaque or
+  coarse operational fields;
 - transfer cancellation;
 - accepted response;
 - denied response;
@@ -9501,7 +9602,9 @@ Deliverables:
   bounded abuse-receipt target set;
 - `QuarantineReservationLease` framing/state, checked counter debit, idle and
   absolute expiry, progress renewal, reconnect/resume inheritance, atomic
-  conversion/release, and startup-orphan reconciliation target set;
+  conversion/release, startup-orphan reconciliation, process `ClockEpoch`,
+  complete/partial restart classification, and encrypted opaque metadata target
+  set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -9536,7 +9639,8 @@ Deliverables:
   including untrusted/bounded-quarantine/admitted-authority candidate separation,
   aggregate preflight capacity, sender-held refusal, bounded reservation leases,
   non-resettable reconnect/resume lineage, work-before-use accounting, fair
-  scheduling, atomic candidate-charge conversion, and atomic partial cleanup;
+  scheduling, process-epoch-only monotonic comparison, encrypted operational
+  metadata, atomic candidate-charge conversion, and atomic partial cleanup;
 - composition of the history-independent map algorithm/pages with authority
   active/covered-fence/exception/archive roots, a permanent low-sequence
   exception plus later archival, exact replay refusal, checkpoint rollback
@@ -9680,10 +9784,12 @@ Deliverables:
   rebase, no unbounded active superseded/prepared state, no ambiguity deletion by
   quota/lease expiry, no unbounded quarantine through signed/Sybil/session/bundle
   floods, no slow/trickle sender retaining a reservation past its hard lifetime,
-  no reconnect/resume deadline reset, no work before debit, no orphan reservation
-  after recovery, no partial durable candidate after resource refusal, no abuse
-  digest or `ResourceLimit` as authority evidence, no arrival-order authority
-  selection, and eventual convergence under documented assumptions;
+  no reconnect/resume deadline reset, no work before debit, no cross-epoch
+  monotonic comparison, no orphan reservation after recovery, no lease identity/
+  activity leakage beyond its selected privacy profile, no partial durable
+  candidate after resource refusal, no abuse digest or `ResourceLimit` as
+  authority evidence, no arrival-order authority selection, and eventual
+  convergence under documented assumptions;
 - model execution instructions and CI smoke bounds.
 - model-run manifests inherit v0.115.1 exact bounds, assumptions, property
   classes, reductions, coverage counters, resources, seeds/configuration, and
@@ -9742,9 +9848,11 @@ Deliverables:
   v0.111.1 lease creation/progress/idle-expiry/absolute-expiry, integrity-bound
   capture, partial write, item/byte/signature/page/work counter debit, atomic
   lease-to-candidate charge conversion, completion/expiry races, restart orphan
-  reconciliation, `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission,
-  and final authority publication prove all-or-nothing durable quarantine and no
-  resource-refusal authority evidence;
+  reconciliation, v0.111.2 process-epoch change, complete-versus-partial restart
+  classification, encrypted-metadata key unavailability/replay, `ResourceLimit`,
+  abuse-receipt rotation, cleanup, re-admission, and final authority publication
+  prove all-or-nothing durable quarantine and no resource-refusal authority
+  evidence;
 - secret-handle/provider-session cancellation, panic, agent-disconnect, cleanup,
   and process-boundary tests proving no partial authorization result;
 - generated-credential receiver-close, partial-delivery, possession-confirmation,
@@ -9877,9 +9985,11 @@ Deliverables:
   sharing one store/realm quarantine ceiling, peer/bundle/session fanout,
   reconnect/resubmit floods, slowloris and one-byte-progress transfers, resume-
   token/session replacement deadline-reset attempts, parallel reservation
-  starvation, sender-held refusals, bounded abuse-receipt rotation, expiry and
-  restart accounting, partial-candidate cleanup, and attempts to reinterpret
-  `ResourceLimit` as signature/policy/authority evidence;
+  starvation, process replacement and suspend/resume clock-epoch tests, metadata-
+  key unavailability and identifier/timing leakage probes, sender-held refusals,
+  bounded abuse-receipt rotation, expiry and restart accounting, partial-
+  candidate cleanup, and attempts to reinterpret `ResourceLimit` as signature/
+  policy/authority evidence;
 - cloned/rolled-back pending-credential staging, provider/platform-key
   unavailability, copied staging outside its declared platform recovery context,
   cross-store/receiver possession-response replay, and concurrent delivery
@@ -9969,8 +10079,9 @@ Exit criteria:
 - Hostile signed-candidate, identity, bundle, session, and reconnect floods stay
   within aggregate receiver quarantine/work ceilings; refused input remains the
   sender's responsibility, leases cannot outlive their original absolute
-  lifetime, fair capacity remains available to other peers, and arrival order
-  affects backpressure only.
+  lifetime or process epoch, protected lease metadata stays within its declared
+  leakage profile, fair capacity remains available to other peers, and arrival
+  order affects backpressure only.
 - Hostile peers cannot force unbounded recursive expansion or partial trust.
 
 ### v0.132.0 - Differential Vectors And Performance Budgets
@@ -10099,6 +10210,12 @@ Deliverables:
   fair scheduling under stalled valid transfers, work-before-use debit, atomic
   candidate-charge conversion, expiry/completion races, and startup orphan
   cleanup without relying on wall-clock rollback behavior;
+- lease clock/privacy vectors cover random process `ClockEpoch` binding,
+  per-platform source and suspend semantics, clock failure/backward movement/
+  wrap, process/reboot epoch mismatch, complete-versus-partial restart recovery,
+  no cross-restart resume, encrypted metadata context binding, opaque filesystem
+  names, profile counter/timing buckets, privileged inspection, telemetry
+  cleanup, and malicious local-observer leakage thresholds;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - plaintext-to-encrypted authority-log cutover model/vectors and crash benchmarks
@@ -10418,6 +10535,13 @@ Deliverables:
   crash state as one charged candidate or complete cleanup; slowloris, trickle-
   progress, deadline-reset, parallel-starvation, expiry/publication-race, clock-
   rollback, and orphan-recovery suites pass;
+- v0.111.2 lease records use random process `ClockEpoch` binding and admitted
+  per-platform clock/suspend semantics; restart retains complete charged
+  candidates, cleans every incomplete lease without wall-clock reconstruction,
+  and does not resume pre-candidate work across epochs; encrypted-realm and pre-
+  realm operational metadata, opaque names, profile bucketing/padding,
+  privileged inspection, telemetry retention, and inherent blind-network
+  leakage pass privacy-at-rest and local-observer suites;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -10453,6 +10577,10 @@ Deliverables:
   monotonic idle and hard-lifetime expiry, charged-progress renewal, reconnect/
   resume inheritance, fair scheduling, work-before-use debit, atomic conversion,
   expiry/publication races, and deterministic startup reconciliation fixtures;
+- v0.111.2 process/reboot/suspend clock-epoch, complete-versus-partial restart,
+  clock failure/wrap, encrypted metadata replay, key-unavailable refusal, opaque
+  path/log/metric, bucketing/padding, cleanup-retention, and blind-observer
+  leakage fixtures pass on every admitted platform/privacy profile;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -10677,6 +10805,12 @@ Deliverables:
   renewal, non-resettable reconnect/resume lineage, per-peer/store concurrency
   ceilings and fair scheduling, work-before-use debit, atomic conversion into
   durable candidate quota, and deterministic expiry/crash/orphan cleanup;
+- every lease deadline is process-`ClockEpoch` scoped under an admitted platform
+  clock; restart keeps atomically complete candidates but cleans incomplete
+  leases without wall-clock reconstruction or cross-epoch resume, while known-
+  realm and pre-realm identifiable lease metadata is encrypted, context-bound,
+  stored under opaque names, profile-bucketed where required, access-controlled,
+  and removed with derived telemetry under declared retention;
 - privacy-preserving inner signatures, exact outer integrity/authenticity claim
   taxonomy, retained-handle preflight followed by integrity-bound capture and
   sealed/service/owned-memory/authenticated-page trusted reads, and durable
