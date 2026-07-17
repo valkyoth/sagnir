@@ -5,11 +5,15 @@ All notable Sagnir changes are recorded here.
 ## Unreleased
 
 - Updated the workspace and current documentation to Rust stable 1.97.1.
+- Separated bootstrap, unlock, authoritative, and recovery crypto capabilities;
+  added preallocated operation identities, canonical versus local work-cost
+  layers, exact chunked-AEAD nonce/retry admission, and quarantine trusted-read
+  boundaries. Removed transition-hash and portable-file-immutability assumptions.
 - Added roadmap contracts for governed work-cost table selection, non-circular
   obligation template/instance IDs, authenticate-before-plaintext-release
-  records, crash-idempotent operation capabilities, and immutable quarantine
-  byte capture. Clarified outer integrity versus sender authenticity and the
-  detectable-on-reconciliation limit for disconnected clone forks.
+  records, crash-idempotent operation capabilities, and integrity-bound
+  quarantine capture. Clarified outer integrity versus sender authenticity and
+  the detectable-on-reconciliation limit for disconnected clone forks.
 - Added roadmap releases for schedule-independent authoritative work budgets,
   provider-assurance evidence trust, provider-only secret operations and honest
   plaintext declassification, exact CRC-32C and clone-safe encrypted WAL

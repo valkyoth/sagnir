@@ -998,10 +998,22 @@ Deliverables:
 - each deterministic work-cost table has a canonical version, domain, evaluator/
   verifier compatibility range, operation-class coverage, cost-rule digest,
   activation state, and independent differential vectors;
-- canonical realm/local policy plus the admitted evaluator/verifier version
-  selects the table; an object, bundle, proof, remote peer, resume checkpoint,
-  or other untrusted input may declare a requirement but cannot choose or
-  downgrade the table used for new admission;
+- before live canonical realm policy exists, each admitted protocol/format and
+  evaluator/verifier version embeds one protocol-fixed bootstrap table; local
+  configuration and untrusted input cannot select another canonical table;
+- after live governance/policy activation, signed canonical realm state plus the
+  admitted evaluator/verifier version selects the protocol table at an explicit
+  activation frontier/checkpoint; replicas evaluating the same realm state use
+  the same table;
+- local admission ceilings are a separate stricter layer: insufficient local
+  logical resources return `LocalResourcesInsufficient`/refusal without changing
+  the canonical table, consumed-work semantics, or shared result;
+- operational CPU, resident-memory, thread, I/O, and monotonic-deadline limits
+  are a third layer and may cancel with `Incomplete` only; they never create a
+  different authoritative root or canonical exhaustion result;
+- an object, bundle, proof, remote peer, resume checkpoint, or other untrusted
+  input may declare a requirement but cannot choose or downgrade the protocol
+  table used for new admission;
 - new authoritative evaluation fails closed on unknown, unsupported,
   ambiguous, retired-for-new-admission, mismatched-domain, or downgraded table
   versions;
@@ -1009,8 +1021,9 @@ Deliverables:
   or aggregate behavior requires a new table version and old/new differential
   vectors; existing version bytes are immutable;
 - governance/policy can retire an underpriced table for new admission and bind
-  its replacement without reinterpreting historical transcripts that committed
-  the old table and original logical result;
+  its replacement at a signed activation frontier without reinterpreting
+  historical transcripts that committed the old table and original logical
+  result;
 - historical verification uses the committed evaluator/table semantics when
   policy admits that historical context, but current operational CPU, memory,
   deadline, and abuse controls may cancel it with `Incomplete` rather than
@@ -1024,9 +1037,15 @@ Deliverables:
 - table registry updates are signed/policy-bound where canonical admission
   depends on them and record activation, retirement, replacement, rationale,
   affected evaluator versions, and effective frontier/checkpoint;
+- transition from the protocol-fixed bootstrap table to realm-selected tables
+  is one signed non-retroactive activation transition; peers that lack the
+  activated table refuse/return unknown instead of evaluating with a local
+  substitute;
 - attacker-selected version, unknown/downgraded table, underpricing retirement,
-  historical replay, cross-domain substitution, mid-resume switch, unavailable
-  old implementation, and old/new differential tests.
+  local-table divergence, local-ceiling exhaustion, operational cancellation,
+  bootstrap-to-realm activation, historical replay, cross-domain substitution,
+  mid-resume switch, unavailable old implementation, and old/new differential
+  tests.
 
 Verification:
 
@@ -1037,8 +1056,11 @@ Verification:
 
 Exit criteria:
 
-- New authoritative work uses only the table selected by admitted policy and
-  evaluator/verifier compatibility, never attacker-controlled bytes.
+- New authoritative work uses only the protocol-fixed bootstrap table or the
+  table selected by signed canonical realm state and evaluator/verifier
+  compatibility, never local configuration or attacker-controlled bytes.
+- Local ceilings and operational limits may refuse/cancel work but cannot select
+  canonical semantics or create a different shared result.
 - Retiring an underpriced table protects new admission without rewriting what
   a historical transcript meant.
 - Operational cancellation of historical work yields only incomplete evidence,
@@ -1516,6 +1538,10 @@ Deliverables:
 - provider operations accept canonical transcript capabilities and return only
   public signatures/verification results; private signing keys and signing
   nonces/scalars never become caller-readable bytes;
+- provider key generation/import and signing are test/vector/internal interfaces
+  only in this release; no realm/genesis or post-genesis authoritative caller
+  can invoke them until v0.23.3 admits the exact sealed capability class and
+  durable operation reservation;
 - opaque handles do not implement `Clone`, `Copy`, `Debug`, display,
   serialization, unrestricted byte extraction, or ambient conversion to a
   generic buffer;
@@ -1572,8 +1598,9 @@ Verification:
 
 Exit criteria:
 
-- Sagnir creates and verifies real context-bound signatures without relying on
-  envelope shape as evidence of authenticity.
+- Sagnir providers create and verify real context-bound test/vector signatures
+  without relying on envelope shape as evidence of authenticity; authoritative
+  production invocation remains unavailable until v0.23.3.
 - Production cryptographic operations that require randomness stop before
   emitting keys, signatures, salts, or state when the admitted entropy source
   fails.
@@ -1605,10 +1632,11 @@ Deliverables:
 - persistent `KeyHandle` binds provider, key identity, exact suite, key epoch,
   lifecycle state, and permitted operation classes without embedding one realm
   action or transcript;
-- short-lived non-cloneable `OperationCapability` binds realm, action, exact
-  canonical transcript/target, policy and crypto context, audience/purpose,
-  provider session, limits, and expiry, and is consumed by one provider
-  operation; v0.23.3 defines exclusive minting, IPC, crash, and retry semantics;
+- short-lived sealed non-cloneable operation-capability classes bind realm,
+  action, exact canonical transcript/target, available policy/crypto context,
+  audience/purpose, provider session, limits, and expiry, and are consumed by
+  one provider operation; v0.23.3 defines the non-convertible classes, exclusive
+  minting, IPC, crash, and retry semantics;
 - decrypted source files, exported recovery packages, and other intentionally
   released plaintext cross a named auditable `PlaintextRelease`/
   declassification boundary with authorized consumer, purpose, byte/time
@@ -1657,6 +1685,10 @@ Deliverables:
 - large/resumable data uses a versioned chunked authenticated-record format
   rather than exposing incremental plaintext from one unfinished whole-object
   AEAD operation;
+- associated-data binding alone is not nonce uniqueness; encrypted chunked
+  operation remains unavailable until v0.92.2 instantiates exact per-record
+  nonce seed/subkey, checked chunk nonce derivation, final-record domain,
+  exhaustion, retry, and clone/rollback rules for an admitted AEAD suite;
 - every chunk is independently authenticated before release to its declared
   transaction-scoped consumer, and associated data binds format/version,
   bundle/object/encryption-instance identity, manifest or semantic/ciphertext
@@ -1669,6 +1701,10 @@ Deliverables:
   exact chunk count, total lengths, object/bundle identity, and completion;
   earlier authenticated chunks remain non-authoritative staging until this
   final completeness record verifies;
+- every pre-final staging consumer is rollbackable, isolated, and side-effect-
+  free: it cannot invoke external IPC/hooks, materialize a worktree, publish an
+  object/index/fact, update policy, release user-visible output, or perform any
+  irreversible action before final completeness authentication;
 - resumable decrypt/open checkpoints occur only after a complete authenticated
   chunk and bind the next index, running public commitment/transcript state,
   exact format/verifier/suite/key epoch, operation ID, manifest/root, and v0.12.4
@@ -1700,23 +1736,77 @@ Exit criteria:
 - Chunked mode releases only individually authenticated chunks to bounded
   staging, and no staged prefix becomes authoritative without an authenticated
   final completeness record.
+- Chunked encryption/decryption is not operational until v0.92.2 proves exact
+  nonce/key uniqueness and retry semantics for the selected suite.
 - Resume state contains no provider-only key or raw cryptographic operation
   state and cannot skip authentication of the resumed chunk.
 
-### v0.23.3 - Operation Capability Minting And Crash Idempotency
+### v0.23.3 - Sealed Operation Capabilities And Crash Idempotency
 
 Goal: make one-use provider authorization real across process/IPC boundaries,
 serialization, retries, and crashes rather than relying only on Rust `!Clone`.
 
 Deliverables:
 
-- `OperationCapability` has no public/default/deserialization constructor and
-  can be minted only by consuming a typed `AdmittedOperation` result produced by
-  canonical policy, signature, lifecycle, target, and transaction checks;
-- capability binds a globally unique domain-separated operation ID, issuer and
-  authority context, provider/key handle identity, exact suite/key epoch,
-  realm/action/transcript/target, policy/crypto/frontier, audience/purpose,
+- four sealed non-convertible classes with no generic `OperationCapability`
+  supertype that can recover broader authority: `BootstrapCryptoCapability`,
+  `UnlockCapability`, `AuthoritativeOperationCapability`, and
+  `RecoveryCapability`;
+- no class has a public/default/deserialization constructor; only its owning
+  typed ceremony/admission state can mint it, and provider APIs require the
+  exact class for each operation;
+- `BootstrapCryptoCapability` is minted only by the initialization ceremony
+  holding retained new-store/genesis authority and permits bounded first realm/
+  actor/device key generation or import plus exact genesis signing; it cannot
+  unlock, rotate, recover, promote, decrypt ordinary state, or publish any
+  post-genesis transition;
+- `UnlockCapability` is a distinct dormant schema until encrypted-realm
+  activation; its owning unlock ceremony may authorize only passphrase/
+  recipient unwrap and bounded compartment/header decryption needed to discover
+  protected policy/lifecycle state, never signing, rotation, promotion, or
+  authoritative publication;
+- `RecoveryCapability` remains dormant until v0.64.0 and is minted only from the
+  threshold-governed recovery ceremony for its exact recovery action/scope;
+- `AuthoritativeOperationCapability` has no live minting path before v0.70.0;
+  v0.70.0 activates minting only by consuming a complete typed compound
+  admission result bound to policy, signatures, lifecycle/revocation, target,
+  frontier, and transaction intent;
+- every capability binds issuer/class and authority context, provider/key handle
+  identity, exact suite/key epoch, realm or pre-genesis ceremony, action/
+  transcript/target, available policy/crypto/frontier context, audience/purpose,
   original limits, session, sequence, expiry, and allowed result class;
+- shared typed durable reservation primitive allocates a domain-tagged operation
+  ID before any result or containing transition is constructed, records exact
+  purpose/context, and exposes non-reusable `Reserved`, `Consumed`, `Cancelled`,
+  or `Ambiguous` states; later obligation issuance and encryption-instance
+  creation reuse this lifecycle with their own domain-separated ID formats;
+- provider operation ID is the admitted hash over domain
+  `sagnir:provider-operation:v1` and exact length-framed `(provider_id,
+  realm_id_or_pregenesis_ceremony_id, authority_kind_and_id,
+  actor_or_device_id_if_available, replica_id_and_incarnation,
+  durable_reservation_sequence, purpose, independent_256_bit_random_nonce)`;
+  hash suite/version and every optional/discriminated field are explicit;
+- provider operation ID is durably reserved before provider/key-agent admission
+  under retained store/ceremony authority; bootstrap reservation does not
+  require a signature from a key that is being generated, and genesis later
+  binds the reservation and result;
+- before the general WAL exists, reservations/results use a dedicated bounded
+  versioned shared-store journal with retained-handle writer lock, owner-only
+  no-follow files, checked sequence, write/sync/atomic publication, parent-
+  directory sync, and deterministic crash recovery; no capability is returned
+  until its reservation is durable;
+- v0.30.0 models and v0.32.0 transactionally migrates/integrates this journal
+  into ordinary WAL operation state without changing or reusing existing IDs;
+- reservation sequence allocation is checked and fail-closed before exhaustion;
+  OS-CSPRNG failure stops before reservation, and restored/cloned state inherits
+  the explicit rollback/fork limitations below;
+- uniqueness is probabilistic under the admitted hash collision/second-preimage
+  assumptions and independent 256-bit randomness plus deterministic reservation
+  separation; Sagnir does not claim mathematical global uniqueness;
+- an existing identical ID/reservation is idempotent only for byte-identical
+  class, purpose, authority, request, and context; any different reservation or
+  request under that ID is a collision/equivocation security conflict and
+  cannot overwrite prior state;
 - in-process use consumes the capability atomically into one provider request;
   failure before provider admission returns an explicit unused/refused result,
   while post-admission uncertainty never reconstructs a fresh capability;
@@ -1743,9 +1833,11 @@ Deliverables:
   equivocation evidence when histories are compared, and isolated clones remain
   an explicit residual limitation;
 - compile-fail/API tests for public mint/deserialization/clone plus IPC replay,
-  lost response, crash-before/after admission, concurrent consume, sequence
-  rollback, agent restart, journal rollback, request mismatch, and ambiguous-
-  side-effect tests.
+  cross-class conversion, bootstrap escalation, unlock-to-sign, premature
+  authoritative/recovery minting, lost response, crash-before/after admission,
+  concurrent consume, reservation exhaustion/collision, repeated randomness,
+  sequence rollback, agent restart, journal rollback, request mismatch, and
+  ambiguous-side-effect tests.
 
 Verification:
 
@@ -1756,7 +1848,12 @@ Verification:
 
 Exit criteria:
 
-- Only a typed admitted result can authorize one exact provider operation.
+- Every provider operation requires one exact sealed capability class; bootstrap
+  and unlock can perform only the minimum operations needed to reach full
+  policy/lifecycle knowledge and cannot convert into authoritative authority.
+- Signing, rotation, promotion, and publication after genesis require the
+  v0.70.0 full-compound-admission minting path; recovery requires v0.64.0
+  threshold governance.
 - Serialization or IPC does not duplicate authority within one non-rolled-back
   provider history, and exact retries there cannot execute an admitted operation
   twice.
@@ -2010,7 +2107,8 @@ Deliverables:
   guarantee that the selected profile does not provide;
 - v0.32.1 later broadens platform/filesystem detection and test matrices but
   does not define the model's durability semantics retroactively;
-- object, fact, world, alias, and checkpoint atomicity invariants;
+- object, fact, world, alias, checkpoint, and pre-WAL provider-operation
+  reservation/result migration atomicity invariants;
 - write, rename, file-sync, and directory-sync failure points;
 - stale checkpoint and missing-body states;
 - counterexamples for partial commit and alias-before-body behavior;
@@ -2159,6 +2257,9 @@ Deliverables:
   unexpected segment transition, or malformed bytes inside committed history;
   recovery never scans forward for a convenient next frame;
 - replay committed frames;
+- transactionally import/integrate v0.23.3 pre-WAL operation reservation/result
+  state with exact ID/status preservation; crash or retry cannot duplicate,
+  omit, reset, or make a consumed reservation reusable;
 - encrypted WAL write and authenticated/decrypted replay paths remain
   unavailable until v0.92.0 instantiates the v0.31.1 clone-safe activation
   contract; unsupported encrypted profiles never fall back to plaintext;
@@ -3303,6 +3404,9 @@ Deliverables:
 
 - ordinary and emergency key rotation transactions;
 - threshold recovery authorization;
+- mint and consume only v0.23.3 `RecoveryCapability` values from the admitted
+  threshold ceremony; bootstrap, unlock, and authoritative capabilities cannot
+  be converted into recovery authority;
 - end-to-end recovery ceremony covering declaration, realm freeze or restricted
   mode, independent participant verification, share collection, threshold
   authorization, isolated provider execution, replacement-key admission,
@@ -3573,17 +3677,24 @@ Deliverables:
   ID and signature field;
 - `ObligationInstanceId` is the admitted hash over domain
   `sagnir:obligation-instance:v1` and exact length-framed
-  `(template_id, issuing_transition_id, reserved_instance_ordinal_or_nonce)`;
+  `(template_id, issuance_operation_id, reserved_instance_ordinal_or_nonce)`;
   its own field and every signature are excluded from the preimage;
 - template/instance hash algorithm and suite/version are explicit and cannot be
   inferred from digest length; canonical test vectors freeze field framing,
   ordering, and domain separation;
+- `IssuanceOperationId` is preallocated before the issuing transition through
+  the v0.23.3 durable reservation lifecycle under domain
+  `sagnir:obligation-issuance-operation:v1`, binding realm, issuing authority,
+  actor/device and replica incarnation, durable sequence, purpose, and an
+  independent 256-bit random nonce;
 - repeated byte-identical obligations that must remain distinct reserve a typed
-  instance ordinal or nonce in the authoritative issuing transition before the
-  instance ID is computed; arbitrary caller-selected aliases are never
-  obligation identity;
+  instance ordinal or nonce under that issuance operation before the instance
+  ID or containing transition is computed; arbitrary caller-selected aliases
+  are never obligation identity;
 - the issuing signature binds both IDs, the complete canonical template body,
-  issuing transition, reserved ordinal/nonce, and target context; verifiers
+  issuance operation ID, containing transition, reserved ordinal/nonce, target,
+  and policy context; the transition binds issuance operation ID, template ID,
+  instance ID, ordinal/nonce, target, and policy context, and verifiers
   recompute both IDs before accepting the signature;
 - canonical composition states whether one evidence object may discharge more
   than one child, whether consumption is exclusive, and which evidence kinds
@@ -3608,7 +3719,8 @@ Deliverables:
   tie ordering; over-budget matching returns `Unknown`/`Incomplete`, never a
   convenient partial threshold;
 - self-including/precomputed ID, caller-chosen ID, template/instance domain
-  confusion, omitted issuing transition/ordinal, signature substitution,
+  confusion, omitted/substituted/reused issuance operation or ordinal,
+  transition-hash cycle regression, signature substitution,
   duplicate evidence, nested-group double count, one-principal-many-keys,
   wrapper alias, canonical-merge, assignment-order, and over-budget tests.
 
@@ -3622,8 +3734,10 @@ Verification:
 Exit criteria:
 
 - Obligation template and instance identities use non-circular, domain-separated
-  preimages with every derived ID and signature excluded, and distinct instances
-  require an explicitly governed reservation rather than an arbitrary alias.
+  preimages with every derived ID and signature excluded; the preallocated
+  issuance operation breaks any instance-ID/transition-hash dependency, and
+  distinct instances require an explicitly governed reservation rather than an
+  arbitrary alias.
 - Evidence reuse and independence are explicit canonical policy, and nested
   composition cannot count one authority more times than permitted.
 - Different evaluation orders produce the same bounded evidence assignment and
@@ -3640,6 +3754,9 @@ Deliverables:
 - local acceptance policy evaluation as a separate stricter layer;
 - validated compound admission result combining integrity, signatures, causal
   closure, policy decision, and discharged obligations;
+- consume that exact typed result to mint a v0.23.3
+  `AuthoritativeOperationCapability` for one signing, rotation, promotion, or
+  publication action; no earlier or partial validation state can mint it;
 - canonical v0.69.1 obligation template/instance evaluation plus v0.69.2
   non-circular identity, evidence-consumption, independence, and typed discharge
   results;
@@ -3648,6 +3765,8 @@ Deliverables:
   stale, target-mismatched, or evaluated under another policy, crypto, realm,
   checkpoint, or frontier context;
 - evaluator-version and policy-root binding;
+- activate realm-selected v0.12.4 protocol work-cost tables only through a
+  signed canonical policy transition with explicit frontier/checkpoint;
 - explicit denial source and missing-obligation diagnostics;
 - invalid policy tests;
 - exhaustive or bounded verification of all 65,536 derived built-in summary
@@ -3666,6 +3785,8 @@ Exit criteria:
   can require signatures, evidence, review, and promotion checks.
 - Promotion code consumes one validated admission result rather than checking
   independent enums that can contradict each other.
+- Post-genesis authoritative provider operations have no minting path outside
+  the consumed compound-admission result.
 
 ### v0.71.0 - World Transition Object
 
@@ -4099,10 +4220,10 @@ Deliverables:
   rebuild roots;
 - query result transcript binds realm, snapshot/state root, causal frontier,
   fact/index roots, query kind, normalized query, deterministic plan digest,
-  evaluator, v0.12.3 accounting, and v0.12.4 policy-selected cost-table
-  versions, policy/redaction context, original ceilings, deterministic consumed
-  counters, evidence IDs, result digest, uncertainty class, cancellation state,
-  and missing/redacted evidence;
+  evaluator, v0.12.3 accounting, and v0.12.4 protocol-fixed or signed canonical-
+  realm-selected cost-table versions, policy/redaction context, original
+  ceilings, deterministic consumed counters, evidence IDs, result digest,
+  uncertainty class, cancellation state, and missing/redacted evidence;
 - pagination cursor is authenticated and binds the same snapshot, plan, sort
   order, filters, audience, budget class, and expiry; cursor expiry uses causal/
   checkpoint state or admitted v0.28.0 authority evidence rather than local
@@ -4396,8 +4517,9 @@ Deliverables:
 - instantiate the v0.31.1 clone-safe encrypted WAL activation contract before
   enabling encrypted WAL write or authenticated replay;
 - admitted misuse-resistant or nonce-robust AEAD evaluation;
-- instantiate v0.23.2 whole-record and chunked authenticate-before-release for
-  every admitted AEAD suite; no provider open API emits pre-tag plaintext;
+- instantiate v0.23.2 whole-record authenticate-before-release for every
+  admitted AEAD suite; no provider open API emits pre-tag plaintext, while
+  chunked encrypted operation remains disabled until v0.92.2;
 - crash-safe nonce uniqueness or per-record key/nonce derivation;
 - concurrent-writer allocation rules;
 - counter rollback and exhaustion behavior;
@@ -4422,9 +4544,8 @@ Exit criteria:
   or counter rollback cannot cause two records under one key to reuse a
   forbidden nonce.
 - Wrong keys fail authentication without exposing parsed plaintext.
-- Whole-record bad tags release zero plaintext, while chunked records release
-  only authenticated chunks to non-authoritative staging and require the final
-  completeness record before publication.
+- Whole-record bad tags release zero plaintext; chunked operation is unavailable
+  until v0.92.2 admits exact per-suite nonce/key and retry rules.
 - Encrypted WAL remains unavailable unless this milestone's construction and
   clone-safety evidence satisfy v0.31.1.
 
@@ -4460,7 +4581,8 @@ Deliverables:
   opaque compartment handle or neutral-domain handle, semantic commitment,
   erasure-unit ID and class, preallocated creation-operation ID, and an
   independently random 256-bit instance nonce from the v0.23.0 OS-CSPRNG;
-- the creation-operation ID exists before the signed instance-creation
+- the creation-operation ID reuses the v0.23.3 shared durable reservation
+  lifecycle under its own domain and exists before the signed instance-creation
   transition, preventing a circular transition-hash dependency; that transition
   binds the resulting instance ID, every hash input, actor/replica authority,
   policy root, causal parents, and resulting semantic/index roots;
@@ -4550,10 +4672,11 @@ Deliverables:
   projection-version to the complete sorted set of forward and reverse logical
   index entries, including every semantic commitment, encryption instance,
   locator epoch, object kind, erasure-policy class, and compartment root;
-- projection replay uses v0.12.3 deterministic work accounting, a v0.12.4
-  policy/evaluator-selected cost table, and canonical partition/order rules so
-  sequential and parallel evaluators produce identical roots, counters,
-  truncation/refusal boundaries, and completion status;
+- projection replay uses v0.12.3 deterministic work accounting, the v0.12.4
+  protocol-fixed or signed canonical-realm-selected evaluator cost table, and
+  canonical partition/order rules so sequential and parallel evaluators produce
+  identical roots, counters, truncation/refusal boundaries, and completion
+  status;
 - every logical-root manifest binds projection version, semantic-state root,
   forward root, reverse root, total entry/instance counts, and either a
   canonical full-rebuild proof or a chain of deterministic delta-transition
@@ -4584,9 +4707,10 @@ Deliverables:
 - format and policy impose hard maximum delta-chain length, cumulative delta
   bytes, transitioned ledger entries, affected index entries, verification
   work, and logical memory units under v0.12.3 deterministic accounting and the
-  v0.12.4 policy-selected cost table; elapsed time is operational cancellation
-  only, and deterministic over-limit chains require a new full rebuild
-  certificate before further authoritative publication;
+  v0.12.4 protocol-fixed or signed canonical-realm-selected cost table; elapsed
+  time is operational cancellation only, and deterministic over-limit chains
+  require a new full rebuild certificate before further authoritative
+  publication;
 - mandatory full-rebuild cadence is bound by maximum admitted checkpoint gap,
   delta count, cumulative bytes/work, projection-version change, evaluator
   change, detected inconsistency, witness policy, and protected-world policy,
@@ -4722,6 +4846,77 @@ Exit criteria:
   operation, and never silently reused after abandonment or cancellation.
 - The selected formats pass early usability and scale rejection thresholds
   before implementation begins.
+
+### v0.92.2 - Chunked AEAD Nonce And Retry Instantiation
+
+Goal: instantiate v0.23.2 chunk authentication with exact nonce/key uniqueness,
+exhaustion, retry, and rollback behavior for every admitted AEAD suite.
+
+Deliverables:
+
+- canonical encrypted-record header binds format/version, exact AEAD/KDF suites,
+  record/encryption-instance and v0.23.3 operation IDs, realm/compartment,
+  audience/purpose, key epoch, random seed or per-record key commitment, chunk
+  size/count, total plaintext/ciphertext lengths, and manifest/root commitment;
+- each suite profile selects and freezes one reviewed construction: an
+  independently random per-record nonce seed with domain-separated checked
+  chunk-nonce derivation, independently derived per-record subkey plus checked
+  chunk nonce, or another admitted construction with equivalent uniqueness and
+  misuse analysis;
+- seed/subkey creation uses v0.23.0 OS-CSPRNG/provider-only derivation and stops
+  before record publication on entropy, derivation, reservation, or persistence
+  failure;
+- chunk nonce/subkey derivation binds exact record identity, suite/key epoch,
+  operation ID, chunk domain label, and fixed-width checked chunk index; no
+  truncation, endian ambiguity, index wrap, or cross-record/domain collision;
+- final completeness record uses a cryptographically separate `final` domain/
+  nonce or subkey that cannot collide with any data-chunk index and authenticates
+  ordered chunk root, exact count, total lengths, and completion;
+- maximum chunk count is below both integer/derivation exhaustion and the
+  admitted suite's per-key/per-nonce security limits; encoders fail closed before
+  the last safe index and decoders reject declared/observed counts beyond it;
+- encrypting different plaintext or associated data under an existing effective
+  chunk nonce/key pair is prohibited even when an operation is retried, resumed,
+  restored, or cloned;
+- exact retry may return already journaled ciphertext only when record identity,
+  operation ID, plaintext/AD commitments, suite/key epoch, seed/subkey domain,
+  and every output byte match; otherwise it abandons the uncertain domain and
+  reserves a fresh operation/record identity and nonce seed/subkey;
+- an ambiguous crash never blindly re-encrypts under an old nonce domain; prior
+  completion is queried through v0.23.3, or the old record is fenced and a new
+  identity is allocated with explicit supersession evidence;
+- resume begins only at an authenticated chunk boundary, derives the expected
+  next nonce/subkey from public bound state inside the provider, and serializes
+  no raw AEAD state, provider key, per-record subkey, seed-derived secret, or
+  uncommitted plaintext;
+- restored snapshot and undetected clone behavior inherits v0.92.0: random seed/
+  record identity, misuse-resistant profile, or external non-rollback anchor
+  must preserve the suite's safety without assuming clone detection;
+- pre-final consumers satisfy v0.23.2 rollbackable side-effect-free staging;
+  external IPC/hooks, worktree writes, and irreversible publication activate
+  only after final completeness authentication and typed ingest;
+- known-answer/differential vectors cover first/last/final nonce domains,
+  endian/index boundaries, maximum count, same/different plaintext retry,
+  resume, crash ambiguity, supersession, repeated randomness, snapshot/clone,
+  chunk reorder/duplicate/omission, and final-record substitution.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-sync`
+- per-suite chunk nonce/subkey known-answer vectors;
+- Kani or equivalent index/exhaustion/domain-separation proof;
+- crash/retry/resume/clone state-machine tests.
+
+Exit criteria:
+
+- Every admitted chunk and final record has one non-colliding effective
+  nonce/key domain under exact checked limits.
+- Retry/resume cannot rewrite different plaintext under an existing nonce/key or
+  serialize provider-only cryptographic state.
+- No pre-final authenticated prefix causes an external or irreversible side
+  effect, and chunked encrypted operation remains disabled for suites without a
+  complete admitted profile.
 
 ### v0.93.0 - Sealed Private Locator And Storage Identity
 
@@ -5331,6 +5526,9 @@ Deliverables:
   and policy floors/ceilings informed by current standards at implementation;
 - key-encryption-key metadata;
 - realm-master-key wrapping model;
+- activate the v0.23.3 `UnlockCapability` minting path only for a bounded unlock
+  ceremony over admitted wrapping metadata and retained encrypted-realm/header
+  authority; it cannot sign or publish state;
 - denial-of-service limits for untrusted KDF parameters;
 - domain-separated labeled context binding realm, compartment/scope, crypto
   epoch, slot purpose, KDF suite, and wrapper suite;
@@ -5794,6 +5992,8 @@ Goal: load admitted keys for a local encrypted realm.
 Deliverables:
 
 - `saga unlock`;
+- consume only the scoped v0.23.3 `UnlockCapability` and refuse any attempt to
+  substitute bootstrap, recovery, or authoritative capability classes;
 - unlock session metadata;
 - monotonic time-to-live metadata;
 - compartment-aware partial unlock;
@@ -6275,9 +6475,10 @@ Deliverables:
 - preflight-to-quarantine handoff consumes `PreflightedBundle` without reopening
   a display path, but the retained handle is only a source capability and is
   never treated as proof that bytes stayed immutable after preflight;
-- v0.110.3 requires copy-and-rehash into a new immutable quarantine object or a
-  verified OS-enforced sealed object before any quarantine byte identity is
-  admitted; direct transfer of an ordinary retained source handle is forbidden;
+- v0.110.3 requires copy-and-rehash into a new integrity-bound quarantine object
+  or a verified OS-enforced sealed object before any quarantine byte identity is
+  admitted; direct transfer of an ordinary retained source handle is forbidden,
+  and v0.110.4 governs every later trusted read;
 - path validation, close, path reopen, or name-based equality cannot preserve a
   preflight capability across substitution, rename, hard-link, mount, namespace,
   or concurrent replacement races;
@@ -6288,8 +6489,9 @@ Deliverables:
 - resume checkpoint binds immutable original ceilings, deterministic cost-table
   version, authenticated consumed counters, exact remaining allowance, and
   durable operation ID rather than an ephemeral in-memory budget parent;
-- the cost table is selected by admitted policy/evaluator compatibility under
-  v0.12.4, never by the bundle or resume bytes;
+- the cost table is protocol-fixed or selected by signed canonical realm state
+  and evaluator compatibility under v0.12.4, never by local configuration,
+  bundle bytes, or resume bytes;
 - resumption cannot reset/recalculate ceilings from current configuration,
   return consumed work, duplicate allowance through checkpoint copy, or switch
   to a cheaper cost-table version;
@@ -6332,10 +6534,10 @@ Exit criteria:
   context results and detectable conflict on reconciliation, not impossible
   publication before disconnected histories are compared.
 
-### v0.110.3 - Immutable Quarantine Byte Capture Contract
+### v0.110.3 - Quarantine Integrity Capture Contract
 
-Goal: turn mutable preflight source bytes into one durable immutable quarantine
-object before decryption, semantic verification, or resumable state begins.
+Goal: capture mutable preflight source bytes into one durable integrity-bound
+quarantine object without claiming portable physical immutability.
 
 Deliverables:
 
@@ -6345,15 +6547,19 @@ Deliverables:
 - capture enforces original byte/work ceilings while computing the admitted
   bundle and outer-manifest digests over the exact destination bytes; destination
   length and digests must equal the preflight transcript or capture fails;
-- the destination is synchronized, closed against writable handles, published
-  under a generation-bound content identity with no-replace semantics, and its
-  directory is synchronized before returning `CapturedBundle`;
-- `CapturedBundle` binds the immutable destination handle/object identity,
-  generation, exact length/digests, capture transcript, source preflight digest,
-  and quarantine transaction; later stages never read the original source;
-- every reopen verifies content identity and digest before trust; permissions,
-  ACLs, immutability flags, or same-user assumptions are declared per platform
-  rather than inferred from a retained descriptor;
+- the destination is synchronized, published under a generation-bound content
+  identity with no-replace semantics, and its directory is synchronized before
+  returning `IntegrityBoundBundle`;
+- `IntegrityBoundBundle` binds destination handle/object identity, generation,
+  exact length/digests, capture transcript, source preflight digest, and
+  quarantine transaction; later stages never read the original source;
+- copy, digest equality, content addressing, no-replace publication, retained
+  destination handle, permissions, ACLs, or before/after metadata do not prove
+  that another same-UID descriptor, mmap, privileged process, or direct local
+  writer cannot later mutate the destination;
+- the ordinary copied destination is labelled `integrity-bound`, not physically
+  immutable; every consuming read must pass v0.110.4 and cannot verify, rewind,
+  then parse mutable file bytes;
 - an alternative zero-copy path is admitted only where the OS provides an
   enforceable seal/immutable-object mechanism, Sagnir verifies the seal after
   application, no writable alias can survive, and mutation attempts fail;
@@ -6364,10 +6570,11 @@ Deliverables:
 - source mutation, truncation, sparse-hole change, overwrite through another
   descriptor, mmap write, hard-link write, rename, mount/namespace replacement,
   short read/write, cancellation, crash, digest mismatch, destination
-  substitution, surviving writable alias, seal failure, and publication failure
-  leave no admitted `CapturedBundle`;
+  substitution, seal failure, and publication failure leave no admitted
+  `IntegrityBoundBundle`;
 - crash-safe cleanup journal removes unpublished temporary capture objects and
-  recovery cannot mistake a partial copy for an immutable quarantine object.
+  recovery cannot mistake a partial copy for an integrity-bound quarantine
+  object.
 
 Verification:
 
@@ -6381,9 +6588,74 @@ Exit criteria:
 
 - A retained source handle alone never establishes byte immutability.
 - Every admitted quarantine object is either a fully copied, rehashed,
-  synchronized no-replace object or a verified OS-sealed immutable object.
-- Decryption, semantic verification, and resume checkpoints consume only
-  `CapturedBundle`, never mutable preflight source bytes.
+  synchronized no-replace integrity-bound object or a verified OS-sealed
+  immutable object, with the distinction preserved in type/status/reporting.
+- Capture alone does not authorize decryption or parsing; consumers require the
+  v0.110.4 trusted-read boundary.
+
+### v0.110.4 - Quarantine Trusted-Read Boundary
+
+Goal: guarantee that bytes parsed, decrypted, or verified are the exact bytes
+whose commitment/authentication was checked, even when captured storage remains
+mutable to the same UID or a privileged local writer.
+
+Deliverables:
+
+- every quarantine consumer uses one admitted boundary: verified OS-enforced
+  sealing; a separate least-privilege storage service/account that denies writers
+  after capture; one-read immutable owned-memory validation/consumption; or
+  authenticated immutable pack pages whose consumed bytes are the validated
+  page bytes;
+- portable default reads one bounded committed ciphertext chunk/range exactly
+  once through retained `IntegrityBoundBundle` authority into immutable owned
+  bytes such as `Arc<[u8]>`, validates length/index/digest/Merkle commitment and
+  any available authentication over that allocation, and parses/decrypts that
+  exact allocation without rewind or a second file read;
+- decrypted plaintext crosses v0.23.2/v0.92.2 only after authentication and is
+  parsed from the exact owned authenticated plaintext buffer; raw mutable file/
+  mmap bytes never become parser input after a separate validation pass;
+- owned chunk/range lifetime, total retained bytes, concurrent pages, parser
+  references, and cache reuse are bounded by v0.12.1/v0.12.4 budgets; eviction
+  invalidates borrowed views before the backing allocation is released;
+- service-process mode authenticates requests/responses, binds destination
+  object/generation/range/digest, drops ambient repository authority, denies
+  same-UID writer access where the platform model permits, and reports residual
+  administrator/kernel threats;
+- OS-sealed mode verifies seal/immutability state immediately before admission
+  and on reopen; any unsupported seal, surviving writable alias, seal removal,
+  or platform ambiguity falls back to owned-memory reads or refuses;
+- authenticated pack-page mode binds pack/page identity, generation, offsets,
+  lengths, page root/tag, suite/key epoch, and immutable backing lifetime before
+  exposing a view;
+- mutation of unread storage is detected when that range is read and prevents
+  further admission; already validated owned bytes remain stable, but no partial
+  prefix becomes authoritative before final bundle/chunk completeness and typed
+  ingest;
+- resume checkpoints bind the exact next trusted-read range/chunk and committed
+  destination generation; resumption rereads/validates that next range and never
+  serializes a borrowed pointer, mmap view, or mutable file cursor as trust;
+- digest-then-rewind mutation, mutation between validation and parse, same-UID
+  descriptor/mmap overwrite, service compromise/disconnect, seal ambiguity/
+  removal, pack-page substitution/truncation, owned-buffer eviction/reuse,
+  resume-range substitution, and concurrent-reader/writer tests.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-sync`
+- same-UID mutation and verify/consume TOCTOU suite;
+- sealed/service/owned-memory/pack-page boundary fixtures;
+- trusted-read resume and cache-lifetime schedule tests.
+
+Exit criteria:
+
+- Sagnir never validates mutable file bytes and later reparses them after a
+  rewind or second read.
+- Every parser/decryptor consumes the exact sealed, service-returned,
+  authenticated-page, or immutable owned bytes that passed validation.
+- Unsealed copied files remain honestly labelled integrity-bound, with ongoing
+  trust established per consumed range rather than by a physical-immutability
+  claim.
 
 ### v0.111.0 - Bundle Creation And Outer Preflight
 
@@ -6451,9 +6723,11 @@ Deliverables:
 - physically or logically separate quarantine namespace;
 - quarantine capture consumes the v0.110.2 `PreflightedBundle` from v0.111.0
   through the mandatory v0.110.3 copy-and-rehash or verified OS-seal contract;
-- quarantine storage accepts only the resulting `CapturedBundle` with exact
-  immutable destination identity/generation/digests and creates no semantic
-  trust capability;
+- quarantine storage accepts only the resulting `IntegrityBoundBundle` with
+  exact destination identity/generation/digests and physical seal status, and
+  creates no semantic trust capability;
+- every decrypt/decode/verify consumer uses a v0.110.4 sealed, isolated-service,
+  immutable-owned-memory, or authenticated-pack-page trusted-read boundary;
 - separate encrypted staging namespace for later decrypted/decoded intermediate
   state, inaccessible to trusted object/fact/index/alias resolution;
 - identifiers that cannot shadow trusted objects;
@@ -6484,6 +6758,8 @@ Exit criteria:
   and must bind every resume checkpoint to its exact quarantine generation.
 - No decryption or resumable semantic state begins while bytes exist only behind
   a mutable source `PreflightedBundle` handle.
+- An unsealed `IntegrityBoundBundle` is not parsed directly from file or mmap
+  after a separate hash pass.
 
 ### v0.113.0 - Bundle Import
 
@@ -6500,14 +6776,16 @@ Deliverables:
 - streaming enforcement independent of manifest estimates;
 - cancellation and resumable import;
 - canonical resumable verification/import checkpoint binds bundle digest,
-  outer-manifest digest, exact v0.110.3 `CapturedBundle` immutable destination
-  identity and quarantine namespace/generation, exact authenticated byte/chunk
-  boundary, inner schema and verifier versions, verification mode, recipient/
-  audience and key-session identity, realm/policy/crypto/revocation context,
+  outer-manifest digest, exact v0.110.3 `IntegrityBoundBundle` destination
+  identity/seal status and quarantine namespace/generation, exact v0.110.4
+  trusted-read/authenticated byte/chunk boundary, inner schema and verifier
+  versions, verification mode, recipient/audience and key-session identity,
+  realm/policy/crypto/revocation context,
   durable operation ID, immutable original ceilings, deterministic cost-table
-  version selected under v0.12.4 rather than bundle input, consumed counters and
-  exact remaining allowance by class, completed trust-stage bitmap/list, and
-  transcript root/result for every completed stage;
+  version fixed by protocol or signed canonical realm state under v0.12.4 rather
+  than local/bundle input, consumed counters and exact remaining allowance by
+  class, completed trust-stage bitmap/list, and transcript root/result for every
+  completed stage;
 - in-memory resume capability is non-cloneable, while the persisted checkpoint
   follows v0.110.2 durable generation/CAS/lease single-consumption semantics,
   is bounded in size/lifetime, and is admitted only when every binding still
@@ -6523,9 +6801,10 @@ Deliverables:
 - a local monotonic deadline can cancel only with `Incomplete`, cannot publish
   a trusted root, and does not alter deterministic consumed/remaining counters;
 - decrypt-before-import policy;
-- whole-record and chunked decryption inherit v0.23.2: no unauthenticated
-  plaintext release, resume only after authenticated chunks, no serialized raw
-  AEAD/provider-key state, and no authoritative prefix before the final
+- whole-record and chunked decryption inherit v0.23.2 and v0.92.2: no
+  unauthenticated plaintext release, exact per-suite nonce/subkey/retry rules,
+  resume only after authenticated chunks, no serialized raw AEAD/provider-key
+  state, and no authoritative prefix or external side effect before the final
   completeness record;
 - explicit v0.110.1 state progression from outer preflight to quarantine,
   decryption, canonical inner decode, body-derived graph closure, signature/
@@ -8089,9 +8368,10 @@ Deliverables:
 - cross-host sequential/parallel work-accounting vectors proving CPU speed,
   worker count, scheduling, unused-lease return timing, and local deadlines do
   not change authoritative completion, truncation, counters, or roots;
-- work-cost table selection/downgrade, retirement, historical replay,
-  replacement, unavailable-old-implementation, and old/new differential
-  vectors;
+- protocol-fixed bootstrap versus signed realm-selected work-cost table,
+  local-ceiling refusal, operational cancellation, activation/downgrade,
+  retirement, historical replay, replacement, unavailable-old-implementation,
+  and old/new differential vectors;
 - streaming-encoder failure-boundary fixtures proving incomplete sink output
   never becomes hashable, signable, publishable, or authoritative;
 - optimized/reference body-derived graph benchmarks covering sorted lookup,
@@ -8100,9 +8380,9 @@ Deliverables:
 - deterministic fact evaluator and snapshot-query benchmarks covering
   stratification, fixpoint work, provenance alternatives, SCC impact, cursor
   continuation, and immutable validated index segments;
-- non-circular obligation template/instance identity vectors plus nested
-  evidence allocation/reuse, independence, canonical matching, and adversarial
-  double-count benchmarks;
+- non-circular obligation template/instance identity vectors with preallocated
+  issuance-operation IDs plus nested evidence allocation/reuse, independence,
+  canonical matching, and adversarial double-count benchmarks;
 - cryptographic known-answer and malformed-vector suites;
 - CRC-32C hardware/software differential and WAL known-answer vectors plus
   encrypted-WAL silent-clone/snapshot nonce-safety benchmarks;
@@ -8132,9 +8412,10 @@ Deliverables:
   operations, secret-dependent control/data-flow review findings,
   invalid-input response shapes, timing distributions, hardware acceleration
   versus software fallback, secret-copy lifetime, and zeroization limitations;
-- whole-record zero-plaintext-on-bad-tag and chunked authenticated-release/
-  final-completeness vectors, plus operation-capability mint/IPC/crash/
-  idempotency/ambiguous-result fixtures;
+- whole-record zero-plaintext-on-bad-tag and exact per-suite chunk nonce/subkey,
+  exhaustion, retry, authenticated-release/final-completeness vectors, plus
+  sealed bootstrap/unlock/authoritative/recovery capability, operation-ID
+  reservation, IPC/crash/idempotency/ambiguous-result fixtures;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - million-object semantic-commitment reverse-index lookup and authenticated
@@ -8181,8 +8462,9 @@ Deliverables:
 - bundle retained-handle/path-substitution, copy-and-rehash, durable resume CAS,
   checkpoint copy, snapshot/store clone, duplicate-completion, and original-
   ceiling preservation benchmarks;
-- concurrent source-descriptor/mmap mutation, immutable quarantine capture,
-  OS-seal refusal/fallback, outer claim-taxonomy, and disconnected-fork/
+- concurrent source-descriptor/mmap mutation, integrity-bound quarantine capture,
+  same-byte owned-memory validation/parse, isolated service, authenticated pack
+  pages, OS-seal refusal/fallback, outer claim-taxonomy, and disconnected-fork/
   reconciliation-equivocation fixtures;
 - p50/p95/p99 latency, memory, I/O amplification, and ciphertext-expansion
   budgets;
@@ -8348,8 +8630,9 @@ Deliverables:
   accounting, truncation, and roots are independent of speed, scheduling,
   worker count, deadline cancellation, and unused-lease return timing;
 - v0.12.4 policy/evaluator table selection, unknown/downgrade refusal,
-  underpriced-table retirement, historical semantics, migration, and old/new
-  differential vectors pass;
+  protocol-fixed bootstrap and signed activation frontier, canonical/local/
+  operational layer separation, underpriced-table retirement, historical
+  semantics, migration, and old/new differential vectors pass;
 - every parser/format has corpus-backed fuzz smoke from first admission, every
   applicable concurrent state machine has schedule exploration, and every
   durability/distributed model has reproducible release-profile evidence;
@@ -8378,26 +8661,29 @@ Deliverables:
   restored stores, locked recovery, old-key retention, and checkpoint-gated key
   retirement suites pass under every admitted durability profile;
 - opaque provider-secret and operation-capability compile-fail/API tests,
-  whole-record zero-release-on-bad-tag, chunked authenticated release/final
-  completeness, key-agent IPC replay/crash/idempotency/ambiguity, plaintext-
-  declassification consumer/fault tests, and secret-copy lifetime audits pass
-  without claiming released plaintext is non-copyable;
+  sealed bootstrap/unlock/authoritative/recovery non-conversion and exact
+  operation-ID reservation, whole-record zero-release-on-bad-tag, per-suite
+  chunk nonce/subkey/exhaustion/retry/final completeness, key-agent IPC replay/
+  crash/idempotency/ambiguity, plaintext-declassification consumer/fault tests,
+  and secret-copy lifetime audits pass without claiming released plaintext is
+  non-copyable;
 - deterministic fact-language stratification, typed parameterized obligation
-  template/instance identity preimages, self-inclusion refusal, evidence-
-  consumption/independence and discharge vectors, aggregate obligation-state
-  proof, nested double-count refusal, incomplete-fixpoint refusal, schedule-
-  independent bounded top-k explanations, admitted-time pagination, SCC, and
-  mutable-storage refusal suites pass;
+  template/instance identity preimages, preallocated issuance-operation cycle
+  break, self-inclusion refusal, evidence-consumption/independence and discharge
+  vectors, aggregate obligation-state proof, nested double-count refusal,
+  incomplete-fixpoint refusal, schedule-independent bounded top-k explanations,
+  admitted-time pagination, SCC, and mutable-storage refusal suites pass;
 - exact provider-independent cryptographic suite/parameter/revision IDs, hybrid
   transcript binding, provider-assurance issuer/root/category/freshness trust,
   self-claim separation, realm-admission separation, provider interoperability,
   standards vectors, and errata admission state pass;
 - opaque bundle outer/inner visibility, blind claim taxonomy, cumulative bundle
-  budget, retained-handle preflight handoff, mandatory immutable copy/rehash or
-  verified OS seal, concurrent source mutation, two-phase quarantine/admission,
-  durable resume generation/CAS single consumption, honest disconnected-clone
-  fork/reconciliation limits, and context-complete authenticated resume-
-  checkpoint substitution suites pass;
+  budget, retained-handle preflight handoff, integrity-bound copy/rehash,
+  sealed/service/owned-memory/authenticated-page trusted reads, concurrent source
+  and captured-object mutation, two-phase quarantine/admission, durable resume
+  generation/CAS single consumption, honest disconnected-clone fork/
+  reconciliation limits, and context-complete authenticated resume-checkpoint
+  substitution suites pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -8436,10 +8722,10 @@ Deliverables:
   full invitation lifecycle, membership, and trust roots;
 - normative canonical formats and independent vectors;
 - cumulative nested decode budgets, non-cloneable parallel budget leases,
-  schedule/clock-independent authoritative work accounting, policy/evaluator-
-  selected versioned cost-table lifecycle, failure-atomic streaming encoders,
-  and continuous corpus-backed parser fuzz evidence from first format
-  admission;
+  schedule/clock-independent authoritative work accounting, protocol-fixed
+  bootstrap and signed realm-selected cost-table semantics separated from local
+  ceilings/operational cancellation, failure-atomic streaming encoders, and
+  continuous corpus-backed parser fuzz evidence from first format admission;
 - computed object hashes and body-derived references;
 - typed body-derived graph admission with indexed lookup, duplicate-edge
   refusal, authority DAGs, dependency/impact SCCs, and independent differential
@@ -8460,11 +8746,12 @@ Deliverables:
 - stable worktree snapshots, incremental indexes, and recoverable
   materialization;
 - context-bound signatures, key lifecycle, and anti-replay;
-- opaque non-cloneable provider-secret handles, separate one-use operation
-  capabilities with authenticated crash-idempotent key-agent IPC, authenticate-
-  before-release whole/chunked AEAD, explicit auditable plaintext
-  declassification, and bounded memory-lifetime/zeroization claims without
-  claiming released plaintext is non-copyable;
+- opaque non-cloneable provider-secret handles; sealed non-convertible bootstrap,
+  unlock, authoritative, and recovery capabilities with preallocated operation
+  IDs and authenticated crash-idempotent key-agent IPC; authenticate-before-
+  release whole/chunked AEAD with exact nonce/subkey/retry limits; explicit
+  auditable plaintext declassification; and bounded memory-lifetime/zeroization
+  claims without claiming released plaintext is non-copyable;
 - threshold-governed end-to-end emergency recovery ceremony;
 - explicit causal/checkpoint time semantics;
 - canonical authoritative time and revocation statements with monotonic
@@ -8476,8 +8763,8 @@ Deliverables:
 - canonical typed parameterized obligations, scoped discharge evidence, and a
   derived non-authoritative fixed-size summary for built-in classes;
 - non-circular domain-separated obligation template and governed-instance
-  identity, explicit evidence-reuse/consumption semantics, and nested principal/
-  witness/proof independence;
+  identity using a preallocated issuance-operation ID, explicit evidence-reuse/
+  consumption semantics, and nested principal/witness/proof independence;
 - bounded proof parsing and verification with private proof defaults;
 - non-destructive protected promotion;
 - operation undo;
@@ -8550,9 +8837,10 @@ Deliverables:
   two-phase quarantine admission, and honest blind ciphertext-integrity/
   availability claim names;
 - privacy-preserving inner signatures, exact outer integrity/authenticity claim
-  taxonomy, retained-handle preflight followed by mandatory immutable copy/
-  rehash or verified OS sealing, and durable operation/generation/CAS resume
-  authority with honest disconnected snapshot/clone fork limitations;
+  taxonomy, retained-handle preflight followed by integrity-bound capture and
+  sealed/service/owned-memory/authenticated-page trusted reads, and durable
+  operation/generation/CAS resume authority with honest disconnected snapshot/
+  clone fork limitations;
 - authenticated context-complete resumable verification/import checkpoints that
   cannot cross bundle, quarantine, verifier, key-session, policy, revocation,
   transcript, or consumed-budget boundaries;
