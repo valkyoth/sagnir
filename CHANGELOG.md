@@ -5,6 +5,12 @@ All notable Sagnir changes are recorded here.
 ## Unreleased
 
 - Updated the workspace and current documentation to Rust stable 1.97.1.
+- Added roadmap releases for schedule-independent authoritative work budgets,
+  provider-assurance evidence trust, provider-only secret operations and honest
+  plaintext declassification, exact CRC-32C and clone-safe encrypted WAL
+  activation, obligation identity/evidence consumption, and privacy-preserving
+  retained-handle bundle handoff with durable resume authority. Reserved
+  canonical `Fact` naming until the fact compiler exists.
 - Expanded the roadmap for confidential semantic commitments, redaction-safe
   sync and repair, invitation and recovery ceremonies, key transparency,
   encryption performance budgets, signed release provenance, and inherited
