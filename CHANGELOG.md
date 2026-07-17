@@ -54,6 +54,13 @@ All notable Sagnir changes are recorded here.
   typed graph admission, explicit filesystem durability profiles, opaque secret
   handles, deterministic fact/query semantics, exact cryptographic suite IDs,
   and honest blind-remote bundle claims.
+- Corrected roadmap prerequisite ordering for shared store backends, durable
+  parent publication, opaque signing handles, exact suite identity, diagnostic
+  causal queries, and quarantined bundle admission. Added non-cloneable parallel
+  budget leases, streaming encoder atomicity, WAL incarnation/nonce/locked-
+  recovery rules, typed parameterized obligations, incomplete-query semantics,
+  provider-independent suite identity, typed ingest capabilities, and fully
+  bound resumable bundle checkpoints.
 
 ## 0.10.0
 
