@@ -8177,9 +8177,11 @@ Deliverables:
   discontinuity, or source change conservatively expires/refuses affected
   incomplete leases and cannot extend an idle or absolute deadline;
 - after process restart or `ClockEpoch` mismatch, a completely committed
-  `BoundedQuarantinedCandidate` and its durable quota charge remain intact,
-  while every incomplete pre-candidate lease, partial destination, resume state,
-  and reservation charge is atomically cleaned and released before retry;
+  `BoundedQuarantinedCandidate` and its durable quota charge remain intact; when
+  v0.111.3 metadata keys are available, every incomplete pre-candidate lease,
+  partial destination, resume state, and reservation charge is atomically
+  cleaned and released before retry, while key-unavailable recovery fails closed
+  under v0.111.3 and never guesses exact accounting from outer files;
 - 1.0 does not resume a pre-candidate transfer across process epochs; a peer may
   start a new bounded attempt only after old cleanup. Any future cross-restart
   lease resume requires a separately admitted trusted-time protocol and cannot
@@ -8233,11 +8235,116 @@ Exit criteria:
 
 - A monotonic deadline is never interpreted outside its originating process
   epoch, and restart cannot extend or ambiguously preserve an incomplete lease.
-- Complete candidate publication survives restart, while partial work is cleaned
-  without consulting unauthenticated wall-clock time.
+- Complete candidate publication survives restart; partial work is cleaned
+  without consulting unauthenticated wall-clock time when authenticated metadata
+  is available, while key-unavailable state remains explicit and blocks retry.
 - Protected or blind profiles do not expose collaboration identities or precise
   lease activity through durable metadata, filenames, logs, metrics, or cleanup
   artifacts beyond their explicit measurable leakage contract.
+
+### v0.111.3 - Operational Metadata Key Lifecycle And Exact Accounting
+
+Goal: provision and rotate the keys protecting pre-realm operational metadata
+without weakening exact quota enforcement or durable candidate portability.
+
+Deliverables:
+
+- typed `DaemonOperationalMetadataRoot` and per-store
+  `OperationalMetadataKey` lifecycle states cover `Unprovisioned`, `Active`,
+  `Rotating`, `Retiring`, `Unavailable`, `Compromised`, and `Destroyed`, with no
+  implicit transition from unavailable encrypted state to empty or corrupt;
+- the daemon root is provisioned before protected transfers through an admitted
+  OS keystore, HSM, or isolated v0.63.0/v0.63.1 key agent; an explicitly named
+  lower-assurance software profile may use separately located owner-protected
+  wrapped key material acquired through v0.98.2, but never stores an unwrapped
+  root beside protected records or silently falls back to cleartext;
+- every store receives an independently random operational-metadata key wrapped
+  by the daemon root/provider rather than reusing one cross-store data key;
+  copying one store's files or compromising its unwrapped store key cannot
+  decrypt or correlate another store's records;
+- key descriptors bind purpose/domain, provider and assurance evidence, store
+  identity, daemon/service identity, key epoch, admitted record classes,
+  creation operation, wrapping suite/epoch, and permitted encrypt/decrypt/rewrap
+  operations; a signing, realm-data, WAL, private-locator, or erasure key cannot
+  be substituted as an operational-metadata key;
+- key-agent IPC uses v0.23.4 authenticated idempotent operations and narrow
+  non-exportable handles; one store writer lease owns operational-metadata
+  mutation, while concurrent daemon instances cannot both allocate counters,
+  rotate keys, clean generations, or publish candidates;
+- transactional rotation prepares independently encrypted new-epoch records and
+  indexes, verifies exact plaintext/counter equivalence and context binding,
+  atomically compare-and-swaps the active write epoch, then retains old read keys
+  until no reachable lease, candidate-conversion transaction, cleanup record,
+  resume state, rollback generation, backup required by policy, or crash-recovery
+  path references them;
+- rotation recovery exposes one old active epoch, one new active epoch, or an
+  explicit resumable `Rotating` state; mixed-epoch reads are bounded and typed,
+  new writes never revert to the old epoch, and early retirement is refused from
+  complete reachable-key inventory rather than a best-effort directory scan;
+- provider/key loss or unavailability refuses new protected reservations and
+  reports existing encrypted operational state as `KeyUnavailable`; it is never
+  reported empty, invalid, safely expired, or safe to delete merely because
+  identity/counter records cannot be decrypted;
+- opaque outer cleanup handles may identify only unpublished temporary
+  generations inside a no-authority quarantine namespace and can remove them
+  without decrypting peer/realm/bundle identity; capability-safe relative
+  deletion, no-follow/no-reparse checks, generation binding, and the atomic
+  publication transaction ensure such handles can never name a durable
+  candidate or trusted object;
+- atomic lease conversion decrypts and verifies the exact lease, counters, and
+  publication transaction, then re-encrypts durable candidate metadata under
+  the admitted long-lived quarantine metadata key or known realm metadata key
+  before publishing the candidate and charge; no durable candidate silently
+  remains dependent on the daemon lease-metadata key;
+- moving or cloning a store to another daemon yields explicit
+  `OperationalMetadataKeyUnavailable`/`RekeyRequired` until an authenticated
+  export, provider transfer, or old-daemon-to-new-daemon rewrap ceremony binds
+  source/destination daemon, store, epochs, complete reachable record inventory,
+  and resulting roots; unreadable metadata is never reinitialized as absent;
+- compromise response records affected daemon/store/key epochs and observable
+  record classes, rotates every affected store key, preserves required evidence,
+  and documents snapshot, backup, swap, crash-dump, provider-log, and old-
+  ciphertext residuals; deleting a wrapping key is not claimed as cryptographic
+  erasure without the v0.121.1/v0.122.0 destruction-evidence contract;
+- the authenticated encrypted inner lease record always retains exact original,
+  consumed, and remaining item/byte/signature/page/node/work counters, exact
+  physical padded bytes, and checked quota lineage for recovery and admission;
+- bucketing, padding, delay, coarsening, and suppression apply only to observable
+  envelope sizes, opaque filenames, logs, metrics, status output, abuse receipts,
+  and remote responses; no coarse bucket is an authority, recovery, expiry,
+  scheduling, candidate-publication, or quota decision input;
+- physical padding, dummy records, rotation copies, retained old-epoch records,
+  and profile-required cover storage are charged with checked arithmetic to
+  their declared physical-storage/operational budgets before allocation;
+- privacy-profile changes affect future observable representation only: they
+  cannot refund consumed work/storage, reset remaining capacity, reinterpret an
+  existing exact charge, discard old-key reachability, or make a coarse report
+  replace exact authenticated state;
+- first provisioning, entropy/provider unavailable, wrong daemon/store/purpose
+  key, key-agent replay, simultaneous daemons, rotation at every crash boundary,
+  mixed epochs, old-key early retirement, compromise rotation, daemon/store
+  migration, root/store-key loss, opaque cleanup without decrypt, candidate
+  conversion/reprotection, exact-versus-bucket confusion, profile change, and
+  padded-physical-budget exhaustion tests.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-sync`
+- provider/key-agent operational-metadata lifecycle integration suite;
+- rotation/migration/crash state-machine model;
+- exact-counter and observable-privacy differential vectors.
+
+Exit criteria:
+
+- Protected operational metadata has an explicit provisioned key owner,
+  per-store isolation, crash-safe rotation, loss state, and migration ceremony;
+  encrypted state is never silently reset, exposed, or treated as absent.
+- Durable candidate publication no longer depends on the daemon lease key, and
+  opaque key-unavailable cleanup cannot delete published candidate/trusted data.
+- Privacy representation can hide or coarsen observations but never weakens
+  exact authenticated quota accounting or refunds previously consumed capacity.
 
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
@@ -8267,8 +8374,9 @@ Deliverables:
   connections, and concurrent sessions under store/realm ceilings; identity or
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
-  lease under the v0.111.2 clock/privacy contract and converts it into the
-  candidate's durable quota charge while
+  lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
+  re-protects candidate metadata under its long-lived quarantine/realm metadata
+  key, and converts it into the candidate's durable quota charge while
   publishing either one complete `BoundedQuarantinedCandidate`/bundle generation
   or no durable quarantine object; expiry, short writes, crashes, cancellation,
   and `ResourceLimit` clean partial bytes, resume state, and accounting without
@@ -8278,9 +8386,10 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1/v0.111.2 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.3 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
-  or compare a prior process epoch's monotonic deadline;
+  compare a prior process epoch's monotonic deadline, or treat unavailable
+  encrypted metadata as absent;
 - shadowing, index poisoning, trusted-reference substitution, quota, and
   materialization-bypass tests.
 
@@ -8307,8 +8416,12 @@ Exit criteria:
   partial cleanup leave no candidate or authority claim.
 - Slow, reconnecting, or trickle-progress senders cannot hold pre-candidate
   capacity beyond the bounded idle and absolute lease lifetimes.
-- Restart retains only atomically complete charged candidates; incomplete leases
-  expire and clean up without wall-clock reconstruction or privacy downgrade.
+- Restart retains atomically complete charged candidates; incomplete leases
+  expire and clean up without wall-clock reconstruction or privacy downgrade
+  once exact authenticated metadata is available, while key-unavailable recovery
+  remains fail-closed under v0.111.3.
+- Candidate metadata is durably reprotected during conversion, and observable
+  privacy buckets never replace its exact authenticated quota charge.
 
 ### v0.113.0 - Bundle Import
 
@@ -8483,6 +8596,10 @@ Deliverables:
   startup orphan reconciliation; every persisted deadline carries a process
   `ClockEpoch`, epoch mismatch cleans incomplete state without wall-clock
   reconstruction, and complete candidate publication is retained independently;
+- daemon-root/per-store operational-metadata key states model provisioning,
+  unavailable/wrong keys, one-writer ownership, rotation and old-key retention,
+  store migration, compromise, candidate reprotection, opaque partial cleanup,
+  and exact inner counters separated from observable privacy buckets;
 - checkpoint, policy epoch, evidence, and key-rotation interactions;
 - equivocation and bounded fork handling;
 - invariants for no lost heads, no lost duplicate identity, no locator-based
@@ -8494,9 +8611,11 @@ Deliverables:
   order authority selection, no stalled or trickle-progress reservation beyond
   its absolute lifetime, no reconnect/resume deadline reset, no work before
   charge, no cross-epoch monotonic comparison, no orphan reservation after
-  recovery, no operational-metadata privacy downgrade, no linear locator-proof
-  requirement, no stale admission, no partial trust, and eventual convergence
-  under documented assumptions;
+  recovery, no operational-metadata privacy downgrade or cross-store key reuse,
+  no key-unavailable state interpreted as empty, no coarse counter controlling
+  exact admission/recovery, no opaque cleanup deleting published state, no
+  linear locator-proof requirement, no stale admission, no partial trust, and
+  eventual convergence under documented assumptions;
 - bounded model-check command required by the release gate.
 
 Verification:
@@ -8564,7 +8683,9 @@ Deliverables:
   convert exactly once into durable candidate quota; process-epoch mismatch
   retains complete charged candidates but cleans incomplete leases, and
   protected profiles keep lease identity/activity inside encrypted opaque
-  operational metadata;
+  operational metadata; key lifecycle states preserve unavailable/mixed epochs,
+  candidate conversion reprotects long-lived metadata, and exact encrypted
+  counters remain authoritative beneath coarse observable representations;
 - model invariants for no lost encryption instance, no semantic/index
   completeness gap, no Byzantine manifest omission accepted, no hidden
   compartment disclosure, no endpoint-placement overwrite, no clock-derived
@@ -8575,8 +8696,9 @@ Deliverables:
   no reconnect or one-byte progress extending that lifetime, no pre-admission
   refusal interpreted as shared authority evidence, no cross-process monotonic
   deadline reuse, no lease-metadata identity/timing leak beyond the selected
-  profile contract, no arrival-order transition selection, and eventual
-  convergence under documented authority, availability, and partition
+  profile contract, no key loss or store move interpreted as absent state, no
+  privacy-bucket quota reset/refund, no arrival-order transition selection, and
+  eventual convergence under documented authority, availability, and partition
   assumptions;
 - counterexample corpus and deterministic bounded model-check command required
   by the v0.116.0 release gate;
@@ -8665,9 +8787,11 @@ Deliverables:
   store/realm aggregate ceilings; they cannot multiply capacity or evict already
   admitted ambiguous/superseded authority evidence;
 - live transfer reservations inherit v0.111.2 process-epoch expiry and metadata-
-  protection rules; process restart cleans incomplete transfer leases before a
-  new attempt, and protocol/log output exposes only profile-approved opaque or
-  coarse operational fields;
+  protection rules plus the v0.111.3 key/accounting lifecycle; process restart
+  cleans incomplete transfer leases before a new attempt, unavailable keys
+  refuse rather than reinitialize state, and protocol/log output exposes only
+  profile-approved opaque or coarse fields while exact encrypted counters remain
+  the sole quota source;
 - transfer cancellation;
 - accepted response;
 - denied response;
@@ -9605,6 +9729,10 @@ Deliverables:
   conversion/release, startup-orphan reconciliation, process `ClockEpoch`,
   complete/partial restart classification, and encrypted opaque metadata target
   set;
+- daemon-root/per-store operational-metadata key state, provider descriptor,
+  mixed-epoch rotation, store migration, candidate reprotection, opaque cleanup
+  handle, exact inner counter, coarse observable bucket, and physical-padding
+  budget target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -9640,7 +9768,9 @@ Deliverables:
   aggregate preflight capacity, sender-held refusal, bounded reservation leases,
   non-resettable reconnect/resume lineage, work-before-use accounting, fair
   scheduling, process-epoch-only monotonic comparison, encrypted operational
-  metadata, atomic candidate-charge conversion, and atomic partial cleanup;
+  metadata, provisioned per-store keys, transactional rotation/loss/migration,
+  exact-versus-coarse accounting, candidate reprotection, atomic candidate-
+  charge conversion, and atomic partial cleanup;
 - composition of the history-independent map algorithm/pages with authority
   active/covered-fence/exception/archive roots, a permanent low-sequence
   exception plus later archival, exact replay refusal, checkpoint rollback
@@ -9786,10 +9916,12 @@ Deliverables:
   floods, no slow/trickle sender retaining a reservation past its hard lifetime,
   no reconnect/resume deadline reset, no work before debit, no cross-epoch
   monotonic comparison, no orphan reservation after recovery, no lease identity/
-  activity leakage beyond its selected privacy profile, no partial durable
-  candidate after resource refusal, no abuse digest or `ResourceLimit` as
-  authority evidence, no arrival-order authority selection, and eventual
-  convergence under documented assumptions;
+  activity leakage beyond its selected privacy profile, no key loss/move as
+  empty state, no cross-store key correlation, no coarse bucket driving exact
+  accounting, no opaque cleanup of published data, no partial durable candidate
+  after resource refusal, no abuse digest or `ResourceLimit` as authority
+  evidence, no arrival-order authority selection, and eventual convergence under
+  documented assumptions;
 - model execution instructions and CI smoke bounds.
 - model-run manifests inherit v0.115.1 exact bounds, assumptions, property
   classes, reductions, coverage counters, resources, seeds/configuration, and
@@ -9849,10 +9981,12 @@ Deliverables:
   capture, partial write, item/byte/signature/page/work counter debit, atomic
   lease-to-candidate charge conversion, completion/expiry races, restart orphan
   reconciliation, v0.111.2 process-epoch change, complete-versus-partial restart
-  classification, encrypted-metadata key unavailability/replay, `ResourceLimit`,
-  abuse-receipt rotation, cleanup, re-admission, and final authority publication
-  prove all-or-nothing durable quarantine and no resource-refusal authority
-  evidence;
+  classification, v0.111.3 first provisioning, key-agent ownership, encrypted-
+  metadata key unavailability/replay, mixed-epoch rotation, early-retirement
+  refusal, store migration, candidate reprotection, opaque cleanup, exact/coarse
+  counter separation, `ResourceLimit`, abuse-receipt rotation, cleanup, re-
+  admission, and final authority publication prove all-or-nothing durable
+  quarantine and no resource-refusal authority evidence;
 - secret-handle/provider-session cancellation, panic, agent-disconnect, cleanup,
   and process-boundary tests proving no partial authorization result;
 - generated-credential receiver-close, partial-delivery, possession-confirmation,
@@ -9986,10 +10120,11 @@ Deliverables:
   reconnect/resubmit floods, slowloris and one-byte-progress transfers, resume-
   token/session replacement deadline-reset attempts, parallel reservation
   starvation, process replacement and suspend/resume clock-epoch tests, metadata-
-  key unavailability and identifier/timing leakage probes, sender-held refusals,
-  bounded abuse-receipt rotation, expiry and restart accounting, partial-
-  candidate cleanup, and attempts to reinterpret `ResourceLimit` as signature/
-  policy/authority evidence;
+  key unavailability, wrong-store key, simultaneous daemon, rotation/migration,
+  privacy-profile change, quota-refund, padding-budget, and identifier/timing
+  leakage probes, sender-held refusals, bounded abuse-receipt rotation, expiry
+  and restart accounting, partial-candidate cleanup, and attempts to reinterpret
+  `ResourceLimit` as signature/policy/authority evidence;
 - cloned/rolled-back pending-credential staging, provider/platform-key
   unavailability, copied staging outside its declared platform recovery context,
   cross-store/receiver possession-response replay, and concurrent delivery
@@ -10080,8 +10215,9 @@ Exit criteria:
   within aggregate receiver quarantine/work ceilings; refused input remains the
   sender's responsibility, leases cannot outlive their original absolute
   lifetime or process epoch, protected lease metadata stays within its declared
-  leakage profile, fair capacity remains available to other peers, and arrival
-  order affects backpressure only.
+  leakage profile, key loss/migration remains explicit, exact counters cannot be
+  replaced or refunded by privacy buckets, fair capacity remains available to
+  other peers, and arrival order affects backpressure only.
 - Hostile peers cannot force unbounded recursive expansion or partial trust.
 
 ### v0.132.0 - Differential Vectors And Performance Budgets
@@ -10216,6 +10352,13 @@ Deliverables:
   no cross-restart resume, encrypted metadata context binding, opaque filesystem
   names, profile counter/timing buckets, privileged inspection, telemetry
   cleanup, and malicious local-observer leakage thresholds;
+- operational-metadata key vectors and benchmarks cover daemon-root provisioning
+  profiles, independent random per-store keys, purpose/provider/store/service/
+  epoch binding, key-agent ownership, wrong-key refusal, transactional mixed-
+  epoch rotation and old-key reachability, compromise response, key loss, store
+  move/rewrap, candidate reprotection, opaque no-authority cleanup, exact inner
+  quota recovery versus every coarse observable bucket, profile transitions,
+  and charged physical padding/rotation copies;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - plaintext-to-encrypted authority-log cutover model/vectors and crash benchmarks
@@ -10542,6 +10685,13 @@ Deliverables:
   realm operational metadata, opaque names, profile bucketing/padding,
   privileged inspection, telemetry retention, and inherent blind-network
   leakage pass privacy-at-rest and local-observer suites;
+- v0.111.3 daemon operational-metadata root and independent per-store keys pass
+  provisioning-profile, provider/purpose/store binding, one-writer key-agent
+  ownership, transactional rotation/mixed-epoch recovery, old-key retention,
+  compromise/loss, store move/rewrap, opaque partial cleanup, and durable-
+  candidate reprotection suites; exact encrypted counters remain authoritative,
+  physical padding/copies are charged, and profile/coarse-output changes cannot
+  refund or reinterpret capacity;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -10581,6 +10731,10 @@ Deliverables:
   clock failure/wrap, encrypted metadata replay, key-unavailable refusal, opaque
   path/log/metric, bucketing/padding, cleanup-retention, and blind-observer
   leakage fixtures pass on every admitted platform/privacy profile;
+- v0.111.3 first-provisioning/provider-unavailable, wrong daemon/store/purpose
+  key, simultaneous-daemon, rotation-crash, mixed-epoch, early-retirement,
+  compromise, key-loss, migration, candidate-conversion/reprotection, opaque-
+  cleanup, exact-versus-bucket, profile-change, and padded-budget fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -10811,6 +10965,15 @@ Deliverables:
   realm and pre-realm identifiable lease metadata is encrypted, context-bound,
   stored under opaque names, profile-bucketed where required, access-controlled,
   and removed with derived telemetry under declared retention;
+- daemon operational metadata uses a provisioned OS-keystore/HSM/key-agent or
+  explicitly lower-assurance wrapped-software root and independent random per-
+  store keys with purpose/provider/store/service/epoch binding, one-writer
+  ownership, crash-safe rotation and old-key retention, explicit unavailable/
+  compromised/migration states, and no cleartext or empty-state fallback;
+  candidate conversion atomically reprotects durable metadata under its long-
+  lived quarantine/realm key, while exact encrypted quota counters remain the
+  only admission/recovery source and all padding/rotation copies consume physical
+  budget regardless of coarse observable privacy representations;
 - privacy-preserving inner signatures, exact outer integrity/authenticity claim
   taxonomy, retained-handle preflight followed by integrity-bound capture and
   sealed/service/owned-memory/authenticated-page trusted reads, and durable
