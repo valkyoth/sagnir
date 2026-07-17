@@ -8048,7 +8048,9 @@ Deliverables:
   declared/locally capped candidate items, captured bytes, signatures, prepared
   pages/nodes, and subsequent verification work; reservation failure returns
   `ResourceLimit` before quarantine handoff and leaves only disposable temporary
-  preflight bytes for deterministic cleanup;
+  preflight bytes for deterministic cleanup; the reservation is a provisional
+  `QuarantineReservationLease` governed by v0.111.1 and is not a durable
+  candidate, authority claim, or renewable session allowance;
 - manifest estimates remain untrusted upper-bound hints: understated counts,
   bytes, expansion, signatures, pages, or work fail streaming enforcement and
   cannot extend the original reservation, partially admit a candidate, or mint a
@@ -8079,6 +8081,79 @@ Exit criteria:
 - Preflight success cannot survive close-and-reopen or path substitution as a
   capability for different bytes.
 
+### v0.111.1 - Quarantine Reservation Lease Lifecycle
+
+Goal: prevent slow, reconnecting, or parallel senders from holding receiver
+quarantine capacity indefinitely before a durable candidate exists.
+
+Deliverables:
+
+- canonical local `QuarantineReservationLease` state binds a random reservation
+  ID, exact item/encoded-byte/captured-byte/signature/page/node/work counters,
+  store, opaque realm scope where available, peer/endpoint, authenticated actor
+  where known, transport session, bundle, transfer, destination generation, and
+  originating preflight transcript;
+- each lease records creation generation, monotonic progress counter, monotonic
+  idle deadline, absolute maximum lifetime, and the original cumulative
+  lifetime consumed; wall-clock time, canonical event time, and signed policy
+  time cannot extend or decide this live local resource-control lease;
+- versioned local resource policy sets non-bypassable maximum concurrent leases
+  and aggregate reserved items/bytes/work per peer/endpoint, opaque realm scope,
+  authenticated actor where known, and store; identity, session, bundle, or
+  transfer fanout never multiplies the store or realm ceiling;
+- reconnect, transport replacement, resume-token rotation, bundle splitting,
+  peer reauthentication, or session replacement inherits the original creation
+  generation, absolute deadline, cumulative lifetime, progress counter, and
+  remaining counters; none creates a fresh lease for the same transfer bytes;
+- progress can renew only the idle deadline, only after the corresponding bytes
+  have been durably captured and the corresponding deterministic work has been
+  consumed, and never beyond the original absolute lifetime;
+- item, byte, allocation, signature-verification, hashing, decompression, KDF,
+  proof-traversal, decode, and page/node work is debited with checked arithmetic
+  before that work or allocation begins; exhaustion refuses before execution
+  and unused reserved capacity is released only by an atomic state transition;
+- expiry or cancellation before complete quarantine publication atomically
+  invalidates the handoff capability, removes unpublished partial bytes and
+  resume state, releases every reserved counter, and creates no candidate,
+  verification result, policy result, or authority evidence;
+- successful complete quarantine publication atomically converts the lease into
+  the durable `BoundedQuarantinedCandidate` quota charge; after conversion the
+  charge follows v0.112.0 expiry/retention and cannot independently expire as a
+  pre-capture lease;
+- startup recovery reconciles every durable reservation record, cleanup-journal
+  entry, partial destination, resume checkpoint, and candidate publication as
+  exactly one complete candidate plus matching charge or one incomplete cleanup
+  plus fully released charge; an ambiguous or orphan reservation cannot remain
+  active indefinitely or be guessed complete from partial bytes;
+- scheduling reserves bounded per-peer/endpoint shares or uses an equivalent
+  documented fair allocator so one endpoint cannot consume the entire store
+  ceiling with valid but stalled transfers; unused shares may be borrowed only
+  without defeating hard aggregate limits or starvation bounds;
+- lease identifiers, deadlines, counters, progress, and cleanup outcomes are
+  local non-authoritative resource metadata; they do not enter canonical realm
+  validity, remote policy, signed event time, or shared rejection evidence;
+- slowloris, zero-progress, one-byte-progress, reconnect deadline-reset, resume-
+  token rotation, bundle-split, parallel-reservation, per-peer starvation,
+  work-before-debit, counter-overflow, crash-at-expiry, monotonic-clock failure,
+  wall-clock rollback, completion/expiry race, and startup-orphan tests.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-sync`
+- quarantine lease state-machine and deterministic-time tests;
+- process-kill capture/publication/recovery integration suite.
+
+Exit criteria:
+
+- No sender can retain receiver capacity indefinitely through inactivity,
+  trickle progress, reconnect, resume, session replacement, or transfer split.
+- Every expensive operation is charged before execution, and every restart
+  resolves each reservation to one durable charged candidate or complete
+  cleanup with released capacity.
+- Lease expiry and scheduling affect only local resource availability; they
+  cannot create, delete, select, or reinterpret authority evidence.
+
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
 Goal: ensure untrusted remote data cannot influence trusted state before full
@@ -8106,17 +8181,19 @@ Deliverables:
   v0.99.1 and aggregate across all actors, devices, replicas, peers, bundles,
   connections, and concurrent sessions under store/realm ceilings; identity or
   bundle fanout cannot multiply quarantine capacity;
-- quarantine capture atomically consumes the exact preflight reservation and
-  publishes either one complete `BoundedQuarantinedCandidate`/bundle generation
-  or no durable quarantine object; short writes, crashes, cancellation, and
-  `ResourceLimit` clean partial bytes and accounting without an evaluated/
-  policy-denied/authority result;
+- quarantine capture atomically consumes the exact live v0.111.1 reservation
+  lease and converts it into the candidate's durable quota charge while
+  publishing either one complete `BoundedQuarantinedCandidate`/bundle generation
+  or no durable quarantine object; expiry, short writes, crashes, cancellation,
+  and `ResourceLimit` clean partial bytes, resume state, and accounting without
+  an evaluated/policy-denied/authority result;
 - separately bounded abuse digests/receipts remain local transport telemetry and
   cannot satisfy semantic evidence, prove the refused candidate, or replace its
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
-- crash-safe quarantine transaction and cleanup journal; recovery cannot move a
-  partially staged bundle into trusted storage or infer a completed trust stage;
+- crash-safe quarantine transaction and cleanup journal; recovery resolves every
+  lease under v0.111.1 and cannot move a partially staged bundle into trusted
+  storage, infer a completed trust stage, or retain an orphan reservation;
 - shadowing, index poisoning, trusted-reference substitution, quota, and
   materialization-bypass tests.
 
@@ -8141,6 +8218,8 @@ Exit criteria:
 - Aggregate quarantine remains bounded under identity/bundle/session fanout;
   every durable candidate has complete charged capacity, while refusal and
   partial cleanup leave no candidate or authority claim.
+- Slow, reconnecting, or trickle-progress senders cannot hold pre-candidate
+  capacity beyond the bounded idle and absolute lease lifetimes.
 
 ### v0.113.0 - Bundle Import
 
@@ -8308,6 +8387,11 @@ Deliverables:
   aggregate receiver capacity, atomic quarantine reservation, pre-admission
   `ResourceLimit`, sender-held retry, reconnect/session/identity fanout, bounded
   abuse receipts, crash cleanup, and admitted-evidence non-eviction;
+- pre-candidate reservation-lease states include idle and absolute expiry,
+  progress only after charged consumption, non-resettable reconnect/resume/
+  transfer lineage, per-peer/store concurrency and aggregate ceilings, fair
+  scheduling, work-before-use debit, atomic candidate-charge conversion, and
+  startup orphan reconciliation;
 - checkpoint, policy epoch, evidence, and key-rotation interactions;
 - equivocation and bounded fork handling;
 - invariants for no lost heads, no lost duplicate identity, no locator-based
@@ -8316,9 +8400,11 @@ Deliverables:
   or locator rotation, no aggregate offline overdraw becoming authoritative, no
   quota-right double-spend, no quarantine-capacity multiplication through Sybil/
   session/bundle fanout, no resource refusal as authority evidence, no arrival-
-  order authority selection, no linear locator-proof requirement, no stale
-  admission, no partial trust, and eventual convergence under documented
-  assumptions;
+  order authority selection, no stalled or trickle-progress reservation beyond
+  its absolute lifetime, no reconnect/resume deadline reset, no work before
+  charge, no orphan reservation after recovery, no linear locator-proof
+  requirement, no stale admission, no partial trust, and eventual convergence
+  under documented assumptions;
 - bounded model-check command required by the release gate.
 
 Verification:
@@ -8380,16 +8466,21 @@ Deliverables:
   quarantine reservation before durable capture, unlimited validly signed stale
   submissions, many identities under one store/realm ceiling, reconnect/resubmit
   floods, partial capture/restart cleanup, sender-held unadmitted evidence, and
-  non-eviction of admitted ambiguous/superseded authority evidence;
+  non-eviction of admitted ambiguous/superseded authority evidence; reservation
+  leases retain original deadlines/counters across reconnect, resume-token and
+  session replacement, charge progress/work before use, expire atomically, and
+  convert exactly once into durable candidate quota;
 - model invariants for no lost encryption instance, no semantic/index
   completeness gap, no Byzantine manifest omission accepted, no hidden
   compartment disclosure, no endpoint-placement overwrite, no clock-derived
   quota extension, no stale attestation accepted as current, no neutral
   lifecycle bypass, no placeholder upgraded to content, no stale ciphertext
   resurrection, no unbounded receiver quarantine from signed/Sybil/resubmit
-  floods, no pre-admission refusal interpreted as shared authority evidence, no
-  arrival-order transition selection, and eventual convergence under documented
-  authority, availability, and partition assumptions;
+  floods, no slow sender retaining pre-candidate capacity past its hard lifetime,
+  no reconnect or one-byte progress extending that lifetime, no pre-admission
+  refusal interpreted as shared authority evidence, no arrival-order transition
+  selection, and eventual convergence under documented authority, availability,
+  and partition assumptions;
 - counterexample corpus and deterministic bounded model-check command required
   by the v0.116.0 release gate;
 - immutable model-run manifest records model source digest, tool and solver
@@ -9408,6 +9499,9 @@ Deliverables:
 - untrusted/bounded-quarantine/admitted-authority candidate transition,
   aggregate quarantine-counter, partial-capture cleanup, `ResourceLimit`, and
   bounded abuse-receipt target set;
+- `QuarantineReservationLease` framing/state, checked counter debit, idle and
+  absolute expiry, progress renewal, reconnect/resume inheritance, atomic
+  conversion/release, and startup-orphan reconciliation target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -9440,7 +9534,9 @@ Deliverables:
   admission, durability-profile publication, deterministic fact stratification/
   queries, opaque secret sessions, and two-phase bundle quarantine/admission,
   including untrusted/bounded-quarantine/admitted-authority candidate separation,
-  aggregate preflight capacity, sender-held refusal, and atomic partial cleanup;
+  aggregate preflight capacity, sender-held refusal, bounded reservation leases,
+  non-resettable reconnect/resume lineage, work-before-use accounting, fair
+  scheduling, atomic candidate-charge conversion, and atomic partial cleanup;
 - composition of the history-independent map algorithm/pages with authority
   active/covered-fence/exception/archive roots, a permanent low-sequence
   exception plus later archival, exact replay refusal, checkpoint rollback
@@ -9583,9 +9679,11 @@ Deliverables:
   replay, no duplicate signer operation after ambiguity, no signed-transition
   rebase, no unbounded active superseded/prepared state, no ambiguity deletion by
   quota/lease expiry, no unbounded quarantine through signed/Sybil/session/bundle
-  floods, no partial durable candidate after resource refusal, no abuse digest or
-  `ResourceLimit` as authority evidence, no arrival-order authority selection,
-  and eventual convergence under documented assumptions;
+  floods, no slow/trickle sender retaining a reservation past its hard lifetime,
+  no reconnect/resume deadline reset, no work before debit, no orphan reservation
+  after recovery, no partial durable candidate after resource refusal, no abuse
+  digest or `ResourceLimit` as authority evidence, no arrival-order authority
+  selection, and eventual convergence under documented assumptions;
 - model execution instructions and CI smoke bounds.
 - model-run manifests inherit v0.115.1 exact bounds, assumptions, property
   classes, reductions, coverage counters, resources, seeds/configuration, and
@@ -9641,10 +9739,12 @@ Deliverables:
 - two-phase bundle quarantine/decrypt/typed-ingest/WAL-publication crash and
   cancellation tests proving no skipped trust stage;
 - candidate preflight/quarantine crashes across aggregate quota reservation,
-  integrity-bound capture, partial write, item/byte/signature/page/work counter
-  commit, restart reconciliation, `ResourceLimit`, abuse-receipt rotation,
-  cleanup, re-admission, and final authority publication prove all-or-nothing
-  durable quarantine and no resource-refusal authority evidence;
+  v0.111.1 lease creation/progress/idle-expiry/absolute-expiry, integrity-bound
+  capture, partial write, item/byte/signature/page/work counter debit, atomic
+  lease-to-candidate charge conversion, completion/expiry races, restart orphan
+  reconciliation, `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission,
+  and final authority publication prove all-or-nothing durable quarantine and no
+  resource-refusal authority evidence;
 - secret-handle/provider-session cancellation, panic, agent-disconnect, cleanup,
   and process-boundary tests proving no partial authorization result;
 - generated-credential receiver-close, partial-delivery, possession-confirmation,
@@ -9775,7 +9875,9 @@ Deliverables:
   archive recovery without signature/transcript/dispute-evidence loss;
 - unlimited validly signed stale untrusted candidates, many claimed identities
   sharing one store/realm quarantine ceiling, peer/bundle/session fanout,
-  reconnect/resubmit floods, sender-held refusals, bounded abuse-receipt rotation,
+  reconnect/resubmit floods, slowloris and one-byte-progress transfers, resume-
+  token/session replacement deadline-reset attempts, parallel reservation
+  starvation, sender-held refusals, bounded abuse-receipt rotation, expiry and
   restart accounting, partial-candidate cleanup, and attempts to reinterpret
   `ResourceLimit` as signature/policy/authority evidence;
 - cloned/rolled-back pending-credential staging, provider/platform-key
@@ -9866,7 +9968,9 @@ Exit criteria:
   stale ordering and repair cannot resurrect the erased encryption instance.
 - Hostile signed-candidate, identity, bundle, session, and reconnect floods stay
   within aggregate receiver quarantine/work ceilings; refused input remains the
-  sender's responsibility, and arrival order affects backpressure only.
+  sender's responsibility, leases cannot outlive their original absolute
+  lifetime, fair capacity remains available to other peers, and arrival order
+  affects backpressure only.
 - Hostile peers cannot force unbounded recursive expansion or partial trust.
 
 ### v0.132.0 - Differential Vectors And Performance Budgets
@@ -9989,6 +10093,12 @@ Deliverables:
   many-identity/session/bundle aggregation, reconnect/resubmit, atomic quarantine
   reservation/capture/restart cleanup, bounded abuse receipts, sender-held
   refusal, and authority results independent of transport arrival order;
+- quarantine-reservation lease vectors and benchmarks cover exact counter and
+  scope binding, monotonic idle/absolute expiry, charged-progress renewal,
+  reconnect/resume/transfer-split lineage, per-peer/store concurrency ceilings,
+  fair scheduling under stalled valid transfers, work-before-use debit, atomic
+  candidate-charge conversion, expiry/completion races, and startup orphan
+  cleanup without relying on wall-clock rollback behavior;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - plaintext-to-encrypted authority-log cutover model/vectors and crash benchmarks
@@ -10301,6 +10411,13 @@ Deliverables:
   recovery; untrusted/bounded-quarantine/admitted-evidence state separation,
   aggregate preflight quotas, sender-held refusal, atomic restart cleanup, and
   non-authoritative `ResourceLimit` behavior pass signed/Sybil/resubmit floods;
+- v0.111.1 reservation leases bind exact counters and transfer scope, debit work
+  before execution, retain original idle/absolute lifetime and remaining budget
+  across reconnect/resume/session replacement, provide bounded fair peer/store
+  capacity, convert atomically into durable candidate quota, and recover every
+  crash state as one charged candidate or complete cleanup; slowloris, trickle-
+  progress, deadline-reset, parallel-starvation, expiry/publication-race, clock-
+  rollback, and orphan-recovery suites pass;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -10332,6 +10449,10 @@ Deliverables:
   signature/page/work ceilings, pre-quarantine `ResourceLimit`, bounded abuse
   receipts, sender-held evidence, partial cleanup, and arrival-order-independent
   authority selection pass bundle, clone, sync, and reconnect fixtures;
+- v0.111.1 pre-candidate reservation leases pass exact-scope/counter vectors,
+  monotonic idle and hard-lifetime expiry, charged-progress renewal, reconnect/
+  resume inheritance, fair scheduling, work-before-use debit, atomic conversion,
+  expiry/publication races, and deterministic startup reconciliation fixtures;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -10551,6 +10672,11 @@ Deliverables:
   pre-admission `ResourceLimit` leaves sender-held evidence and no partial or
   authoritative rejection state, while identity/session/bundle fanout cannot
   multiply store/realm capacity or influence authority selection by arrival;
+- pre-candidate quarantine reservations are bounded local leases with exact
+  scope/counters, monotonic idle and absolute lifetimes, charged-progress-only
+  renewal, non-resettable reconnect/resume lineage, per-peer/store concurrency
+  ceilings and fair scheduling, work-before-use debit, atomic conversion into
+  durable candidate quota, and deterministic expiry/crash/orphan cleanup;
 - privacy-preserving inner signatures, exact outer integrity/authenticity claim
   taxonomy, retained-handle preflight followed by integrity-bound capture and
   sealed/service/owned-memory/authenticated-page trusted reads, and durable
