@@ -5,6 +5,9 @@ All notable Sagnir changes are recorded here.
 ## Unreleased
 
 - Updated the workspace and current documentation to Rust stable 1.97.1.
+- Split authenticated-map algorithm admission from page implementation, changed
+  terminal compaction to exact covered fences around permanent exceptions, and
+  documented passphrase bootstrap's unavoidable offline-guessing boundary.
 - Added bounded persistent authenticated-map pages, exact authority terminal
   fences and epoch archives, and explicit encrypted-genesis bootstrap profiles
   that resolve first-log key provisioning without silent plaintext fallback.

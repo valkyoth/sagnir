@@ -1222,18 +1222,23 @@ Exit criteria:
 - A realm can migrate identities without treating two algorithms or digest
   domains as interchangeable.
 
-### v0.17.0 - Authenticated Commitment Structures
+### v0.17.0 - Authenticated Commitment Semantics
 
-Goal: choose canonical authenticated structures for membership, absence, and
-append-only consistency.
+Goal: separate the required semantics for map membership/absence from append-
+only consistency before selecting the uniquely represented map algorithm.
 
 Deliverables:
 
-- canonical authenticated map for object, alias, fact, policy, and key roots;
+- authenticated-map semantic contract for object, alias, fact, policy, and key
+  roots, including membership, absence, update, map-kind separation, key/value
+  schema binding, and bounded proof requirements;
 - append-only event commitment such as an admitted MMR-style structure;
-- canonical node, empty-root, and proof encodings;
-- inclusion, absence, append, and consistency algorithms;
-- independent known-answer vectors;
+- canonical node, empty-root, append, and consistency encodings for the selected
+  append-only structure;
+- map algorithm, node shape, normalization, root, and proof bytes remain
+  deliberately unadmitted until v0.17.1 selects a history-independent
+  construction and v0.17.2 fixes its persistent page format;
+- independent append-only known-answer vectors and map semantic fixtures;
 - malformed proof, ambiguous key, and extension-confusion tests.
 
 Verification:
@@ -1243,31 +1248,84 @@ Verification:
 
 Exit criteria:
 
-- Every root and proof operation has one normative structure and byte encoding.
+- Append-only root/proof operations have one normative structure and encoding;
+  map semantics are fixed but no map bytes are yet authoritative.
 - Membership and append-only consistency are not overloaded onto one structure
   when their required security properties differ.
 
-### v0.17.1 - Bounded Persistent Authenticated Map Pages
+### v0.17.1 - History-Independent Authenticated Map Admission Stop
 
-Goal: give every long-lived authenticated map a canonical bounded persistent
-representation before authority, policy, key, or private-index roots depend on
+Goal: select and justify one uniquely represented authenticated dictionary
+before a persistent map format or incremental writer becomes authoritative.
+
+Deliverables:
+
+- algorithm decision record selects exactly one reviewed construction, such as
+  a canonical radix/Merkle trie, fixed-depth sparse Merkle tree, content-defined
+  deterministic pages over a sorted key stream, or a fully normalized tree whose
+  incremental algorithm provably reproduces canonical bulk-build shape;
+- an ordinary B-tree/B+ tree is explicitly inadmissible merely because each
+  local split or merge choice is deterministic; admission requires global
+  unique representation under every insertion, deletion, and rebuild history;
+- normative algorithm fixes canonical key/value bytes, key-bit or separator
+  interpretation, empty root, leaf/internal domains, boundary selection,
+  underfull-node handling, neighboring-node rebalance, split/merge/normalization,
+  duplicate rejection, and root construction;
+- executable permutation invariant is
+  `root(incremental(permutation(entries))) == root(canonical_bulk_build(entries))`;
+- executable rebuild invariant is
+  `root(after_arbitrary_updates_and_deletes) == root(rebuild(current_entries))`;
+- delete/reinsert, repeated update, split/merge, compaction, and equivalent final
+  key/value sets erase operation history from the logical shape/root while
+  retaining only independently declared physical-placement history;
+- adversarial key distributions cannot force unbounded depth, tiny-page chains,
+  repeated whole-map normalization, or update/proof amplification beyond exact
+  admitted page/byte/hash/work bounds;
+- proof or executable model covers canonical boundary selection, normalization
+  termination, unique fixed point, update locality, worst-case amplification,
+  and agreement between incremental and bulk algorithms;
+- exhaustive small-map permutation and operation-history enumeration includes
+  every insertion order, deletion order, delete/reinsert path, and boundary case;
+- differential randomized histories compare production/reference incremental
+  roots with an independently implemented canonical full rebuild after every
+  operation and retain failing seeds/counterexamples;
+- algorithm/version transition rules bind old/new roots and never reinterpret
+  historical roots under a replacement construction.
+
+Verification:
+
+- authenticated-map algorithm model/proof review;
+- exhaustive bounded permutation/history suite;
+- independent prototype versus canonical bulk-builder differential vectors.
+
+Exit criteria:
+
+- One construction has evidence for unique representation and bounded
+  amplification; deterministic local tree edits alone do not satisfy admission.
+- No durable page format, authoritative root, or production incremental writer
+  proceeds until the algorithm decision and counterexample suite are complete.
+
+### v0.17.2 - Bounded Persistent Authenticated Map Pages
+
+Goal: implement the v0.17.1 admitted history-independent dictionary as a
+canonical bounded persistent representation before long-lived roots depend on
 unbounded in-memory serialization.
 
 Deliverables:
 
 - immutable bounded-fanout page format with independent leaf/internal domain
-  labels, exact page version, level, entry/child count, key range, payload byte
-  length, and child/page commitments;
-- canonical key ordering, split/merge thresholds, separator selection, empty
-  root, and deterministic bulk-build algorithm produce one unique logical root
-  for one admitted map independent of insertion order, worker scheduling, page
-  placement, allocator behavior, or host architecture;
-- authenticated root descriptor binds map kind/version, commitment suite,
-  logical entry count, tree height, reachable page count, root page commitment,
-  and declared key/value schemas;
+  labels, exact algorithm/page version, level, entry/child count, canonical key
+  range/boundary evidence, payload byte length, and child/page commitments;
+- page boundaries, underfull handling, neighboring-page rebalance, normalization,
+  and deterministic bulk build are exactly the admitted v0.17.1 construction;
+  equivalent key/value sets have one logical shape/root independent of operation
+  history, scheduling, placement, allocator, or host architecture;
+- authenticated root descriptor binds map kind/version, algorithm and commitment
+  suites, logical entry count, tree height, reachable page count, root page
+  commitment, and declared key/value schemas;
 - protocol limits bound page bytes, entries, fanout, height, key/value lengths,
-  proof nodes, update-set pages, and cumulative decode/hash/work budgets before
-  allocation or cryptographic work;
+  proof nodes, update/normalization pages, and cumulative decode/hash/work
+  budgets before allocation or cryptographic work;
 - logarithmic lookup, inclusion, absence, update, range, and page-set
   completeness proof formats with independent reference verification;
 - deterministic full rebuild streams bounded sorted entries and independently
@@ -1280,26 +1338,30 @@ Deliverables:
   index metadata are never authenticated authority; reads copy or integrity-bind
   bounded page bytes before parsing and verify page commitment plus parent/root
   path before use;
-- malformed offset/range, page/level substitution, omitted or duplicate page,
-  duplicate/out-of-order key, separator mismatch, count/height/page-count
-  mismatch, deep tree, fanout violation, cyclic page reference, stale root,
-  update-set omission, and rebuild-budget exhaustion tests;
-- independent vectors cover empty, singleton, split, merge, minimum/maximum
-  fanout, multi-page update, full rebuild, and equivalent insertion histories.
+- malformed offset/range/boundary, page/level substitution, omitted or duplicate
+  page, duplicate/out-of-order key, separator mismatch, non-canonical underfull
+  page/rebalance, count/height/page-count mismatch, deep tree, fanout violation,
+  cyclic reference, stale root, update omission, and budget exhaustion tests;
+- every incremental mutation is differentially checked against canonical full
+  rebuild in exhaustive small maps and randomized long histories, including
+  delete/reinsert and adversarial boundary/key distributions;
+- independent vectors cover empty, singleton, canonical boundary changes,
+  minimum/maximum fanout, multi-page normalization/update, full rebuild, and
+  equivalent insertion/deletion histories.
 
 Verification:
 
 - `cargo test -p sagnir-proof`
 - `cargo test -p sagnir-store`
 - independent authenticated-map page/root/proof vector validator;
-- bounded rebuild and malformed-page corpus.
+- bounded rebuild, permutation, history, and malformed-page corpus.
 
 Exit criteria:
 
 - No admitted authenticated map requires one unbounded record or whole-map
   allocation to load, update, prove, or rebuild it.
-- Equivalent admitted maps have one root, while missing, substituted, mutable,
-  or structurally non-canonical pages fail before becoming authority.
+- Incremental roots equal canonical rebuild roots after every operation, while
+  missing, substituted, mutable, or non-canonical pages fail before authority.
 
 ### v0.18.0 - Realm Genesis And Governance Schema
 
@@ -1833,7 +1895,7 @@ Deliverables:
   byte counts, transaction ID, first/final sequence, prior committed transaction
   or log-checkpoint commitment, and resulting logical authority-state root;
 - canonical `AuthorityStateRoot` is a versioned composite committing to the
-  v0.17.1 active-operation map descriptor, terminal-fence map descriptor, sparse
+  v0.17.2 active-operation map descriptor, terminal-fence map descriptor, sparse
   exception-map descriptor, authenticated epoch-archive manifest root, exact
   active/terminal/exception/archive counts, and commitment suite; v0.23.3 starts
   with canonical empty terminal/archive roots and v0.23.6 activates movement
@@ -1842,7 +1904,7 @@ Deliverables:
   sequence, capability class, request digest, status, provider-result commitment
   or explicit absence, and ambiguity/equivocation state; duplicate IDs, non-
   canonical order, unknown status, or omitted terminal evidence fail closed;
-- active-map create/update commits v0.17.1 copy-on-write pages and an exact page-
+- active-map create/update commits v0.17.2 copy-on-write pages and an exact page-
   publication manifest through the same WAL transaction; all new pages and
   required parent-directory entries are durable before the transaction exposes
   the new root, and recovery ignores unreachable prepared pages;
@@ -2172,27 +2234,50 @@ Deliverables:
 - model and canonical formats complete before terminal entries can leave the
   active map; the v0.23.3 composite `AuthorityStateRoot` schema is reused rather
   than replaced by an incompatible root;
-- active map retains every `Reserved`, `InProgress`, `Ambiguous`, `Disputed`,
-  equivocation-bearing, sequence-gap, and policy-retained completed operation;
-  only explicitly terminal, contiguous, retention-eligible entries may archive;
+- active map retains operations above the covered fence that are `Reserved`,
+  `InProgress`, `Ambiguous`, `Disputed`, equivocation-bearing, sequence-gap, or
+  policy-retained completed; at or below the fence, terminal entries live in an
+  archive and every unresolved/gap/equivocation/hold state lives in the exact
+  sparse exception map rather than pinning all later sequences active;
 - canonical fence scope is domain-separated by realm, authority domain, issuer,
   replica ID and incarnation, and reservation-sequence domain so unrelated
   issuers, restored replicas, or operation classes cannot advance one another's
   replay boundary;
-- authenticated terminal-fence map records each scope's greatest contiguous
-  archived terminal reservation sequence, terminal-status summary commitment,
-  archive epoch, archive-manifest commitment, and previous fence value;
-- an operation at or below an admitted terminal high-water mark is rejected
-  before provider/key-agent execution even when its full active entry is no
-  longer locally materialized; changing operation-ID randomness or request bytes
-  cannot bypass the sequence fence;
-- sparse exception map commits every sequence gap, ambiguous/disputed state,
-  equivocation, non-contiguous terminal entry, retention hold, and explicitly
-  unresolved operation needed to interpret the fence; exceptions cannot be
-  summarized into the high-water mark;
+- authenticated `CoveredFence(H)` means every reservation sequence in the
+  covered interval through `H` is represented exactly once as an allocated
+  archived terminal entry, an explicitly burned-unused terminal entry, or an
+  exact authenticated exception entry; continuity applies to coverage, not to
+  terminal resolution;
+- terminal-fence map records scope, `H`, covered interval start/count,
+  allocation/burn commitment, archive epoch/manifest/root and terminal count,
+  exception-map root/count, exact disjoint interval-coverage proof, stable-
+  frontier evidence root, and previous fence value;
+- fence advancement proves every sequence newly covered is allocated or
+  explicitly burned, every allocated sequence is terminally archived or an
+  exact exception, archive/exception/burn counts cover the interval, ordering is
+  canonical, and no sequence is omitted, duplicated, or present in both archive
+  and exception sets;
+- sequence at or below `H` and absent from the exception map is terminal and is
+  rejected before provider/key-agent execution even if archive bodies are not
+  local; changing operation-ID randomness/request bytes cannot bypass the fence;
+- sequence at or below `H` and present in the exception map loads its exact gap,
+  ambiguous, disputed, equivocation, retention-hold, or unresolved state and can
+  never be interpreted as an unallocated/fresh operation;
+- sequence above `H` follows active-map lookup and ordinary reservation rules;
+  an absent active entry does not let a caller claim an old covered sequence;
+- sparse exception keys bind fence scope and exact reservation sequence, while
+  values bind operation ID or an exact allocated-gap commitment, request/status/
+  result commitments, ambiguity/dispute/equivocation evidence, retention reason,
+  and last transition; a never-allocated sequence requires an authenticated
+  burned-unused terminal archive entry, and exception omission invalidates
+  coverage;
+- resolving an exception atomically archives its terminal entry, removes that
+  exact exception, updates archive/exception/count commitments, and leaves `H`
+  unchanged or advances it; resolution never rolls the fence backward or
+  reopens the sequence;
 - canonical predecessor-linked `AuthorityTerminalEpochArchive` binds scope,
   inclusive sequence range, exact sorted terminal entries and result/evidence
-  commitments, entry/page counts, v0.17.1 page-set root, prior archive root,
+  commitments, entry/page counts, v0.17.2 page-set root, prior archive root,
   retention class, and producing authority checkpoint;
 - result commitments and evidence needed for genesis, historical signatures,
   provider reconciliation, emergency recovery, erasure/destruction evidence,
@@ -2203,7 +2288,8 @@ Deliverables:
   pages, active-map removals, new archive manifest, and resulting composite
   `AuthorityStateRoot`; partial publication or recovery keeps the old root;
 - full rebuild streams active, fence, exception, and archive manifests under
-  cumulative limits and independently recomputes every component/count/root;
+  cumulative limits and independently recomputes every component/count/root plus
+  exact interval coverage/disjointness;
 - no Bloom filter, cuckoo filter, approximate set, cache hit/miss, wall clock,
   archive availability, or caller assertion may decide authoritative replay
   acceptance;
@@ -2220,10 +2306,13 @@ Deliverables:
 - archive compaction preserves predecessor roots and fence/exception meaning;
   restoration behind an admitted fence/checkpoint is rollback evidence and
   cannot reopen archived operation sequences;
-- tests cover archive absence/substitution, high-water rollback/jump, exception
-  omission, sequence gap, wrong issuer/incarnation, crafted old-sequence new ID,
-  ambiguous/equivocated archival attempt, result-reference loss, stale root,
-  partial page/WAL publication, rebuild exhaustion, and old-checkpoint restore.
+- tests cover a permanent low-sequence exception with millions of later terminal
+  operations, archive absence/substitution, fence rollback/jump, allocation or
+  burn omission, archive/exception count mismatch, duplicate cross-set sequence,
+  exception omission/resolution, sequence gap, wrong issuer/incarnation, crafted
+  old-sequence new ID, ambiguous/equivocated fresh-operation attempt, result-
+  reference loss, stale root, partial page/WAL publication, rebuild exhaustion,
+  and old-checkpoint restore.
 
 Verification:
 
@@ -2235,8 +2324,9 @@ Verification:
 
 Exit criteria:
 
-- Active authority state can remain proportional to unresolved and retained work
-  rather than total lifetime operations without making any old sequence usable.
+- Active authority state can remain proportional to unresolved work above the
+  fence plus exact covered exceptions/retention state rather than total lifetime
+  operations, without making any old sequence usable.
 - Every replay decision is exact and authenticated; missing archives or caches
   can reduce historical availability but cannot weaken replay refusal.
 - Terminal compaction cannot discard ambiguity, equivocation, gaps, governed
@@ -6475,7 +6565,7 @@ Deliverables:
   covers the cutover-signing result;
 - the encrypted segment begins with a bounded authenticated state-carry manifest
   binding the complete active, terminal-fence, sparse-exception, and epoch-
-  archive map descriptors, exact counts, required v0.17.1 page commitments,
+  archive map descriptors, exact counts, required v0.17.2 page commitments,
   separate encrypted-page storage-manifest root, and prior composite
   `AuthorityStateRoot`; it never embeds the lifetime operation map as one record;
 - page transfer/re-encryption is streamed under cumulative byte/page/work
@@ -6582,6 +6672,27 @@ Deliverables:
   requires an authority capability or reservation; deployments requiring remote
   or provider-authorized KDF execution must use externally provisioned bootstrap
   material or refuse this profile;
+- passphrase-bootstrap confidentiality is explicitly bounded by passphrase
+  entropy and the admitted KDF's measured cost; the public salt/header and any
+  retained authenticated ciphertext are a permanent offline guess-verification
+  target through AEAD authentication for every party that obtains a copy;
+- local attempt/rate limits and bounded live-process failure shapes mitigate only
+  online abuse and side channels; they cannot slow or observe an attacker testing
+  retained header/ciphertext copies offline;
+- later normal-key replacement, migration, bootstrap authorization retirement,
+  local header/ciphertext deletion, or KDF parameter increase cannot revoke
+  copies already obtained or strengthen the passphrase that protected them;
+- a bootstrap passphrase must be independently generated and must not be reused
+  for the realm master key, recipient/device keys, recovery material, private-
+  locator/commitment keys, another realm, or any external account/secret;
+- realm/local policy may refuse passphrase-derived bootstrap for regulated or
+  high-assurance profiles and require externally provisioned non-exportable high-
+  entropy key material; refusal cannot be overridden by relabeling the same
+  passphrase-derived bytes as hardware-backed;
+- CLI/config/status output distinguishes `passphrase-derived bootstrap
+  protection` from `externally provisioned non-exportable key protection`, shows
+  the admitted KDF profile and offline-guessing warning, and never reports both
+  as equivalent assurance;
 - every profile provisions a fresh normal realm WAL key through its admitted
   initial log, publishes a predecessor-linked encrypted successor segment under
   that key, and retains the old bootstrap/plaintext evidence and any required
@@ -6610,8 +6721,10 @@ Deliverables:
 - tests cover profile substitution/downgrade, plaintext fallback, stale/replayed
   attestation, wrong store/ceremony binding, exportable or wrong-purpose handle,
   malformed/extreme KDF parameters, repeated salt/entropy failure, partial
-  header, bootstrap/realm-key aliasing, ordinary operation before cutover,
-  old-key early deletion, and unsupported-platform refusal.
+  header, bootstrap/realm-key aliasing, passphrase purpose-separation and reuse-
+  warning output, ordinary operation before cutover, old-key early deletion,
+  stable assurance labels, offline-guess verifier fixture, and unsupported-
+  platform refusal.
 
 Verification:
 
@@ -6630,6 +6743,8 @@ Exit criteria:
   plaintext genesis cannot admit ordinary work before encrypted cutover.
 - Bootstrap key material is purpose-separated, replaced by a normal realm WAL
   key, and retained or retired only under explicit checkpointed recovery policy.
+- Passphrase-derived protection makes no claim against offline guessing beyond
+  the user's passphrase entropy and the exact admitted KDF cost.
 
 ### v0.102.0 - Encrypt Project Command
 
@@ -8697,13 +8812,15 @@ Deliverables:
 - composition of cumulative decoder/work budgets, body-derived graph-class
   admission, durability-profile publication, deterministic fact stratification/
   queries, opaque secret sessions, and two-phase bundle quarantine/admission;
-- composition of bounded authenticated-map pages with authority active/fence/
-  exception/archive roots, exact replay refusal after terminal archival,
-  checkpoint rollback detection, archive unavailability, and cutover carry;
+- composition of the history-independent map algorithm/pages with authority
+  active/covered-fence/exception/archive roots, a permanent low-sequence
+  exception plus later archival, exact replay refusal, checkpoint rollback
+  detection, archive unavailability, exception resolution, and cutover carry;
 - encrypted-genesis composition for minimal-plaintext, externally provisioned,
   and passphrase-derived bootstrap profiles, proving first-log key availability,
   no plaintext fallback, normal-key replacement, and crash recovery without a
-  reservation/key provisioning cycle;
+  reservation/key provisioning cycle while making no modeled claim that local
+  attempt limits constrain offline guesses against copied passphrase ciphertext;
 - duplicate-equivalence representative CAS, conflict-head preservation,
   anti-grinding selection, replica/actor/device quota continuity, and persistent
   authenticated index union/split models;
@@ -9054,8 +9171,9 @@ Deliverables:
 
 - independent canonical-codec reference implementation;
 - differential canonical bytes and object-ID tests;
-- v0.17.1 authenticated-map page/root/proof vectors and million-entry bounded
-  lookup, update, rebuild, malformed-page, and unique-representation benchmarks;
+- v0.17.1 algorithm-admission proof/model plus v0.17.2 page/root/proof vectors
+  and million-entry bounded lookup, update, rebuild, malformed-page, and unique-
+  representation benchmarks;
 - cumulative decode-budget and atomic-encoder benchmarks across nested objects,
   packs, bundles, proofs, WAL, and encrypted envelopes;
 - minimal authority transaction-substrate model/vectors and crash benchmarks
@@ -9069,7 +9187,8 @@ Deliverables:
   declared hash-suite collision assumptions;
 - authority active-map, terminal-fence, sparse-exception, and epoch-archive
   differential vectors plus million-operation compaction/replay/rebuild budgets
-  proving active memory and cutover do not scale with all historical entries;
+  proving a permanent early exception does not pin later terminal entries and
+  active memory/cutover do not scale with all historical operations;
 - parallel budget-lease stress and schedule benchmarks proving child
   reservations cannot mint capacity and cancellation/panic accounting remains
   deterministic under maximum admitted parallelism;
@@ -9131,6 +9250,9 @@ Deliverables:
   plaintext cutover, external handle/attestation admission, passphrase header/
   KDF derivation, direct-encryption refusal, normal WAL-key replacement, and
   bootstrap-key retirement;
+- passphrase-bootstrap KDF cost/parameter benchmarks, offline-guess verifier
+  fixture, permanent-header/ciphertext disclosure statement, assurance-label
+  snapshots, reuse warnings, and high-assurance policy refusal tests;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - plaintext-to-encrypted authority-log cutover model/vectors and crash benchmarks
@@ -9342,9 +9464,10 @@ Deliverables:
   authoritative signing/manifest APIs unless explicitly promoted and reviewed;
 - shared store platform boundary is the only authoritative filesystem path used
   by CLI, daemon, migration, and recovery code, with no private frontend fork;
-- v0.17.1 bounded immutable authenticated-map page format, unique representation,
-  logarithmic proofs/updates, streaming full rebuild, cumulative budgets, and
-  malformed/mutable-page refusal pass independent vectors and release tests;
+- v0.17.1 history-independent algorithm admission and v0.17.2 bounded immutable
+  page format, unique representation, logarithmic proofs/updates, streaming full
+  rebuild, cumulative budgets, and malformed/mutable/non-canonical page refusal
+  pass independent vectors and release tests;
 - v0.23.3 minimal authority transaction model, base format, durability profile,
   torn-record/race/compaction/recovery suites, provider/store reconciliation,
   and in-place later record-kind extension pass; no legacy/new log authority
@@ -9353,7 +9476,8 @@ Deliverables:
   independent vectors, genesis and signed-checkpoint anchors, non-circular
   signing frontiers, algorithm-transition refusal/migration, and logical-root-
   preserving physical-compaction pass;
-- v0.23.6 active/fence/exception/archive root model, exact terminal high-water
+- v0.23.6 active/covered-fence/exception/archive model, exact interval coverage
+  and disjointness, permanent low-sequence exceptions, exception resolution,
   replay rejection, reachable historical evidence, copy-on-write archival,
   archive-unavailability behavior, and old-checkpoint restoration tests pass;
 - cumulative decode budgets, atomic encoders, body-derived typed graph admission,
@@ -9415,7 +9539,8 @@ Deliverables:
   leakage disclosure, and crash/rollback/retention suites pass;
 - v0.101.2 all three encrypted-genesis bootstrap-profile models, vectors,
   platform refusal matrix, no-fallback tests, first-log key proof, normal-key
-  replacement, and crash/recovery/bootstrap-key-retirement suites pass;
+  replacement, passphrase offline-guess disclosure/labels/policy refusal, and
+  crash/recovery/bootstrap-key-retirement suites pass;
 - deterministic fact-language stratification, typed parameterized obligation
   template/instance identity preimages, preallocated issuance-operation cycle
   break, self-inclusion refusal, evidence-consumption/independence and discharge
@@ -9489,8 +9614,9 @@ Deliverables:
   temporary authorization log, migration, dual writer, or authority-source
   selection;
 - bounded composite authority state with active-operation pages, exact terminal
-  sequence fences, sparse exceptions, predecessor-linked epoch archives, and no
-  probabilistic replay decision or whole-lifetime map record;
+  covered sequence fences, sparse exact permanent exceptions, predecessor-linked
+  epoch archives, atomic exception resolution, and no probabilistic replay
+  decision or whole-lifetime map record;
 - exact domain-separated SHA3-256 frame, transaction, logical authority-state,
   and physical log-checkpoint commitments anchored by genesis, signed realm
   checkpoints, or retained witnesses, with non-circular signing frontiers and
@@ -9502,7 +9628,9 @@ Deliverables:
 - explicit minimal-plaintext, externally provisioned, and passphrase-derived
   encrypted-genesis bootstrap profiles that break the first-reservation/key
   cycle, never silently fall back, and replace purpose-scoped bootstrap keys
-  with a normal realm WAL key;
+  with a normal realm WAL key; passphrase protection is labeled separately,
+  bounded by passphrase entropy/KDF cost, permanently offline-guessable from
+  retained header/ciphertext copies, and refuseable by high-assurance policy;
 - checkpoint-anchored chained WAL with exact CRC-32C, explicit log incarnations,
   exhaustion, encrypted-profile activation only after clone-safe nonce evidence,
   locked recovery, old-key retention, signed event DAG, and rollback/
