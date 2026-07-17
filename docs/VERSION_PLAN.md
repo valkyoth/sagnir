@@ -8697,9 +8697,11 @@ Deliverables:
   under v0.111.6; every successor uses the exact prior root/tag and checked
   sequence, so splice, deletion, reordering and cross-incarnation replay fail;
 - recovery obtains the authoritative suite ID/key epoch from the active daemon-
-  root policy/descriptor and provider-bound key descriptor, never from untrusted
-  journal bytes; mismatch, absent descriptor, unknown suite or unavailable key
-  returns typed refusal before semantic record interpretation;
+  root policy/descriptor and provider-bound key descriptor, including the
+  independently authorized v0.111.12 descriptor transition after rotation,
+  never from an old-key-authenticated transition or untrusted journal bytes;
+  mismatch, absent descriptor, unknown suite or unavailable key returns typed
+  refusal before semantic record interpretation;
 - parser reads only the fixed bounded outer frame needed to locate exact bytes,
   applies cumulative size/work limits, verifies the full tag in constant time,
   and only then semantically decodes payload fields or acts on record kind;
@@ -8709,12 +8711,15 @@ Deliverables:
   dropped while admitted history/rollback/recovery still references their keys
   or decoders;
 - authorized daemon operational-policy suite rotation uses the non-circular
-  v0.111.10 bridge: an old-suite-authenticated `DaemonJournalSuiteTransition`
-  binds old final root/sequence, old/new suite and key epochs, new key descriptor/
-  assurance, transition operation and a `NewChainGenesisDescriptor` that contains
-  no new-record tag or tag-dependent commitment; the first new-suite record binds
-  that exact authenticated transition/tag, descriptor and prior old root,
-  preserving both histories without re-MACing old records;
+  v0.111.10 bridge, independent v0.111.12 rotation authorization and staged
+  v0.111.13 publication: an old-suite-authenticated
+  `DaemonJournalSuiteTransition` binds old final root/sequence, old/new suite and
+  key epochs, new key descriptor/assurance, transition operation and a
+  `NewChainGenesisDescriptor` that contains no new-record tag or tag-dependent
+  commitment; the first new-suite record binds that exact authenticated
+  transition/tag, descriptor and prior old root, preserving both histories
+  without treating the retiring MAC key as sufficient authority or re-MACing old
+  records;
 - suite downgrade, old-key early retirement, transition omission, dual active
   writers, new-suite record on old epoch, and old-suite write after activation
   fail closed; rollback cannot reopen the retired suite for writes;
@@ -8849,30 +8854,29 @@ Deliverables:
 - subsequent new-suite records chain from the authenticated first new record
   under the ordinary v0.111.8 transcript; they cannot attach directly to the old
   root, descriptor alone, another transition, or another daemon incarnation;
-- rotation state machine is `OldWritable -> TransitionPrepared ->
-  OldTransitionCommitted -> NewGenesisCommitted -> NewActive`, with explicit
-  `Ambiguous`/`Conflict`; before old-transition commit the old chain remains the
-  sole writable chain, after commit it is permanently closed and recovery may
-  only publish/query the exact bound new genesis, and new writes begin only at
-  `NewActive`;
-- cutover publication is crash-safe: recovery exposes the complete old writable
-  chain when no transition committed, the complete closed old chain plus one
-  resumable exact pending descriptor after transition commit, or the new chain
-  with its exact authenticated bridge; it never reopens old writes or invents a
-  second descriptor/key/nonce;
+- bridge construction states are
+  `DescriptorPrepared -> OldTransitionAuthenticated -> NewGenesisAuthenticated`,
+  with explicit `Ambiguous`/`Conflict`; none is an
+  authoritative chain switch, and v0.111.12 authorization plus v0.111.13 atomic
+  publication must succeed before the old chain closes or new writes begin;
+- staged bridge bytes are non-authoritative and crash-safe: before v0.111.13
+  publication, recovery exposes the complete old writable chain and may only
+  reconcile or discard the exact staged descriptor/transition/genesis under its
+  operation; after publication it exposes the complete new chain with the exact
+  authenticated bridge and never invents a second descriptor/key/nonce;
 - construction API builds a directed dependency graph for descriptor fields,
   old transition preimage/tag, new genesis preimage/tag and chain roots and
   rejects any cycle, including direct/indirect descriptor dependence on old tag,
   new tag, or a root containing either; review artifacts record this graph;
 - exact retry returns the existing transition/descriptor/new-genesis state;
   concurrent rotations, different descriptors for one old root, descriptor nonce
-  reuse, new key replacement after old commit, and fixed-point search inputs enter
-  conflict without selecting by arrival order;
+  reuse, new key replacement after authorization or staging, and fixed-point
+  search inputs enter conflict without selecting by arrival order;
 - independent vectors prove old transition encoding/tagging before new record,
   first-new-record binding to only its exact old transition/tag/descriptor,
   mutation/substitution refusal for every bridge field, no multiple fixed points,
   cycle-detector rejection corpus, concurrent rotation conflict, and crashes at
-  every prepare/commit/activate boundary.
+  every non-authoritative bridge-construction boundary.
 
 Verification:
 
@@ -8887,8 +8891,9 @@ Exit criteria:
   own tag or from the first new record.
 - The first new record is uniquely bound to one authenticated old transition and
   descriptor, and all later records descend from that bridge.
-- Every partial rotation is one explicit recoverable old/bridged/new state; no
-  circular fixed point, dual writable chain or arrival-order choice exists.
+- Every partial bridge construction is non-authoritative until the v0.111.12/
+  v0.111.13 authorization and atomic cutover; no circular fixed point, dual
+  writable chain or arrival-order choice exists.
 
 ### v0.111.11 - Provider Capacity Capability Profiles
 
@@ -8971,6 +8976,177 @@ Exit criteria:
 - Protected profiles refuse unverifiable or degraded capacity capabilities
   instead of silently weakening resource-exhaustion guarantees.
 
+### v0.111.12 - Independent Daemon Journal Rotation Authorization
+
+Goal: ensure compromise of the retiring journal authentication key cannot
+authorize its own successor or rewrite the daemon's authoritative suite policy.
+
+Deliverables:
+
+- canonical `DaemonJournalRotationAuthorization` binds format/version, authority
+  domain and epoch, daemon identity/incarnation, rotation operation ID and reason,
+  declared normal/compromise-recovery status, expected old suite/key epoch/root/
+  sequence, exact new suite/key epoch, `NewChainGenesisDescriptor` commitment,
+  new key descriptor/handle commitment, provider identity/profile/assurance and
+  the expected old and proposed new daemon-root policy descriptor commitments;
+- authorization is issued by an admitted daemon-root/provider operation
+  capability or a separately admitted recovery authority whose authentication
+  key and policy are independent of the retiring journal MAC key; possession of
+  the old MAC key, an old-key-valid transition or journal write access cannot
+  mint, modify, replay or satisfy this authorization;
+- authority admission defines issuer identity, key/capability purpose, scope,
+  threshold when applicable, validity/freshness, revocation, algorithm suite,
+  compromise-recovery permission and exact daemon/provider binding; generic
+  signing, realm governance, store keys and journal-MAC capabilities are not
+  silently convertible into rotation authority;
+- normal rotation requires both valid old-chain continuity at the exact expected
+  frontier and a valid independent authorization; a mismatch in root, sequence,
+  suite, key epoch, daemon incarnation, operation, descriptor, provider evidence
+  or policy commitment is a typed stale/conflict refusal and is never rebased;
+- expected-descriptor compare-and-swap reserves one transition from the exact old
+  daemon-root policy descriptor to the exact new descriptor; concurrent or
+  differently authorized rotations conflict, and arrival order, a higher epoch
+  or a valid retiring-key MAC cannot select a winner;
+- the new authoritative daemon-root policy/descriptor binds the new suite/key
+  epoch, exact provider-bound key descriptor, bridge descriptor and authorization
+  commitment and becomes active only through the joint v0.111.13 publication;
+  the authorization alone cannot activate a key or close a chain;
+- recovery selects the authoritative suite/key epoch from the independently
+  authenticated daemon-root descriptor state and its committed authorization,
+  then verifies the v0.111.10 bridge; it never discovers authority from the old-
+  MACed transition, the highest journal epoch or provider output alone;
+- compromise recovery treats all retiring-key MACs after the declared trusted
+  frontier as attacker-capable data: the independent authority fixes the accepted
+  old frontier and exact successor, and no old-key-valid transition is evidence
+  that the attacker-approved descriptor was authorized;
+- compromise or loss of the daemon root/rotation authority is outside ordinary
+  suite rotation and enters the declared recovery/migration ceremony with a new
+  daemon identity/incarnation or explicitly linked recovery epoch; the old MAC
+  key cannot substitute for that ceremony or self-authorize a new root;
+- authorization is single-use and operation-bound; stale authorization,
+  cross-daemon/incarnation/provider replay, downgrade, reason/status mutation,
+  key-descriptor substitution, policy rollback and reuse after successful or
+  conflicted rotation fail closed while preserving audit evidence;
+- vectors and state-machine tests include a fully compromised old MAC key forging
+  arbitrary valid old records/transitions, stale frontier authorization,
+  authorization replay, concurrent authorized rotations, provider evidence
+  substitution, descriptor-update loss, daemon-root compromise and explicit
+  recovery-ceremony handoff.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- independent rotation-authorization encoding and signature/MAC vectors;
+- old-journal-key compromise and authority-CAS state-machine tests;
+- daemon-root/provider and recovery-authority integration fixtures.
+
+Exit criteria:
+
+- A retiring journal key can prove chain continuity but can never independently
+  authorize its successor or mutate the authoritative daemon-root descriptor.
+- Recovery derives the active suite/key epoch from one independently authorized,
+  compare-and-swap-protected descriptor transition.
+- Daemon-root authority compromise invokes an explicit recovery ceremony rather
+  than weakening ordinary rotation or trusting an attacker-controlled old MAC.
+
+### v0.111.13 - Fully Staged Atomic Journal Rotation Cutover
+
+Goal: prove the exact new genesis is usable and durable before any irreversible
+old-chain closure, then publish the bridge and authoritative descriptor together.
+
+Deliverables:
+
+- one exclusive bounded rotation lease freezes the expected old root/sequence
+  while exact bridge bytes are prepared; ordinary old-chain writes wait during
+  preparation, but timeout, cancellation or any pre-publication failure releases
+  the lease and leaves the unchanged old chain authoritative and writable;
+- ordered preparation is: reserve/provision/reconcile the new key under
+  v0.111.9/v0.111.11, obtain v0.111.12 authorization for the exact descriptors,
+  verify provider availability with a purpose-bound non-state-changing test
+  operation where the admitted capability permits it, authenticate but do not
+  publish the old transition, authenticate and durably stage the exact new
+  genesis using that old transition tag, and independently reverify all bytes,
+  tags, descriptors, authorization and expected roots;
+- provider profiles without a safe test operation prove usability by the exact
+  staged new-genesis MAC operation and reconcile its idempotent result; a probe,
+  successful key creation or unauthenticated provider status alone never proves
+  that the production MAC operation completed;
+- canonical `DaemonJournalRotationPreparedManifest` binds daemon/incarnation,
+  operation/lease, old frontier and descriptor, rotation authorization, new key/
+  provider evidence, genesis descriptor, exact old-transition bytes/tag/digest,
+  exact new-genesis bytes/tag/digest, target descriptor bytes/commitment,
+  staging locations/generations/lengths and required durability profile, and is
+  authenticated through a purpose-separated daemon-root operation capability
+  independent of both journal MAC keys;
+- every staged byte, tag and descriptor is fsynced under the admitted durability
+  profile and independently reread/reverified before the prepared manifest may
+  become durable; staged corruption, short write, tag mismatch, missing key,
+  unavailable provider evidence or changed old frontier aborts preparation and
+  leaves the old chain open;
+- preferred publication uses one authority transaction to atomically expose the
+  old close transition, first new genesis and v0.111.12 daemon-root descriptor
+  switch, or none; no reader can observe a closed old chain without the exact
+  usable new genesis and authoritative descriptor selecting it;
+- where filesystem/platform layout cannot expose all three objects through one
+  atomic primitive, an authenticated durable publication manifest references the
+  fully durable prepared manifest and exact immutable staged bytes; the only
+  irreversible old-close marker atomically commits that publication manifest,
+  and recovery completes visibility using those bytes without another provider
+  MAC, key creation, authorization or descriptor-selection operation;
+- rotation state machine is `OldWritable -> RotationLeaseHeld -> KeyReconciled
+  -> Authorized -> RecordsStaged -> PreparedDurable -> PublishedNewActive`, with
+  `Ambiguous`, `Conflict` and `AbortedBeforePublication`; only the final
+  publication changes authority, and there is no durable state whose only
+  authoritative chain is closed but lacks the exact staged new genesis;
+- provider response ambiguity, including new-key success followed by response
+  loss, staged-genesis MAC completion followed by response loss or prepared-
+  manifest authentication followed by response loss, reconciles to the exact
+  prior operation before `PreparedDurable`; it cannot close the old chain,
+  trigger a second key/MAC/authorization operation or be resolved by selecting a
+  newly observed provider object;
+- expected-old-frontier and expected-daemon-descriptor compare-and-swap are
+  rechecked at publication; concurrent ordinary writes, rotations, descriptor
+  updates or recovery actions make preparation stale and abort/conflict without
+  rebasing authenticated records or partially switching authority;
+- immediately before publication, an authenticated provider query revalidates
+  the exact new key handle/epoch, admitted MAC capability and non-revoked usable
+  status without creating another key or tag; unavailable, lost, revoked,
+  substituted or ambiguous staged-key status aborts while the old chain remains
+  authoritative, while provider loss after completed publication is ordinary
+  explicit active-key unavailability rather than a partial rotation;
+- pre-publication abandoned keys and provider operations retain v0.111.9 charges
+  and explicit orphan/destruction state; cleanup cannot destroy an ambiguous key,
+  reuse a staged genesis or claim capacity release before confirmed destruction;
+- recovery validates publication marker/manifest, prepared manifest, exact staged
+  bytes and descriptor CAS before exposing the new chain; missing/corrupt
+  pre-publication staging preserves the old authoritative chain, while corruption
+  after an irreversible marker is `RecoveryRequired` and never reopens old writes
+  or performs a fresh provider MAC;
+- crash/concurrency fixtures cover every reservation, provider, authorization,
+  encode, MAC, write, sync, reread, manifest, CAS and visibility boundary;
+  provider loss between steps, success-response loss, staged-genesis corruption,
+  lease expiry, old-write race, close/descriptor-switch race and recovery replay
+  must expose either the complete unchanged old state or complete exact new state.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- rotation preparation/publication state-machine and crash model;
+- process-kill durability-profile matrix at every staged/publication boundary;
+- ambiguous provider-MAC and concurrent old-writer integration fixtures.
+
+Exit criteria:
+
+- No irreversible old-chain closure occurs until the exact authenticated new
+  genesis, independent authorization and target descriptor are durable and
+  independently verified.
+- Publication makes the old transition, new genesis and authoritative descriptor
+  switch visible as one recoverable authority change, never a closed-only state.
+- Recovery after publication requires no new provider MAC operation and cannot
+  choose, regenerate or rebase any component of the authorized staged bridge.
+
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
 Goal: ensure untrusted remote data cannot influence trusted state before full
@@ -9000,9 +9176,10 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.11 daemon cutover, non-circular suite bridge,
-  admitted authentication suite/provider-capacity mode, and one reconciled active
-  store quarantine key, re-protects candidate metadata under that store/
+  requires the v0.111.4-v0.111.13 daemon cutover, non-circular suite bridge,
+  independent rotation authorization, fully staged atomic publication, admitted
+  authentication suite/provider-capacity mode, and one reconciled active store
+  quarantine key, re-protects candidate metadata under that store/
   authorized-realm metadata key, and converts it into the candidate's durable
   quota charge while
   publishing either one complete `BoundedQuarantinedCandidate`/bundle generation
@@ -9014,7 +9191,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.11 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.13 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -9256,7 +9433,10 @@ Deliverables:
   reservation before execution, charged uncertainty/orphans/conflicts, bounded
   unknown inventory, churn-resistant aggregates and destruction-confirmed release;
 - suite-rotation bridge states model acyclic descriptor/old-transition/new-genesis
-  dependencies, old-chain close, exact pending bridge and new-chain activation;
+  dependencies; independent-authorization states model retiring-key compromise,
+  expected-descriptor compare-and-swap and recovery authority; staged-cutover
+  states model exclusive old-frontier lease, reconciled key/MAC operations,
+  prepared manifest and atomic old-transition/new-genesis/descriptor activation;
   provider modes model holding tokens, atomic quota-checked execution, dedicated
   slots, unverifiable refusal, capability degradation and reservation races;
 - checkpoint, policy epoch, evidence, and key-rotation interactions;
@@ -9281,8 +9461,10 @@ Deliverables:
   authentication, no provider execution without capacity reservation, no handle
   refund before confirmed destruction, no identity/store churn capacity reset,
   no suite-transition commitment cycle or multiple fixed point, no dual writable
-  suite chain, no local counter as physical provider reservation, no hard claim
-  from unverifiable/non-holding capacity, no cross-purpose key use, no opaque
+  suite chain, no retiring MAC key authorizing its successor, no closed-old-only
+  publication state, no recovery-time provider MAC after activation, no local
+  counter as physical provider reservation, no hard claim from unverifiable/non-
+  holding capacity, no cross-purpose key use, no opaque
   cleanup deleting published state, no linear locator-proof requirement, no stale
   admission, no partial trust, and eventual convergence under documented
   assumptions;
@@ -9364,9 +9546,11 @@ Deliverables:
   journal-suite and provider-capacity states preserve MAC chain/key epochs and
   exact handle charges under provider partition, inventory pagination, unknown
   handles, daemon/store churn, destruction ambiguity and migration;
-  non-circular bridge and provider-mode states preserve one old/new transition,
-  token/slot/atomic-operation ownership and capability assurance under message
-  reorder, loss, partition, external capacity consumption and recovery;
+  non-circular bridge, independent rotation-authorization, prepared atomic
+  cutover and provider-mode states preserve one old/new transition, exact
+  authority/descriptor CAS, durable staged bytes, token/slot/atomic-operation
+  ownership and capability assurance under message reorder, loss, partition,
+  external capacity consumption and recovery;
 - model invariants for no lost encryption instance, no semantic/index
   completeness gap, no Byzantine manifest omission accepted, no hidden
   compartment disclosure, no endpoint-placement overwrite, no clock-derived
@@ -9385,10 +9569,11 @@ Deliverables:
   destroyed/reprovisioned after finalize-response loss, no provider-capacity
   reset/refund through partition/restart/identity churn, no unknown provider
   handle silently adopted or dropped, no journal suite selected by message bytes,
-  no circular or alternate suite bridge, no expired/cancelled token refund while
-  execution is unknown, no unverifiable provider treated as hard capacity, no
-  arrival-order transition selection, and eventual convergence under documented
-  authority, availability, and partition assumptions;
+  no circular or alternate suite bridge, no old-key-only rotation authority, no
+  closed old chain before atomic new-genesis/descriptor publication, no expired/
+  cancelled token refund while execution is unknown, no unverifiable provider
+  treated as hard capacity, no arrival-order transition selection, and eventual
+  convergence under documented authority, availability, and partition assumptions;
 - counterexample corpus and deterministic bounded model-check command required
   by the v0.116.0 release gate;
 - immutable model-run manifest records model source digest, tool and solver
@@ -9482,11 +9667,12 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.11 suite/capacity
-  closures plus the v0.111.7 reconciled active store key; ambiguous/lost/
-  conflicting provisioning, unavailable keys, cyclic rotation or exhausted/
-  unverifiable capacity refuse transfer, preserve existing candidate presence/
-  quota, and never trigger automatic reprovisioning;
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.13 suite,
+  capacity, independent-authorization and atomic-cutover closures plus the
+  v0.111.7 reconciled active store key; ambiguous/lost/conflicting provisioning,
+  unavailable keys, cyclic or retiring-key-only rotation, incomplete staging or
+  exhausted/unverifiable capacity refuse transfer, preserve existing candidate
+  presence/quota, and never trigger automatic reprovisioning;
 - transfer cancellation;
 - accepted response;
 - denied response;
@@ -10447,6 +10633,9 @@ Deliverables:
   capacity reservation/state/inventory/destruction-release target set;
 - `NewChainGenesisDescriptor`/suite-bridge dependency and provider-capability
   descriptor/token/atomic-operation/static-slot transition target set;
+- `DaemonJournalRotationAuthorization`, authority/descriptor compare-and-swap,
+  retiring-key compromise, prepared rotation manifest, staged bridge bytes and
+  atomic publication/recovery target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -10488,7 +10677,9 @@ Deliverables:
   authenticated complete-prefix cutover, store quarantine-key lifecycle/realm
   adoption, six-stage three-journal reconciliation, fixed HMAC-SHA3-256 journal
   authentication/rotation, acyclic old/new suite bridge, provider-capacity
-  accounting/capability modes, and atomic partial cleanup;
+  accounting/capability modes, retiring-key-independent rotation authorization,
+  fully staged genesis and atomic bridge/descriptor publication, and atomic
+  partial cleanup;
 - composition of the history-independent map algorithm/pages with authority
   active/covered-fence/exception/archive roots, a permanent low-sequence
   exception plus later archival, exact replay refusal, checkpoint rollback
@@ -10644,9 +10835,11 @@ Deliverables:
   substitution, no journal-byte suite selection or decode-before-authentication,
   no provider execution without capacity charge, no churn-based charge reset, no
   pre-destruction refund, no unknown-handle inventory drop, no suite-rotation
-  cycle/fixed-point/dual writer, no local/advisory counter as physical capacity,
-  no token cancellation refund under unknown execution, no unverifiable hard
-  provider claim, no opaque cleanup of published data, no partial durable
+  cycle/fixed-point/dual writer, no retiring journal key authorizing its own
+  successor, no closed old chain before a verified durable new genesis, no
+  recovery-time provider MAC after atomic publication, no local/advisory counter
+  as physical capacity, no token cancellation refund under unknown execution,
+  no unverifiable hard provider claim, no opaque cleanup of published data, no partial durable
   candidate after resource refusal, no abuse digest or `ResourceLimit` as
   authority evidence, no arrival-order authority selection, and eventual
   convergence under documented assumptions;
@@ -10720,6 +10913,9 @@ Deliverables:
   boundaries, v0.111.9 provider-capacity reserve/inventory/abandon/destruction-
   release boundaries, v0.111.10 old-transition/genesis/new-activation boundaries,
   v0.111.11 capability-discovery/token/atomic-quota/static-slot race boundaries,
+  v0.111.12 independent authorization/descriptor-CAS/compromise-recovery
+  boundaries, v0.111.13 rotation-lease/key-reconciliation/staged-record/
+  prepared-manifest/atomic-publication boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -10865,8 +11061,11 @@ Deliverables:
   thousands of orphan/store-incarnation loops, unknown inventory and destruction-
   response loss, suite-bridge cycle/substitution/concurrent rotation, provider-
   capability spoof/downgrade, token expiry/execution races, atomic-quota refusal,
-  dedicated-slot rebind and shared-client exhaustion, privacy-profile change,
-  quota-refund, padding-budget, cross-purpose key, and identifier/timing leakage
+  dedicated-slot rebind and shared-client exhaustion, forged old-key-valid
+  rotation, stale/cross-incarnation independent authorization, conflicting
+  descriptor compare-and-swap, provider loss during staged genesis, prepared-
+  manifest corruption and old-close/descriptor-switch races, privacy-profile
+  change, quota-refund, padding-budget, cross-purpose key, and identifier/timing leakage
   probes, sender-held refusals, bounded abuse-receipt rotation, expiry and restart
   accounting, partial-candidate cleanup, and attempts to reinterpret
   `ResourceLimit` as signature/policy/authority evidence;
@@ -10966,8 +11165,10 @@ Exit criteria:
   daemon/provider recovery cannot rebind or select conflicts, unavailable
   quarantine keys and provider orphans keep capacity charged, journal bytes
   cannot choose/weaken authentication, rotation bridges remain acyclic and
-  unique, hard provider capacity uses an authenticated enforceable capability,
-  fair capacity remains available to other peers, and arrival order affects
+  unique, retiring MAC keys cannot authorize successors, no old chain closes
+  before the exact new genesis and descriptor switch can publish atomically,
+  hard provider capacity uses an authenticated enforceable capability, fair
+  capacity remains available to other peers, and arrival order affects
   backpressure only.
 - Hostile peers cannot force unbounded recursive expansion or partial trust.
 
@@ -11137,12 +11338,21 @@ Deliverables:
   destruction-response loss, and confirmed reconciled capacity release;
 - suite-rotation bridge vectors prove independent old-transition construction,
   exact first-new-record attachment, acyclic dependency graph, no fixed-point
-  alternatives, old/bridged/new crash states and concurrent-rotation conflict;
+  alternatives, non-authoritative construction crash states and concurrent-
+  rotation conflict;
 - provider-capability vectors cover authenticated mode discovery, holding-token
   transcripts and expiry/cancel/execute races, atomic quota refusal with zero
   artifacts and lost-response query, dedicated-slot bind/reset/rebind refusal,
   advisory/unverifiable protected refusal, shared-client contention, degradation
   and mode migration without charge reset;
+- rotation-authorization vectors cover independent authority purpose/scope,
+  expected old/new descriptors, provider evidence, normal/compromise status,
+  forged old-key-valid transitions, stale/cross-incarnation replay, concurrent
+  authorized rotations, daemon-root compromise and recovery-ceremony handoff;
+- staged-cutover vectors and benchmarks cover exclusive rotation lease duration,
+  new-key and provider-MAC ambiguity reconciliation, exact prepared-manifest
+  bytes/tags/durability, corruption and every sync/CAS boundary, atomic old-close/
+  new-genesis/descriptor publication, and recovery without another provider MAC;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - plaintext-to-encrypted authority-log cutover model/vectors and crash benchmarks
@@ -11508,13 +11718,23 @@ Deliverables:
   occurs only after confirmed destruction plus complete journal reconciliation;
 - v0.111.10 suite rotation uses an acyclic `NewChainGenesisDescriptor`, old-
   authenticated transition and first-new-record bridge; dependency-cycle,
-  fixed-point, wrong-transition/descriptor, concurrent rotation, old-chain
-  closure and every old/bridged/new crash-state fixture pass;
+  fixed-point, wrong-transition/descriptor, concurrent rotation and every
+  non-authoritative bridge-construction crash-state fixture pass;
 - v0.111.11 authenticated provider capability profiles distinguish holding
   reservation tokens, atomic quota-checked execution, dedicated static slots and
   unverifiable capacity; token/execute races, zero-artifact quota refusal,
   capability spoof/degradation, shared-client contention, static-slot binding,
   advisory labeling and protected refusal suites pass;
+- v0.111.12 rotation authorization is independently authenticated from the
+  retiring MAC key and binds exact old/new frontiers, descriptors, provider
+  evidence, daemon incarnation, operation, reason and compromise status;
+  forged old-key-valid transitions, stale/replayed authorization, concurrent
+  descriptor compare-and-swap and daemon-root compromise fixtures pass;
+- v0.111.13 rotation fully reconciles the new key, stages and reverifies exact
+  old-transition/new-genesis bytes and descriptor under a durable prepared
+  manifest, then atomically publishes all three; every provider ambiguity,
+  corruption, crash and old-write/descriptor race exposes the complete unchanged
+  old state or complete new state and recovery performs no new provider MAC;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -11581,11 +11801,17 @@ Deliverables:
   pass against constrained provider profiles;
 - v0.111.10 construction-order/cycle detection, exact bridge attachment,
   descriptor/tag/root substitution, no-multiple-fixed-point, concurrent rotation
-  and partial old/bridged/new publication fixtures pass;
+  and partial non-authoritative bridge-construction fixtures pass;
 - v0.111.11 authenticated capability discovery, reservation-token binding/replay/
   expiry/cancel race, atomic-quota refusal/lost response, static-slot CAS/rebind,
   unverifiable/advisory refusal, provider degradation and mode-migration fixtures
   pass;
+- v0.111.12 compromised-retiring-key forgery, authority purpose/scope, expected-
+  descriptor CAS, stale/cross-incarnation replay, conflicting authorized rotation,
+  descriptor-update loss and root-compromise recovery-ceremony fixtures pass;
+- v0.111.13 rotation-lease, key/MAC response ambiguity, bound usability check,
+  staged-byte/tag corruption, prepared-manifest durability, atomic old-close/new-
+  genesis/descriptor switch and every preparation/publication crash fixture pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -11845,8 +12071,11 @@ Deliverables:
 - suite rotation is non-circular: the old authenticated transition binds a
   `NewChainGenesisDescriptor` with no tag-derived value, the first new-suite
   record binds that complete old transition/tag and descriptor, and subsequent
-  records chain normally; partial rotation preserves one closed-old/pending-
-  bridge/new-active state without fixed points or dual writable chains;
+  records chain normally; an authority independent of the retiring MAC binds the
+  exact old/new descriptors and provider evidence, and a fully durable prepared
+  manifest permits atomic old-close/new-genesis/descriptor publication without
+  a closed-old-only state, fixed points, dual writable chains or recovery-time
+  provider MAC operation;
 - durable quarantine candidate metadata uses a purpose-separated
   `StoreQuarantineMetadataKey` active before first publication, wrapped to
   admitted daemon/provider and recovery recipients, bound to store/quarantine/
