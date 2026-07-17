@@ -11368,6 +11368,9 @@ Deliverables:
 - staging uses purpose-separated encryption/HMAC keys and nonce domains, opaque
   owner-only names and immutable generation files; debug/status/log output exposes
   no payload, digest, path or principal beyond the selected privacy profile;
+- content confidentiality does not imply traffic privacy: v0.111.51 is the mandatory
+  closure for storage-observer size/timing/timestamp/backup and cleanup claims before
+  protected handoff staging can activate;
 - durable byte, object, decode/work, crypto and temporary-storage quota reservation
   precedes file creation and remains charged across short write, cancellation,
   ambiguity, process death, key loss and cleanup until exact reconciliation;
@@ -11441,7 +11444,11 @@ Deliverables:
 - provider/journal results arriving after the fence are authenticated against the
   old operation/incarnation and quarantined as `LateFencedResult`; they never apply
   to new authority, complete a reused ticket or disappear, and require explicit
-  governed fork/evidence resolution if their semantic effect may have committed;
+  v0.111.49 effect classification/governed bridge resolution if their semantic
+  effect may have committed;
+- fencing is not a terminal staged-material cleanup transition: v0.111.50 retains
+  payload, decoder, keys and quota until the effect bridge and all authoritative
+  result roots reach an authenticated terminal outcome;
 - abandoned ticket ID, FIFO sequence, grant/handoff generation, nonce domains and
   operation IDs remain permanently non-reusable; new incarnation counters/random
   identities cannot alias old or cloned state;
@@ -11511,6 +11518,8 @@ Deliverables:
 - unavailable/wrong accounting key or authority fails closed while retaining exact
   pending assurance state; it does not initialize fresh counters, consume cold-
   recovery capacity or silently downgrade protected availability;
+- v0.111.53 is the mandatory provisioning/descriptor/rotation/retirement closure;
+  this milestone cannot activate a live protected assurance epoch independently;
 - tests cover periodic/activation challenge limits, provider response loss, restart/
   clone, cross-`ClockEpoch`, reset replay, key rotation/loss, activation with stale
   root, cross-domain substitution and actual-recovery-versus-verification routing.
@@ -11559,8 +11568,10 @@ Deliverables:
   cover capacity; cover operations cannot consume, reserve, reset or reveal valid
   token discovery budgets and cannot be provider-selected to target real events;
 - coordinators inherently learn requests reaching them and therefore recovery
-  frequency/linkability unless the selected admitted relay/cover profile's measured
-  trace bounds hide those events; relays may themselves learn source/timing, and
+  frequency/linkability unless v0.111.52 admits a blind protocol whose complete
+  coordinator view satisfies its observer-specific bounds; measured network timing
+  alone cannot hide legitimate authentication or budget access; relays may
+  themselves learn source/timing, and
   single relay/coordinator, global passive observer and endpoint-collusion limits
   remain explicit rather than inheriting a stronger privacy claim;
 - threshold authorization and v0.111.42 pre-auth gate preserve response-shape/
@@ -11591,6 +11602,271 @@ Exit criteria:
 - Response shaping and public-abuse isolation reduce validity oracles without
   changing recovery authority or legitimate discovery capacity.
 
+### v0.111.49 - Post-Fence Ambiguous Effect Resolution
+
+Goal: prevent an emergency fence from being mistaken for proof that an old
+provider or journal operation did not commit immediately before fencing.
+
+Deliverables:
+
+- every fenced operation receives exactly one authenticated classification:
+  `ProvenNotExecuted`, `Committed(effect_commitment)` or `EffectUnknown`; absence,
+  timeout, local rollback, fence completion and missing provider state never imply
+  `ProvenNotExecuted`;
+- `ProvenNotExecuted` requires conclusive provider/journal non-execution evidence
+  bound to operation, old incarnation/namespace, fence generation and query root;
+  `Committed` binds the exact semantic effect, provider result and old roots;
+- `EffectUnknown` carries the complete uncertainty set, affected authority scope,
+  dependency/conflict closure, provider query/fence capabilities, retained staging
+  commitment and permanent evidence root into the new incarnation;
+- new-incarnation activation may restore unrelated authority, but every operation
+  dependent on or conflicting with `EffectUnknown` remains read-only/blocked; it
+  cannot be retried, compensated, promoted, compacted away or selected by arrival
+  order while the effect classification is unresolved;
+- one canonical threshold-governed `EmergencyEffectBridge` binds old/new
+  incarnation and authority roots, exact operation/effect commitment, provider and
+  journal evidence, dependency closure, policy epoch and prior bridge root;
+- the bridge has only `AdoptCommittedEffect`, `AcceptProvenNonExecution` and
+  `AuthorizeCompensation` outcomes; adoption creates a new signed transition that
+  acknowledges the old effect, while compensation records both the original
+  uncertainty/commitment and the independently authorized compensating effect;
+- compensation never rewrites history or proves non-execution, and is allowed only
+  when policy defines a bounded effect-specific compensator and residual-risk
+  classification; irreversible or unbounded effects remain blocked;
+- a late authenticated result can refine `EffectUnknown` only through the same
+  bridge CAS; conflicting results, bridge attempts or provider split views create
+  permanent conflict evidence and preserve read-only authority;
+- when provider semantics cannot conclusively query, fence and identify the effect,
+  status reports `EffectUnknown` and the affected authority remains read-only rather
+  than replaying the operation under a new ID or incarnation;
+- tests cover commit immediately before fence, response loss, false non-execution,
+  late result, provider split view, unrelated new-incarnation progress, dependent/
+  conflicting refusal, adoption, compensation, irreversible effect and bridge CAS.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- emergency-effect classification/bridge/dependency state-machine model;
+- provider query/fence ambiguity and compensation integration suite;
+- old/new incarnation canonical bridge vectors.
+
+Exit criteria:
+
+- Fencing proves only that future old-namespace execution is impossible; it never
+  proves the immediately preceding effect absent.
+- Unknown effects block every dependent or conflicting authority action across new-
+  incarnation activation until one governed bridge outcome commits.
+- No retry, adoption or compensation can erase uncertainty or apply one effect
+  twice.
+
+### v0.111.50 - Emergency Handoff Material Retirement
+
+Goal: retain staged payload recovery material while an emergency effect is unknown,
+then destroy it and release quota only after authenticated terminal resolution.
+
+Deliverables:
+
+- emergency fencing moves every affected staged generation to
+  `EmergencyFencedPendingEffect`, preserving encrypted payload/reconstruction bytes,
+  decoder/schema, wrappers/keys, staging commitment, retention policy and full quota;
+- bridge outcomes map to `EmergencyResolvedAdopted`,
+  `EmergencyResolvedNotExecuted` or `EmergencyResolvedCompensated`; no scheduler,
+  timeout, disconnect, local deletion or fence-only transition can create them;
+- `EmergencyFencedPendingEffect` remains decryptable to admitted recovery authority
+  for the declared emergency horizon and cannot execute, become a new handoff,
+  satisfy a different operation or lose its conservative resource charge;
+- terminal cleanup first reconciles journal, admission ledger, provider result,
+  bridge and dependency roots, then authenticates deletion of every managed staged
+  encryption instance and wrapper able to recover its DEK before releasing physical
+  capacity or retiring decoder/key support;
+- staged generations use independently accountable keys/encryption instances; a
+  shared wrapping key cannot be destroyed while another live or unresolved staged
+  payload depends on it, and wrapper deletion alone is not called payload erasure;
+- immutable permanent evidence retains encrypted-payload commitment, operation and
+  old/new incarnation roots, effect classification, bridge outcome, cleanup/
+  destruction evidence, residual copies and quota-release transition after bytes
+  are gone, without retaining plaintext, raw digest or a membership oracle;
+- managed backup/snapshot copies follow declared retirement and destruction
+  semantics; unknown or unmanaged copies remain explicit residual exposure and
+  cannot support a completed physical-erasure claim;
+- cleanup crash/restart is idempotent and forward-only; ambiguous provider deletion
+  remains charged and recoverable, while missing key/material before terminal
+  resolution enters permanent `RecoveryRequired` rather than releasing quota;
+- tests cover fence at each staging/execute/result boundary, all bridge outcomes,
+  key rotation, shared wrappers, backup copies, partial deletion, response loss,
+  restart, duplicate cleanup and quota release before evidence reconciliation.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- emergency staged-material retention/retirement state-machine model;
+- key/wrapper/destruction/quota crash and backup integration suite.
+
+Exit criteria:
+
+- Unknown effects retain the exact staged recovery material, keys, decoder and quota
+  required for governed resolution.
+- Only an authenticated terminal bridge outcome plus complete reconciliation permits
+  staged-byte destruction and corresponding capacity release.
+- Permanent commitments and resolution evidence survive cleanup without preserving
+  recoverable plaintext by accident.
+
+### v0.111.51 - Handoff Staging Traffic Privacy Composition
+
+Goal: make encrypted handoff staging a measured consumer of the daemon and storage-
+observer traffic profiles rather than treating opaque payload files as invisible.
+
+Deliverables:
+
+- v0.111.45/v0.111.50 staging and cleanup are named consumers of the v0.111.18 and
+  v0.111.29 profiles, with canonical baseline, padded and high-security profile IDs
+  and parameters committed inside the private realm descriptor;
+- baseline declares observable staging/retention/cleanup timing, allocation and
+  padded-size class, retry cadence, filesystem timestamps, directory churn, changed
+  backup/CoW blocks, emergency retention duration and final destruction activity;
+- exact plaintext length, plaintext digest and reconstruction metadata exist only
+  inside the encrypted authenticated record; any external equality/integrity
+  commitment is purpose-keyed, epoch-bound and domain-separated, never a raw stable
+  plaintext digest or cross-realm/cross-operation membership oracle;
+- padded profile uses admitted immutable size classes, preallocation, timestamp
+  normalization and bounded publication/cleanup windows; oversize payloads fail or
+  enter a declared larger class without silently exposing exact length;
+- high-security profile uses a measured fixed-cadence staging arena or equivalent
+  cover-staging schedule for create/write/sync/publish/retain/cleanup classes;
+  cover entries consume independent capacity and cryptographic work but can never
+  become a handoff, effect, result, recovery payload or legitimate quota receipt;
+- emergency fence, prolonged pending-effect retention, bridge resolution and cleanup
+  participate in the same observer trace contract; unavoidable retention-duration
+  leakage is declared, and cover work cannot claim to hide an unbounded event;
+- missed windows, unplanned allocation, distinguishable retry, timestamp failure,
+  backup-padding failure, emergency cleanup outside schedule or cover exhaustion
+  permanently degrades the exact historical profile interval;
+- trace accounting includes staged bytes, arenas, wrappers, ambiguous generations,
+  cover work, backup-block churn and terminal cleanup; capacity pressure never
+  triggers an undeclared privacy downgrade or premature emergency deletion;
+- tests compare resumable/non-resumable, real/cover, success/failure, disconnect,
+  ordinary/emergency retention, all bridge outcomes, restart and cleanup traces
+  across filesystem, block, snapshot, backup and provider observers.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- handoff traffic-profile/arena/health state-machine model;
+- filesystem/block/snapshot/backup distinguishability suite;
+- padding, fixed-cadence and emergency-retention overhead benchmarks.
+
+Exit criteria:
+
+- Every profile states exactly what handoff staging and emergency cleanup leak to
+  each admitted storage observer.
+- Raw plaintext length/digest never appears outside authenticated encryption, and
+  external commitments cannot correlate payloads across protected domains.
+- High-security claims hold for measured staging/retention/cleanup traces or the
+  affected interval remains permanently degraded.
+
+### v0.111.52 - Discovery Cover Observer Boundary
+
+Goal: scope cover-query privacy to observers the selected protocol can actually
+hide recovery occurrence from, including an active coordinator.
+
+Deliverables:
+
+- each discovery profile contains an observer/claim matrix for source network,
+  relay, coordinator, selected/non-selected endpoint, threshold participant,
+  provider operator, local host, backup/log reader and global passive observer;
+- the baseline and coordinator-visible cover profiles explicitly place a
+  coordinator that authenticates requests or accesses legitimate accounting
+  outside the recovery-occurrence privacy claim, even when network size/timing and
+  endpoint traces for real/cover requests match;
+- coordinator-visible cover uses a separate purpose-keyed cover-accounting domain
+  with the same externally observable operation/response shape, but documents any
+  distinction available after authentication, authorization or real-budget access;
+  cover accounting cannot consume, reserve, reset or infer legitimate capacity;
+- a profile may include the coordinator in its privacy claim only through a reviewed
+  oblivious/blind protocol whose coordinator view cannot distinguish real and cover
+  slots by token, authentication path, budget access, query data, response handling,
+  logs or errors; timing similarity alone is never sufficient;
+- blind-profile transcripts bind slot/profile/relay set and authenticated outcome
+  without granting cover operations recovery authority; malformed or exhausted
+  blind slots consume separate abuse/cover capacity and cannot mutate real budgets;
+- colluding observers receive only the intersection of claims supported by the
+  profile; single-coordinator, relay/coordinator, coordinator/endpoint and global-
+  observer limits are explicit, and no topology label silently implies anonymity;
+- health and status identify which observer claim degraded when direct fallback,
+  distinguishable coordinator accounting, blind-protocol failure, missed cover slot
+  or log-policy violation occurs; protected policy refuses unsupported claims;
+- active-coordinator trace tests inspect authentication path, key/token use,
+  accounting namespace, provider calls, response class and logs in addition to
+  network timing/size, with real/cover/invalid/absent/refused/conflict cases.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- observer-claim/cover-accounting/blind-profile state-machine model;
+- active coordinator, relay, endpoint and collusion trace suite.
+
+Exit criteria:
+
+- A coordinator that can observe legitimate authentication or budget access is
+  explicitly outside the occurrence-privacy claim.
+- Coordinator-private cover is claimed only for a reviewed protocol whose complete
+  coordinator view is measured and indistinguishable within declared bounds.
+- Separate cover accounting preserves operation shape without becoming recovery
+  authority or consuming legitimate discovery capacity.
+
+### v0.111.53 - Retention Accounting Key Lifecycle
+
+Goal: make retention-verification accounting key provisioning, publication,
+rotation and retirement explicit before any assurance epoch becomes authoritative.
+
+Deliverables:
+
+- initial provisioning reserves provider/profile capacity and durable operation ID,
+  creates/wraps a purpose-separated key, queries ambiguous execution, verifies exact
+  key purpose/suite/store/realm/epoch and usability, and commits the reconciled
+  provider result before an accounting root or assurance challenge can activate;
+- the private realm descriptor binds the authenticated key descriptor, provider/
+  capability mode, recipients, suite, epoch, accounting-root genesis commitment and
+  independent recovery/rotation authority; no bootstrap/public metadata exposes it;
+- state machine is `KeyReserved -> ProviderPending -> KeyVerified ->
+  DescriptorPrepared -> AccountingActivated`, with `Ambiguous`, `Conflict`,
+  `Unavailable` and `RecoveryRequired`; restart never regenerates or assumes absence;
+- rotation is copy-on-write: provision and verify the new key, prepare successor
+  descriptor/accounting epoch, atomically activate both under expected old roots,
+  and preserve old key/descriptor/checkpoints while any challenge, provider response,
+  pending accounting reservation, reconciliation, backup or rollback horizon uses it;
+- ambiguous provider key creation, wrapping, rotation or destruction uses the normal
+  provider-operation reconciliation state machine and remains capacity-charged;
+  local timeout never reprovisions, adopts an unknown handle or retires the old key;
+- retirement proves no live/pending accounting root or verification transcript needs
+  the old epoch, commits destruction intent/result where policy requires it, and
+  preserves canonical historical verification evidence without retaining excess
+  decryption authority;
+- key loss/unavailability blocks new assurance and protected activation while
+  preserving prior evidence and conservative pending charges; it never resets
+  counters, falls back to another key purpose or consumes recovery accounting;
+- tests cover first provisioning, provider ambiguity/conflict, descriptor switch,
+  challenge/response during rotation, response loss, restart/clone, old-root rollback,
+  premature retirement, key loss, backup restore and cross-purpose substitution.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- retention-accounting key lifecycle/descriptor state-machine model;
+- provider ambiguity, copy-on-write rotation and retirement integration suite.
+
+Exit criteria:
+
+- No assurance epoch activates before its exact key is capacity-reserved, reconciled,
+  verified and committed into the private descriptor.
+- Rotation cannot strand pending verification/accounting work or create two writable
+  accounting epochs.
+- Provider ambiguity and key loss preserve capacity, counters and evidence without
+  regeneration, fallback or cross-purpose budget reset.
+
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
 Goal: ensure untrusted remote data cannot influence trusted state before full
@@ -11620,7 +11896,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.48 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.53 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -11634,9 +11910,11 @@ Deliverables:
   activation, pre-accounting discovery receipts, durable ordinary next-writer
   handoffs, retention-assurance policy, coordinated/partitioned discovery budgets,
   bounded handoff recovery, private retrievability-metadata migration, durable
-  handoff payload staging, emergency writer-incarnation recovery, retention-
-  verification accounting and discovery metadata privacy, admitted authentication
-  suite/provider-capacity mode, and one reconciled active store quarantine key,
+  handoff payload staging, emergency writer-incarnation recovery, post-fence effect
+  resolution, emergency material retirement, handoff traffic privacy, observer-
+  scoped discovery cover, retention-verification accounting/key lifecycle, admitted
+  authentication suite/provider-capacity mode, and one reconciled active store
+  quarantine key,
   re-protects candidate metadata under that store/
   authorized-realm metadata key, and converts it into the candidate's durable
   quota charge while
@@ -11649,7 +11927,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.48 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.53 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -11941,10 +12219,12 @@ Deliverables:
   satisfaction and exact lease CAS, cross-log reconciliation, anchored roots/
   limited caller receipts, durable ordinary next-writer handoffs, FIFO grants,
   restart-persistent bounded handoff recovery/required blocking, priority debt and
-  spam bounds plus immutable payload staging and independently authorized emergency
-  incarnation fencing; retrievability states bind private tags/keys to exact
-  ciphertext generations across copy-on-write migration, relocation and rotation
-  under purpose-separated retention-verification accounting;
+  spam bounds plus immutable payload staging, measured handoff-staging traces,
+  independently authorized emergency incarnation fencing, post-fence effect
+  classification/bridge blocking and terminal staged-material retirement;
+  retrievability states bind private tags/keys to exact ciphertext generations
+  across copy-on-write migration, relocation and rotation under purpose-separated
+  retention-verification accounting with explicit key provisioning/rotation;
 - checkpoint, policy epoch, evidence, and key-rotation interactions;
 - equivocation and bounded fork handling;
 - invariants for no lost heads, no lost duplicate identity, no locator-based
@@ -11994,8 +12274,11 @@ Deliverables:
   certified-leaf/terminal substitution, bootstrap-anchor frontier reuse,
   unanchored/unsatisfied maintenance frontier, stale satisfaction lease CAS,
   grant-only priority satisfaction, ordinary-handoff overtake, restart-refilled
-  handoff recovery, non-resumable handoff, undurable staged payload, authority-
-  unavailable bypass or unfenced emergency incarnation, cross-log duplicate grant,
+  handoff recovery, non-resumable handoff, undurable staged payload, unmeasured
+  handoff staging, authority-unavailable bypass, unfenced emergency incarnation,
+  retry/adoption past `EffectUnknown`, premature emergency material cleanup,
+  coordinator-cover overclaim, retention-accounting key ambiguity, cross-log
+  duplicate grant,
   ledger rollback/
   priority erasure or unbounded phantom/debt/spam denial,
   no unmanaged-backup recoverability
@@ -12107,15 +12390,17 @@ Deliverables:
   handoff under coordinated/disjoint endpoint budgets and pre-auth isolation,
   retention-through-two-stage activation under explicit enforceable/attested/
   probabilistic assurance with private ciphertext-bound metadata migration,
-  purpose-separated retention-verification accounting and measured discovery
-  metadata profiles, independently recoverable ledger keys,
+  purpose-separated retention-verification accounting/key lifecycle and measured
+  observer-scoped discovery metadata/cover profiles, independently recoverable
+  ledger keys,
   immutable grant certificates,
   append-only checkpoint consistency/current-leaf/terminal proofs, completion CAS,
   purpose-separated maintenance-frontier anchors, post-reconciliation satisfaction/
   exact lease CAS plus ordinary next-writer handoffs and bounded recovery-required
-  blocking with immutable staged payloads and emergency-incarnation fencing, cross-
-  log reconciliation, limited caller receipts, durable FIFO/debt fairness and spam
-  bounds under partitions, crashes, sustained appends and restart;
+  blocking with immutable staged payloads, measured handoff staging, emergency-
+  incarnation fencing, post-fence effect bridges and terminal material retirement,
+  cross-log reconciliation, limited caller receipts, durable FIFO/debt fairness and
+  spam bounds under partitions, crashes, sustained appends and restart;
 - model invariants for no lost encryption instance, no semantic/index
   completeness gap, no Byzantine manifest omission accepted, no hidden
   compartment disclosure, no endpoint-placement overwrite, no clock-derived
@@ -12160,7 +12445,10 @@ Deliverables:
   substitution, capsule-anchor reuse, unsatisfied-frontier maintenance, stale
   satisfaction-to-lease CAS, grant-only satisfaction, ordinary-handoff overtake,
   non-resumable/unstaged handoff, handoff-recovery reset, unavailable-authority
-  bypass, forged emergency fence or late-result application, duplicate cross-log
+  bypass, forged emergency fence, late-result application outside the effect bridge,
+  retry/dependent progress under `EffectUnknown`, premature staged-material cleanup,
+  handoff-trace or coordinator-cover overclaim, retention-key lifecycle bypass,
+  duplicate cross-log
   grant, rollback
   priority erasure, phantom ticket blocking forever or ticket-spam
   permanent rotation denial, no arrival-order transition selection,
@@ -12259,7 +12547,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.48 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.53 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -12274,8 +12562,10 @@ Deliverables:
   receipt import, ordinary next-writer handoffs and retention-assurance policy
   plus coordinated/partitioned discovery budgets, bounded handoff recovery and
   private retrievability-metadata migration, durable payload staging, emergency
-  incarnation recovery, retention-verification accounting and discovery metadata
-  privacy through v0.111.48, and the v0.111.7 reconciled active store key; ambiguous/
+  incarnation recovery, post-fence effect resolution/emergency material retirement,
+  handoff traffic privacy, observer-scoped discovery cover and retention-accounting
+  key lifecycle through v0.111.53, and the v0.111.7 reconciled active store key;
+  ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
   descriptor/anchor mismatch, confidentiality downgrade, cyclic or retiring-key-
   only rotation, incomplete staging/migration/segment publication, catch-up
@@ -12290,8 +12580,10 @@ Deliverables:
   asserted-only protected retention, inconsistent/overlapping endpoint budget,
   invalid-auth capacity conflict, `WriterHandoffRecoveryRequired`, unavailable
   handoff conversion authority, mixed/private-proof metadata failure, unstaged/
-  non-resumable handoff, emergency-fence ambiguity, retention-accounting conflict,
-  required discovery-privacy degradation, exhausted/unverifiable capacity or
+  non-resumable handoff, emergency-fence/effect ambiguity, pending emergency
+  material cleanup, retention-accounting key/conflict, required handoff/discovery-
+  privacy degradation, unsupported coordinator privacy, exhausted/unverifiable
+  capacity or
   rotation/writer-accounting state refuse transfer,
   preserve existing candidate presence/
   quota, and never trigger automatic reprovisioning, budget refill or plaintext
@@ -13280,8 +13572,8 @@ Deliverables:
   query/discovery-budget/receipt/import, retention-assurance mechanism/challenge,
   coordinated/partitioned endpoint allocation/pre-auth abuse, private
   retrievability manifest/tag/key/migration, availability-prepared and availability-
-  activated, retention-verification accounting and discovery leakage/relay/cover
-  profile target set;
+  activated, retention-verification accounting/key lifecycle and discovery
+  leakage/observer-claim/real-versus-cover accounting profile target set;
 - migration frontier/pin/checkpoint/catch-up/final-tail/maintenance-epoch target
   set, including `MigrationAccountingEpoch`, persistent counters, in-flight
   conservative charge and maximum round/work/authoritative-age exhaustion;
@@ -13290,8 +13582,9 @@ Deliverables:
   admission key lifecycle, ticket/leaf version/grant certificate/log checkpoint/
   consistency proof/current terminal state/completion CAS/maintenance frontier/
   purpose-separated frontier anchor/frontier-satisfaction/lease-CAS/journal-result/
-  payload-staging/ordinary-handoff/recovery-epoch/required-blocking/emergency-
-  incarnation/debt target set;
+  payload-staging/traffic-profile/ordinary-handoff/recovery-epoch/required-blocking/
+  emergency-incarnation/effect-classification/bridge/material-retirement/debt
+  target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -13347,8 +13640,8 @@ Deliverables:
   accounting import under coordinated/disjoint endpoint budgets and pre-auth abuse
   isolation, and retention-through-two-stage activation under explicit enforceable/
   attested/probabilistic evidence with private ciphertext-bound proof migration and
-  purpose-separated verification accounting, measured relay/cover discovery
-  privacy, immutable-frontier
+  purpose-separated verification accounting with explicit key lifecycle, measured
+  observer-scoped relay/cover discovery privacy, immutable-frontier
   streamed migration with bounded catch-up/final lease and restart-persistent
   accounting, single-write segment-slot generations with measured observer-aware
   whole-segment publication, and independently keyed/anchored durable writer-ticket/
@@ -13356,8 +13649,10 @@ Deliverables:
   consistency plus current-leaf/terminal proofs, completion CAS, purpose-separated
   maintenance-frontier anchoring, current-ledger satisfaction/lease CAS, durable
   immutable payload staging/ordinary next-writer handoff with bounded recovery-
-  required blocking and independently authorized emergency incarnation fencing,
-  cross-log result reconciliation, and atomic partial cleanup;
+  required blocking, measured staging traffic, independently authorized emergency
+  incarnation fencing, post-fence effect classification/governed bridge blocking,
+  terminal staged-material retirement, cross-log result reconciliation, and atomic
+  partial cleanup;
 - composition of the history-independent map algorithm/pages with authority
   active/covered-fence/exception/archive roots, a permanent low-sequence
   exception plus later archival, exact replay refusal, checkpoint rollback
@@ -13529,8 +13824,9 @@ Deliverables:
   availability diversity, unbounded tokenless discovery, pre-accounting retry reset,
   independent-endpoint budget multiplication, invalid-auth legitimate-capacity
   drain, provider-asserted retention, public/cross-copy proof-tag leak, mixed proof/
-  ciphertext activation, retention/recovery accounting substitution, discovery-
-  trace overclaim, challenge/delete race or protected claim before second activation,
+  ciphertext activation, retention/recovery accounting substitution or key-lifecycle
+  bypass, discovery observer/cover overclaim, challenge/delete race or protected
+  claim before second activation,
   no full-
   history writer lease/unbounded catch-up/restart migration refill/maintenance
   race, no cover overwrite/slot nonce reuse/sparse masquerade/partial segment
@@ -13539,8 +13835,10 @@ Deliverables:
   grant invalidation, certificate/leaf substitution, bootstrap-anchor frontier
   reuse, unanchored/unsatisfied maintenance frontier, stale satisfaction lease CAS,
   grant-only satisfaction, ordinary-handoff overtake, recovery-budget reset or
-  authority-unavailable bypass, non-resumable/unstaged handoff, unfenced emergency
-  transition or late-result application, duplicate cross-log result, rollback
+  authority-unavailable bypass, non-resumable/unstaged handoff, unmeasured handoff
+  traffic, unfenced emergency transition, late-result application outside the
+  governed bridge, retry/dependent progress under `EffectUnknown`, premature
+  emergency material/key/quota retirement, duplicate cross-log result, rollback
   priority loss or unbounded ticket/debt/spam denial, no
   unmanaged-backup recoverability
   claim, no opaque cleanup of published data, no partial durable
@@ -13656,6 +13954,11 @@ Deliverables:
   v0.111.46 emergency-prepare/fence/activate/quarantine/finalize boundaries,
   v0.111.47 verify-reserve/challenge/reconcile/activate/reset boundaries,
   v0.111.48 relay/cover/query/respond/log/health boundaries,
+  v0.111.49 classify/fence/query/bridge/adopt/compensate boundaries,
+  v0.111.50 pending-effect/retain/destroy/reconcile/quota-release boundaries,
+  v0.111.51 stage/pad/cover/schedule/cleanup/profile-health boundaries,
+  v0.111.52 observer-claim/authenticate/account/relay/blind-slot boundaries,
+  v0.111.53 key-reserve/create/verify/descriptor/rotate/retire boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -13837,8 +14140,13 @@ Deliverables:
   later-writer bypass, maintenance-overtake CAS, stale frontier satisfaction/lease
   CAS, non-resumable/unstaged payload handoff, staging replacement/sync crash,
   forged emergency authority, old-incarnation rollback, late-result application,
-  competing emergency/maintenance activation, unanchored maintenance and caller-
-  receipt overclaim,
+  commit-immediately-before-fence, false non-execution evidence, `EffectUnknown`
+  retry/dependent/conflicting progress, bridge split view, adoption/compensation
+  replay, premature staged-key/payload/quota retirement, emergency cleanup response
+  loss, handoff staging size/timing/backup correlation, cover-staging exhaustion,
+  active coordinator real-budget observation, false blind-cover claim, retention-
+  accounting key provisioning/rotation ambiguity, competing emergency/maintenance
+  activation, unanchored maintenance and caller-receipt overclaim,
   cross-log response ambiguity, ticket spam/phantom/debt/restart races, unmanaged-
   backup restore after key
   retirement, privacy-profile change, quota-refund, padding-budget, cross-purpose
@@ -14169,9 +14477,9 @@ Deliverables:
   discovery budget/provider-counter/receipt/import, retention assurance descriptors,
   coordinated/partitioned endpoint budgets, pre-auth abuse isolation, enforced/
   attested/probabilistic challenges, private ciphertext-bound tag/key/migration
-  manifests, purpose-separated verification accounting, discovery response/timing/
-  relay/cover profiles, availability-pending/activated and honest retention bounds,
-  and missing-staged-byte recovery;
+  manifests, purpose-separated verification accounting/key lifecycle, discovery
+  response/timing/observer-claim/relay/real-cover-accounting profiles, availability-
+  pending/activated and honest retention bounds, and missing-staged-byte recovery;
 - online-migration vectors/benchmarks cover immutable frontier pins, streamed
   prefix/suffix checkpoints, maximum catch-up rounds/work/time, final-tail latency,
   sustained-write throughput, restart-stable counter/age accounting and
@@ -14188,9 +14496,13 @@ Deliverables:
   purpose-separated maintenance-frontier anchors, current frontier-satisfaction/
   lease-CAS records, ordinary next-writer handoff/result/debt transitions,
   handoff-recovery epoch/resource/required-state transitions, anchored roots/limited
-  receipts,
-  immutable payload-staging and emergency-incarnation/fence/late-result transitions,
-  rollback refusal, phantom cleanup, spam ceilings, fairness and ledger compaction;
+  receipts, immutable payload-staging/traffic profiles, emergency-incarnation/fence/
+  late-result transitions, `ProvenNotExecuted`/`Committed`/`EffectUnknown`, governed
+  effect bridges, staged-material retention/destruction/quota release, rollback
+  refusal, phantom cleanup, spam ceilings, fairness and ledger compaction;
+- handoff privacy benchmarks compare baseline/padded/high-security size, timing,
+  timestamp and backup-block traces plus emergency-retention overhead; discovery
+  benchmarks compare complete active-coordinator views for real/cover operations;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - plaintext-to-encrypted authority-log cutover model/vectors and crash benchmarks
@@ -14687,6 +14999,21 @@ Deliverables:
 - v0.111.48 discovery profiles inventory timing/source/selection/threshold/retry/
   token-linkage leakage, shape responses/logs and require measured relay/cover
   health before claiming protected traffic privacy;
+- v0.111.49 every fenced old operation is `ProvenNotExecuted`, `Committed` or
+  `EffectUnknown`; unknown effects block dependent/conflicting authority until one
+  threshold-governed adoption, non-execution or compensation bridge commits;
+- v0.111.50 emergency fencing retains staged bytes, decoder, keys and quota while
+  effect status is unknown, then permits authenticated destruction/release only
+  after terminal bridge and journal/ledger/provider reconciliation;
+- v0.111.51 handoff staging/retention/cleanup consumes explicit baseline, padded or
+  high-security observer profiles; protected commitments are keyed/domain-separated
+  and degraded trace intervals remain permanent;
+- v0.111.52 every discovery cover claim names its observers; coordinators that see
+  real authentication/budget access remain outside occurrence privacy unless a
+  reviewed blind protocol hides their complete view;
+- v0.111.53 retention-accounting keys are capacity-reserved, provider-reconciled,
+  verified and descriptor-bound before activation, then rotate copy-on-write while
+  pending challenge/accounting evidence retains old epochs;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -14871,6 +15198,20 @@ Deliverables:
 - v0.111.48 valid/invalid/absence/refusal/conflict size/timing traces, source and
   token linkage, threshold retry, relay/cover failure, coordinator/endpoint
   collusion, public-abuse isolation, log retention and historical health pass;
+- v0.111.49 pre-fence commit, provider query/fence, false non-execution, late/split
+  result, unknown-effect dependency blocking, adoption/non-execution/compensation
+  bridge and retry-refusal fixtures pass;
+- v0.111.50 pending-effect retention, each terminal resolution, wrapper/key/backup
+  destruction, ambiguous cleanup, restart and quota-release-order fixtures pass;
+- v0.111.51 baseline/padded/high-security staging size/timing/timestamp/backup traces,
+  raw-digest refusal, cover scheduling, emergency retention/cleanup and historical
+  degradation fixtures pass;
+- v0.111.52 observer matrices, coordinator-visible authentication/accounting,
+  separate cover capacity, blind-slot transcript, relay/endpoint/coordinator
+  collusion and false-privacy-claim fixtures pass;
+- v0.111.53 first key provisioning, capacity reservation, provider ambiguity,
+  descriptor activation, challenge-during-rotation, old-key retirement, loss,
+  rollback and cross-purpose substitution fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -15191,8 +15532,11 @@ Deliverables:
   authority is verified before valid reservation, invalid traffic consumes only a
   separate public abuse budget, and exact work then imports into recovery accounting;
   each profile states coordinator/endpoint/network timing, source, selection,
-  threshold, retry and token-linkage leakage, and protected relay/cover behavior is
-  claimed only while measured response/log/traffic health remains satisfied;
+  threshold, retry and token-linkage leakage; a coordinator observing legitimate
+  authentication or budget access remains outside occurrence privacy unless an
+  admitted blind protocol hides its complete view, while separate cover accounting
+  never consumes real capacity; protected relay/cover behavior is claimed only while
+  measured observer-specific response/log/traffic health remains satisfied;
   zero-copy transitions are explicitly local-only/non-recoverable, while protected
   availability requires restore-challenged copies across independently evidenced
   provider, credential, region/device and encryption-key failure domains, each
@@ -15203,7 +15547,9 @@ Deliverables:
   copy/version/placement and migrate copy-on-write, retaining old proof authority
   until the new ciphertext, tags, restore challenge and availability activation pass;
   periodic/activation assurance uses purpose-separated retention-verification
-  accounting, while actual cold copy retrieval/restoration remains recovery-charged;
+  accounting whose key is provider-reconciled, verified and private-descriptor-bound
+  before first activation, rotates copy-on-write and retains old epochs for pending
+  work, while actual cold copy retrieval/restoration remains recovery-charged;
   preparation asserts only pending
   recoverability, and a second expected-state external transition activates the
   final class only after enforceable continuous retention is proven through the
@@ -15246,13 +15592,20 @@ Deliverables:
   and that handoff exists only after complete encrypted canonical payload material,
   quota charge, recovery key/retention and file/parent-directory durability;
   non-resumable tickets never own it, and bounded handoff recovery persists
-  conservative charges across restart;
+  conservative charges across restart; staging/retention/cleanup observations follow
+  the selected baseline, padded or high-security traffic profile, raw plaintext
+  length/digest remains encrypted and protected external commitments are keyed;
   unavailable payload/result plus conversion authority enters typed recovery-
   required state that blocks every later writer while read-only recovery remains,
   while operator-confirmed independent threshold emergency recovery may fence the
   entire old incarnation, quarantine late results and activate a linked new
-  journal/ledger incarnation without reusing identifiers or operation authority,
-  while caller receipts expose only caller-relative rollback and cannot replace
+  journal/ledger incarnation without reusing identifiers or operation authority;
+  every old operation is then `ProvenNotExecuted`, `Committed` or `EffectUnknown`,
+  with unknown effects blocking dependent/conflicting authority until one governed
+  adoption/non-execution/compensation bridge resolves them; staged bytes, decoder,
+  keys and quota remain until terminal bridge/reconciliation, after which
+  authenticated cleanup preserves permanent commitment/resolution evidence; caller
+  receipts expose only caller-relative rollback and cannot replace
   system-wide anchoring or require a ticket to repair the ledger;
 - durable quarantine candidate metadata uses a purpose-separated
   `StoreQuarantineMetadataKey` active before first publication, wrapped to
