@@ -1540,8 +1540,8 @@ Deliverables:
   nonces/scalars never become caller-readable bytes;
 - provider key generation/import and signing are test/vector/internal interfaces
   only in this release; no realm/genesis or post-genesis authoritative caller
-  can invoke them until v0.23.3 admits the exact sealed capability class and
-  durable operation reservation;
+  can invoke them until v0.23.3 admits durable reservations, v0.23.4 admits the
+  exact sealed capability class, and v0.23.5 admits genesis reconciliation;
 - opaque handles do not implement `Clone`, `Copy`, `Debug`, display,
   serialization, unrestricted byte extraction, or ambient conversion to a
   generic buffer;
@@ -1600,7 +1600,7 @@ Exit criteria:
 
 - Sagnir providers create and verify real context-bound test/vector signatures
   without relying on envelope shape as evidence of authenticity; authoritative
-  production invocation remains unavailable until v0.23.3.
+  production invocation remains unavailable until v0.23.4/v0.23.5.
 - Production cryptographic operations that require randomness stop before
   emitting keys, signatures, salts, or state when the admitted entropy source
   fails.
@@ -1635,7 +1635,7 @@ Deliverables:
 - short-lived sealed non-cloneable operation-capability classes bind realm,
   action, exact canonical transcript/target, available policy/crypto context,
   audience/purpose, provider session, limits, and expiry, and are consumed by
-  one provider operation; v0.23.3 defines the non-convertible classes, exclusive
+  one provider operation; v0.23.4 defines the non-convertible classes, exclusive
   minting, IPC, crash, and retry semantics;
 - decrypted source files, exported recovery packages, and other intentionally
   released plaintext cross a named auditable `PlaintextRelease`/
@@ -1741,7 +1741,83 @@ Exit criteria:
 - Resume state contains no provider-only key or raw cryptographic operation
   state and cannot skip authentication of the resumed chunk.
 
-### v0.23.3 - Sealed Operation Capabilities And Crash Idempotency
+### v0.23.3 - Minimal Authority Transaction Substrate
+
+Goal: model, format, and implement the smallest generic crash-safe authority log
+before capability reservation or provider-result state depends on persistence.
+
+Deliverables:
+
+- TLA+/PlusCal or equivalent model is completed and has no known counterexample
+  within declared bounds before transaction-substrate implementation begins;
+- one shared transaction substrate under the audited store boundary is used from
+  its first release for provider-operation reservations/results and later
+  extended for objects, facts, worlds, aliases, checkpoints, and other WAL record
+  kinds; no temporary second authorization journal is introduced;
+- minimal machine-readable bootstrap durability profile covers retained-handle
+  writer exclusion, write ordering, file data/metadata sync, atomic/no-replace
+  publication, directory and parent-directory sync, rename assumptions, and
+  explicit unsupported/degraded filesystems; v0.30.0/v0.32.1 later broaden the
+  same profile contract rather than defining its semantics retroactively;
+- versioned base frame freezes magic, format version, critical record kind,
+  payload length, log/store incarnation, transaction/reservation ID, monotonic
+  sequence, previous committed root/frame commitment, payload, and commit state;
+- CRC-32C parameters/coverage inherit the exact Castagnoli reflected form,
+  initial/final XOR, little-endian field, excluded checksum field, no-padding
+  rule, and `123456789` vector later reused by v0.31.0;
+- admitted base records include transaction begin/commit/abort, operation
+  reserve, consume, cancel, ambiguous, provider-result reference, compaction
+  checkpoint, and format-extension refusal markers;
+- unknown critical record kinds fail closed; later record kinds extend the
+  registry without changing the meaning or bytes of admitted base records;
+- reservation commit is durable before any capability can be minted or sent to
+  a provider/key agent; provider/local result commit is durable before the CLI/
+  caller can receive successful completion;
+- model covers torn/short/reordered writes, malformed length, CRC/checksum
+  failure, sequence exhaustion, duplicate transaction/reservation ID, reserve/
+  consume/cancel races, and repeated deterministic recovery;
+- provider completion before local result commit, local result commit before
+  caller receipt, lost response, orphaned provider result, explicit ambiguous
+  state, and exact idempotent retry are modeled without assuming one filesystem
+  transaction covers provider state;
+- key-agent execution/result journal is a distinct provider-side authority log:
+  Sagnir store WAL commits authorization/reservation and observed result
+  commitments, while the agent journal commits execution/admission/result;
+  reconciliation binds operation ID, request digest, provider/key/session,
+  sequence, result commitment/status, and ambiguity evidence;
+- compaction creates a committed checkpoint binding complete prior log root,
+  final sequence, record count, reservation/status map root, retained ambiguous/
+  equivocation evidence, and predecessor checkpoint; `Consumed`, `Cancelled`,
+  or `Ambiguous` IDs can never become reusable;
+- legacy-free extension rule: v0.30.0 extends the model and v0.31.0/v0.32.0 add
+  record kinds/commitments/recovery behavior on this same substrate; no pre-WAL-
+  to-WAL authority migration or dual-writer state exists;
+- clone/snapshot rollback limitations are explicit: disconnected copies may
+  each advance locally, comparison yields rollback/fork/equivocation evidence,
+  and prevention requires an admitted non-rollback anchor;
+- crash injection covers every record write, sync, publication, directory-sync,
+  compaction, checkpoint, provider-reconciliation, and recovery boundary;
+- model-run manifest records exact source/tool digests, bounds, assumptions,
+  profiles, explored states/transitions, completion status, and counterexamples.
+
+Verification:
+
+- bounded authority-log model check before implementation;
+- `cargo test -p sagnir-store`
+- hardware/software CRC-32C differential vectors;
+- process-kill and deterministic repeated-recovery suite;
+- provider/store reconciliation state-machine fixtures.
+
+Exit criteria:
+
+- No capability exists before its reservation is durable, and no success is
+  returned before the exact local/provider result is durably reconciled.
+- Torn data, races, exhaustion, repeated recovery, and compaction cannot mint,
+  reuse, lose, or silently change an authority reservation.
+- Later WAL work extends one modeled transaction substrate and never chooses
+  authority between competing legacy/new logs.
+
+### v0.23.4 - Sealed Operation Capabilities And Crash Idempotency
 
 Goal: make one-use provider authorization real across process/IPC boundaries,
 serialization, retries, and crashes rather than relying only on Rust `!Clone`.
@@ -1765,6 +1841,19 @@ Deliverables:
   recipient unwrap and bounded compartment/header decryption needed to discover
   protected policy/lifecycle state, never signing, rotation, promotion, or
   authoritative publication;
+- `UnlockCapability` binds exact retained store and genesis identities,
+  authenticated outer/header commitment, recipient-slot or passphrase-wrapper
+  commitment, compartment plus maximum scope, admitted ciphertext ranges or
+  encryption-instance IDs, crypto epoch, exact suite, audience/purpose, and
+  permitted plaintext result class/destination;
+- decrypted policy/lifecycle bytes remain untrusted until AEAD authentication,
+  canonical decoding, signatures, checkpoint binding, and lifecycle/revocation
+  validation complete; they cannot authorize their own decryption, widen scope,
+  change slots/ranges/destination, or mint another capability;
+- unlock provider APIs reject arbitrary caller-supplied ciphertext, slot,
+  associated data, nonce, range, or output destination and use bounded policy-
+  declared response shapes that do not become key-validity, membership,
+  recipient-slot, or plaintext oracles;
 - `RecoveryCapability` remains dormant until v0.64.0 and is minted only from the
   threshold-governed recovery ceremony for its exact recovery action/scope;
 - `AuthoritativeOperationCapability` has no live minting path before v0.70.0;
@@ -1775,6 +1864,10 @@ Deliverables:
   identity, exact suite/key epoch, realm or pre-genesis ceremony, action/
   transcript/target, available policy/crypto/frontier context, audience/purpose,
   original limits, session, sequence, expiry, and allowed result class;
+- each capability instance authorizes exactly one provider operation; a
+  bootstrap/genesis ceremony mints a sequence of narrowly bound bootstrap-class
+  capabilities and one capability can never cover both key provisioning and
+  genesis signing;
 - shared typed durable reservation primitive allocates a domain-tagged operation
   ID before any result or containing transition is constructed, records exact
   purpose/context, and exposes non-reusable `Reserved`, `Consumed`, `Cancelled`,
@@ -1786,17 +1879,16 @@ Deliverables:
   actor_or_device_id_if_available, replica_id_and_incarnation,
   durable_reservation_sequence, purpose, independent_256_bit_random_nonce)`;
   hash suite/version and every optional/discriminated field are explicit;
+- `actor_or_device_id_if_available` and `replica_id_and_incarnation` use explicit
+  canonical tagged unions (`Absent` or `Present(value)`); pre-genesis operation
+  IDs never encode absence as an empty/default ID or ambiguous zero bytes;
 - provider operation ID is durably reserved before provider/key-agent admission
   under retained store/ceremony authority; bootstrap reservation does not
   require a signature from a key that is being generated, and genesis later
   binds the reservation and result;
-- before the general WAL exists, reservations/results use a dedicated bounded
-  versioned shared-store journal with retained-handle writer lock, owner-only
-  no-follow files, checked sequence, write/sync/atomic publication, parent-
-  directory sync, and deterministic crash recovery; no capability is returned
-  until its reservation is durable;
-- v0.30.0 models and v0.32.0 transactionally migrates/integrates this journal
-  into ordinary WAL operation state without changing or reusing existing IDs;
+- every reservation/result is a v0.23.3 transaction-substrate record; no
+  dedicated pre-WAL journal, migration state, dual writer, or authority-source
+  selection exists, and no capability is returned until reservation durability;
 - reservation sequence allocation is checked and fail-closed before exhaustion;
   OS-CSPRNG failure stops before reservation, and restored/cloned state inherits
   the explicit rollback/fork limitations below;
@@ -1836,8 +1928,9 @@ Deliverables:
   cross-class conversion, bootstrap escalation, unlock-to-sign, premature
   authoritative/recovery minting, lost response, crash-before/after admission,
   concurrent consume, reservation exhaustion/collision, repeated randomness,
-  sequence rollback, agent restart, journal rollback, request mismatch, and
-  ambiguous-side-effect tests.
+  explicit absent/present ID tags, unlock range/slot/AD/output substitution,
+  oracle response shape, sequence rollback, agent restart, journal rollback,
+  request mismatch, and ambiguous-side-effect tests.
 
 Verification:
 
@@ -1859,6 +1952,85 @@ Exit criteria:
   twice.
 - After an uncertain crash, callers receive the prior result or an explicit
   ambiguous state rather than silently minting or replaying authorization.
+
+### v0.23.5 - Bootstrap And Genesis Transaction Ceremony
+
+Goal: reconcile provider/keystore/HSM key state with Sagnir store genesis state
+without pretending both durability domains share one atomic transaction.
+
+Deliverables:
+
+- TLA+/PlusCal or equivalent cross-domain ceremony model completes before the
+  implementation and treats provider/key-agent state plus v0.23.3 store
+  transaction state as independently crashing/recovering authorities;
+- canonical ceremony state machine is `Reserved -> KeyProvisioned ->
+  GenesisTranscriptFixed -> GenesisSigned -> StoreGenesisCommitted ->
+  ProviderOperationFinalized`, with explicit terminal `Aborted`, `Ambiguous`,
+  and governed/manual-recovery outcomes;
+- `Reserved` durably binds ceremony/realm-initialization ID, retained new-store
+  identity, provider and suite, intended first actor/device/key roles, transcript
+  schema, limits, and all required v0.23.4 provider operation reservations;
+- each transition consumes one separately minted narrowly bound
+  `BootstrapCryptoCapability`; key generation/import, genesis signing, key-
+  usability/finalization, and any orphan-key destruction are distinct provider
+  operations and no capability spans two stages;
+- `KeyProvisioned` binds exact public key, provider/key ID, opaque-handle
+  commitment or attestation, suite/key epoch, operation ID, provider result
+  commitment, and proof that the handle can perform only admitted bootstrap
+  operations;
+- `GenesisTranscriptFixed` freezes canonical genesis bytes/transcript including
+  realm/genesis identity, first actor/device, key/handle commitment, bootstrap
+  operation IDs, suite, policy/bootstrap table, and store format before signing;
+- `GenesisSigned` binds exact transcript digest, signature, signing operation ID,
+  provider/key handle, and result commitment; a lost response is recovered by
+  querying the provider journal for that exact operation rather than signing
+  again;
+- `StoreGenesisCommitted` durably stores signed genesis and all ceremony
+  evidence as pending/non-authoritative state under v0.23.3; realm lookup,
+  aliases, policy, and later operations cannot observe it as live genesis yet;
+- `ProviderOperationFinalized` is recorded and pending genesis is published only
+  after the provider/key agent confirms the exact bound key/handle remains
+  present, usable for its admitted suite/role, not replaced/retired, and bound to
+  the reconciled generation/signature results;
+- recovery queries both logs by ceremony/operation IDs and advances only from
+  durable evidence, never timestamps, file existence, response arrival order,
+  user prompts, or guessed provider state;
+- key generated but result not locally recorded, opaque handle committed without
+  genesis, fixed transcript without signature, signature generated with response
+  loss, genesis bytes durable but publication incomplete, provider completion
+  unknown/ambiguous, and final response loss have deterministic recovery states;
+- orphan key/handle policy supports provider query, quarantine, explicit
+  retained-orphan reporting, and separately authorized destruction where the
+  provider can prove it; inability to destroy is residual evidence, not silent
+  cleanup success;
+- retry with a different public key, provider, suite, transcript, actor/device,
+  store identity, or genesis bytes requires a new ceremony and operation IDs;
+  old pending state is aborted/quarantined and can never be rebound;
+- CLI reports success only after provider finalization evidence and authoritative
+  store genesis publication are both durable and mutually bound; partial states
+  report exact resumable/ambiguous/manual-recovery status without exposing
+  secrets;
+- crash/fault injection covers every provider request/result, store write/sync/
+  directory-sync/publication, response loss, retry, query, abort, orphan cleanup,
+  and recovery transition.
+
+Verification:
+
+- bounded bootstrap/genesis cross-domain model check;
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-cli`
+- software provider plus crash/restart ceremony integration suite.
+
+Exit criteria:
+
+- Genesis never becomes authoritative unless the exact signed key/opaque handle
+  remains provider-confirmed and store/provider evidence is durably reconciled.
+- A crash at any stage resumes, aborts, or reports ambiguity without generating
+  a second key/signature under the same operation or binding a different key to
+  pending genesis.
+- One bootstrap capability authorizes one provider operation, and CLI success
+  means both durability domains reached the exact final bound state.
 
 ### v0.24.0 - Key Lifecycle And Anti-Replay
 
@@ -2092,8 +2264,9 @@ Exit criteria:
 
 ### v0.30.0 - Durability Profile And WAL Recovery Model Gate
 
-Goal: define the durability assumptions and model transactional recovery before
-fixing the WAL byte format or writer.
+Goal: extend the v0.23.3 durability assumptions and model from capability
+authority records to object/fact/world/checkpoint transactions before adding
+those record kinds or their writer behavior.
 
 Deliverables:
 
@@ -2107,8 +2280,8 @@ Deliverables:
   guarantee that the selected profile does not provide;
 - v0.32.1 later broadens platform/filesystem detection and test matrices but
   does not define the model's durability semantics retroactively;
-- object, fact, world, alias, checkpoint, and pre-WAL provider-operation
-  reservation/result migration atomicity invariants;
+- object, fact, world, alias, and checkpoint extension atomicity invariants while
+  preserving v0.23.3 operation reservation/result semantics on one log;
 - write, rename, file-sync, and directory-sync failure points;
 - stale checkpoint and missing-body states;
 - counterexamples for partial commit and alias-before-body behavior;
@@ -2132,15 +2305,16 @@ Exit criteria:
 - Every model result names its durability profile; changing profile assumptions
   invalidates rather than silently reuses the result.
 
-### v0.31.0 - Chained WAL Commitment Format
+### v0.31.0 - Extended Chained WAL Commitment Format
 
-Goal: define bounded WAL frames and chained transaction commitments before
-writing transactions.
+Goal: extend the v0.23.3 base authority-log frames with bounded multi-domain WAL
+records and chained transaction commitments before writing those new records.
 
 Deliverables:
 
-- WAL magic;
-- WAL format and version;
+- inherit v0.23.3 WAL magic, base format/version, transaction/reservation IDs,
+  critical-kind refusal, CRC-32C parameters, and operation records unchanged;
+- versioned extension registry for object/fact/world/alias/checkpoint records;
 - segment/log identity and segment generation;
 - frame kind;
 - transaction ID;
@@ -2257,9 +2431,10 @@ Deliverables:
   unexpected segment transition, or malformed bytes inside committed history;
   recovery never scans forward for a convenient next frame;
 - replay committed frames;
-- transactionally import/integrate v0.23.3 pre-WAL operation reservation/result
-  state with exact ID/status preservation; crash or retry cannot duplicate,
-  omit, reset, or make a consumed reservation reusable;
+- extend the existing v0.23.3 transaction substrate in place with object/fact/
+  world/alias/checkpoint record kinds and recovery rules; there is no legacy-log
+  import, dual writer, or authority-source switch, and existing operation IDs/
+  statuses remain byte-for-byte authoritative;
 - encrypted WAL write and authenticated/decrypted replay paths remain
   unavailable until v0.92.0 instantiates the v0.31.1 clone-safe activation
   contract; unsupported encrypted profiles never fall back to plaintext;
@@ -3330,7 +3505,7 @@ Exit criteria:
 
 ### v0.63.1 - Secret Memory And Isolated Provider Hardening
 
-Goal: harden the v0.23.0 through v0.23.3 provider-secret, authenticated-release,
+Goal: harden the v0.23.0 through v0.23.5 provider-secret, authenticated-release,
 operation-capability, and plaintext-declassification boundaries with locked
 memory, process isolation, and explicit portable-zeroization limits before the
 vault exists.
@@ -3365,9 +3540,13 @@ Deliverables:
 - optional short-lived isolated signer/key-agent process keeps private keys out
   of the main `saga`/`sagad` process and returns only context-bound public
   outputs;
-- isolated key-agent IPC implements v0.23.3 authenticated sequence, durable
+- isolated key-agent IPC implements v0.23.4 authenticated sequence, durable
   operation/result state, exact retry, and explicit ambiguous-completion
   semantics rather than trusting an in-memory `!Clone` request;
+- key-agent execution/result journal remains physically and logically distinct
+  from the v0.23.3 Sagnir authorization WAL and reconciles only through bound
+  operation/request/result commitments; neither journal can impersonate the
+  other's authority;
 - privilege and same-UID attack model states when ptrace, process memory access,
   signals, or direct file mutation require service-account, sandbox, HSM/TPM,
   OS-keystore, or privileged-agent isolation;
@@ -3404,7 +3583,7 @@ Deliverables:
 
 - ordinary and emergency key rotation transactions;
 - threshold recovery authorization;
-- mint and consume only v0.23.3 `RecoveryCapability` values from the admitted
+- mint and consume only v0.23.4 `RecoveryCapability` values from the admitted
   threshold ceremony; bootstrap, unlock, and authoritative capabilities cannot
   be converted into recovery authority;
 - end-to-end recovery ceremony covering declaration, realm freeze or restricted
@@ -3754,7 +3933,7 @@ Deliverables:
 - local acceptance policy evaluation as a separate stricter layer;
 - validated compound admission result combining integrity, signatures, causal
   closure, policy decision, and discharged obligations;
-- consume that exact typed result to mint a v0.23.3
+- consume that exact typed result to mint a v0.23.4
   `AuthoritativeOperationCapability` for one signing, rotation, promotion, or
   publication action; no earlier or partial validation state can mint it;
 - canonical v0.69.1 obligation template/instance evaluation plus v0.69.2
@@ -4855,7 +5034,8 @@ exhaustion, retry, and rollback behavior for every admitted AEAD suite.
 Deliverables:
 
 - canonical encrypted-record header binds format/version, exact AEAD/KDF suites,
-  record/encryption-instance and v0.23.3 operation IDs, realm/compartment,
+  record/encryption-instance, v0.23.3 reservation, and v0.23.4 provider
+  operation IDs, realm/compartment,
   audience/purpose, key epoch, random seed or per-record key commitment, chunk
   size/count, total plaintext/ciphertext lengths, and manifest/root commitment;
 - each suite profile selects and freezes one reviewed construction: an
@@ -4883,7 +5063,7 @@ Deliverables:
   and every output byte match; otherwise it abandons the uncertain domain and
   reserves a fresh operation/record identity and nonce seed/subkey;
 - an ambiguous crash never blindly re-encrypts under an old nonce domain; prior
-  completion is queried through v0.23.3, or the old record is fenced and a new
+  completion is queried through v0.23.4, or the old record is fenced and a new
   identity is allocated with explicit supersession evidence;
 - resume begins only at an authenticated chunk boundary, derives the expected
   next nonce/subkey from public bound state inside the provider, and serializes
@@ -5526,7 +5706,7 @@ Deliverables:
   and policy floors/ceilings informed by current standards at implementation;
 - key-encryption-key metadata;
 - realm-master-key wrapping model;
-- activate the v0.23.3 `UnlockCapability` minting path only for a bounded unlock
+- activate the v0.23.4 `UnlockCapability` minting path only for a bounded unlock
   ceremony over admitted wrapping metadata and retained encrypted-realm/header
   authority; it cannot sign or publish state;
 - denial-of-service limits for untrusted KDF parameters;
@@ -5543,6 +5723,70 @@ Verification:
 Exit criteria:
 
 - A passphrase can unlock a test realm key without becoming the realm key.
+
+### v0.98.1 - Bounded Unlock Target And Oracle Resistance
+
+Goal: implement the v0.23.4 unlock schema as a narrow authenticated discovery
+boundary before recipient workflows or the public unlock command depend on it.
+
+Deliverables:
+
+- unlock ceremony starts from retained store/genesis handles and verified exact
+  store, realm, genesis, format, and bootstrap-policy identities; display paths
+  or caller-supplied realm IDs cannot select authority;
+- authenticated outer/header commitment and canonical bounded public header are
+  verified before capability minting, including suite, crypto epoch, slot table
+  commitment, compartment handles, ciphertext range map, and maximum discovery
+  scope disclosed by the selected privacy profile;
+- passphrase wrapper or recipient slot is selected only from that committed
+  bounded header using its exact slot/wrapper commitment; callers cannot supply
+  replacement ciphertext, associated data, nonce, KDF parameters, slot bytes,
+  range, instance ID, or destination;
+- one `UnlockCapability` binds retained store/genesis identity, outer/header and
+  slot/wrapper commitments, exact suite/epoch, compartment/max scope, admitted
+  ciphertext ranges or encryption-instance IDs, operation ID, limits, audience/
+  purpose, and one typed plaintext result class;
+- initial capability permits only the minimum authenticated metadata/policy/
+  lifecycle discovery declared by the public bootstrap header; broader
+  compartment/source decryption requires a new capability minted after the
+  discovered state completes AEAD authentication, canonical decoding,
+  signature/checkpoint, lifecycle/revocation, and policy validation;
+- decrypted discovery bytes enter isolated v0.23.2/v0.92.2 staging as untrusted
+  `ProtectedStateCandidate`; they cannot satisfy policy, select their own crypto
+  context, retroactively authorize the decrypt that exposed them, widen scope,
+  publish state, or choose an output sink;
+- successful validation produces a typed `ValidatedProtectedState` bound to the
+  original capability/store/genesis/header/checkpoint and exact bytes; failure
+  destroys staging and returns no partial parser/policy result;
+- response behavior for unknown slot, wrong passphrase/key, malformed wrapper,
+  revoked/expired recipient, tag failure, range mismatch, unsupported suite,
+  and unauthorized compartment follows bounded policy-declared timing/work/
+  error classes without revealing key validity, recipient membership, slot
+  occupancy, plaintext prefix, or policy contents;
+- attempt/rate/resource limits are local anti-abuse controls and do not alter
+  canonical policy; protected deployments may require key-agent/HSM rate limits
+  or external authorization before expensive KDF/unwrap work;
+- arbitrary-ciphertext, chosen-AD, chosen-slot, range widening, instance
+  substitution, output redirection, self-authorizing policy, stale checkpoint,
+  revoked recipient, response-shape differential, cancellation, crash, and
+  staging-cleanup tests.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-vault`
+- unlock capability and protected-state typestate compile-fail suite;
+- oracle response-shape and chosen-ciphertext integration tests;
+- crash/cancellation/staging cleanup fault injection.
+
+Exit criteria:
+
+- Unlock decrypts only ciphertext committed by the retained realm/header and
+  only into its one bounded typed result class.
+- Decrypted policy/lifecycle state cannot authorize its own exposure or widen
+  the capability that exposed it.
+- Failures do not turn unlock into a general decryption, key-validity,
+  recipient-membership, slot-occupancy, or plaintext oracle.
 
 ### v0.99.0 - Device Recipients And Recipient Slots
 
@@ -5992,8 +6236,10 @@ Goal: load admitted keys for a local encrypted realm.
 Deliverables:
 
 - `saga unlock`;
-- consume only the scoped v0.23.3 `UnlockCapability` and refuse any attempt to
+- consume only the scoped v0.23.4 `UnlockCapability` and refuse any attempt to
   substitute bootstrap, recovery, or authoritative capability classes;
+- use the v0.98.1 committed-header target selection, protected-state typestate,
+  no-self-authorization, and bounded anti-oracle response contract;
 - unlock session metadata;
 - monotonic time-to-live metadata;
 - compartment-aware partial unlock;
@@ -8362,6 +8608,10 @@ Deliverables:
 - differential canonical bytes and object-ID tests;
 - cumulative decode-budget and atomic-encoder benchmarks across nested objects,
   packs, bundles, proofs, WAL, and encrypted envelopes;
+- minimal authority transaction-substrate model/vectors and crash benchmarks
+  covering reservation/result durability, provider/store reconciliation, torn
+  records, races, compaction, parent sync, repeated recovery, and later in-place
+  record-kind extension;
 - parallel budget-lease stress and schedule benchmarks proving child
   reservations cannot mint capacity and cancellation/panic accounting remains
   deterministic under maximum admitted parallelism;
@@ -8416,8 +8666,14 @@ Deliverables:
   exhaustion, retry, authenticated-release/final-completeness vectors, plus
   sealed bootstrap/unlock/authoritative/recovery capability, operation-ID
   reservation, IPC/crash/idempotency/ambiguous-result fixtures;
+- bootstrap/genesis cross-domain stage and crash vectors covering orphan keys,
+  lost provider results/signatures, pending non-authoritative genesis, provider
+  ambiguity, exact-key usability confirmation, and final CLI success;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
+- unlock committed-target/range/slot/result-class validation, protected-state
+  typestate, chosen-ciphertext/AD rejection, response-shape, rate/resource, and
+  staging-cleanup benchmarks;
 - million-object semantic-commitment reverse-index lookup and authenticated
   rebuild benchmarks;
 - multi-instance forward/reverse lookup, compartment-root realm-manifest proof,
@@ -8620,6 +8876,10 @@ Deliverables:
   authoritative signing/manifest APIs unless explicitly promoted and reviewed;
 - shared store platform boundary is the only authoritative filesystem path used
   by CLI, daemon, migration, and recovery code, with no private frontend fork;
+- v0.23.3 minimal authority transaction model, base format, durability profile,
+  torn-record/race/compaction/recovery suites, provider/store reconciliation,
+  and in-place later record-kind extension pass; no legacy/new log authority
+  selection or dual writer exists;
 - cumulative decode budgets, atomic encoders, body-derived typed graph admission,
   graph-class DAG/SCC semantics, and optimized/reference differential results
   pass their first-admission and release profiles;
@@ -8667,6 +8927,12 @@ Deliverables:
   crash/idempotency/ambiguity, plaintext-declassification consumer/fault tests,
   and secret-copy lifetime audits pass without claiming released plaintext is
   non-copyable;
+- v0.23.5 bootstrap/genesis cross-domain model and crash suite prove pending
+  genesis remains non-authoritative until exact provider key usability and store
+  publication are durably reconciled, with orphan/ambiguous states explicit;
+- v0.98.1 unlock target/slot/range/result-class binding, protected-state
+  typestate, no-self-authorization, chosen-ciphertext/AD refusal, anti-oracle
+  response shapes, and cleanup tests pass;
 - deterministic fact-language stratification, typed parameterized obligation
   template/instance identity preimages, preallocated issuance-operation cycle
   break, self-inclusion refusal, evidence-consumption/independence and discharge
@@ -8731,6 +8997,16 @@ Deliverables:
   refusal, authority DAGs, dependency/impact SCCs, and independent differential
   verification;
 - authenticated maps, append-only commitments, and complete checkpoints;
+- one formally modeled authority transaction substrate used from bootstrap
+  capability reservations through the general WAL, with durable reservations
+  before capability minting, durable reconciled results before success,
+  provider-side journal separation, deterministic crash recovery, and no
+  temporary authorization log, migration, dual writer, or authority-source
+  selection;
+- a staged cross-domain bootstrap/genesis ceremony that keeps pending genesis
+  non-authoritative until the exact provider key, signature result, and store
+  publication are durably reconciled, including explicit orphan, lost-response,
+  ambiguous, abort, and recovery states;
 - checkpoint-anchored chained WAL with exact CRC-32C, explicit log incarnations,
   exhaustion, encrypted-profile activation only after clone-safe nonce evidence,
   locked recovery, old-key retention, signed event DAG, and rollback/
@@ -8778,6 +9054,10 @@ Deliverables:
 - `saga ask` scaffold over deterministic facts;
 - encrypted local realms;
 - lock and unlock;
+- retained-store/header/slot/range/result-bound unlock capabilities, untrusted
+  protected-state staging until complete validation, no decrypted-state self-
+  authorization, and bounded failure behavior that does not expose a general
+  decryption, key-validity, recipient-membership, slot, or plaintext oracle;
 - vault status and leak scanning;
 - recipient metadata and rekeying;
 - exact provider-independent cryptographic suite, parameter-set, standards-

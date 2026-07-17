@@ -5,6 +5,10 @@ All notable Sagnir changes are recorded here.
 ## Unreleased
 
 - Updated the workspace and current documentation to Rust stable 1.97.1.
+- Moved capability reservations onto a formally modeled minimal authority
+  transaction substrate, added a cross-domain bootstrap/genesis ceremony and a
+  bounded unlock anti-oracle milestone, and made later WAL releases extend the
+  same log without a legacy migration or dual authority source.
 - Separated bootstrap, unlock, authoritative, and recovery crypto capabilities;
   added preallocated operation identities, canonical versus local work-cost
   layers, exact chunked-AEAD nonce/retry admission, and quarantine trusted-read
