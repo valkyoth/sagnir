@@ -6243,12 +6243,58 @@ Deliverables:
   challenge-response bound to the ceremony, generated-credential commitment,
   receiver, and delivery attempt; the secret-derived response is compared in
   sanitized memory and never retained in public metadata or diagnostics;
-- generated credential bytes remain in protected pending state until possession
-  confirmation and the consuming bootstrap transition complete; crash recovery
-  resumes only with the exact provider-held or protected-staged credential, or
-  reacquires that exact credential through an admitted source and verifies the
-  pending commitment; if none is possible it aborts before authority publication
-  and never silently generates a replacement;
+- sealed `PendingCredentialStorage` admits exactly `ProviderHeld`,
+  `VolatileLocked`, and `PlatformSealed`; source selection is explicit before
+  generation and cannot silently fall back to a weaker or persistent mode;
+- `ProviderHeld` means an admitted credential provider retains the secret under
+  an independently established scoped handle and declared retrieval/challenge,
+  retention, deletion, recovery, rollback, and assurance semantics; the handle
+  and provider root pre-exist and do not depend on the pending realm bootstrap;
+- `VolatileLocked` keeps the credential only in bounded guarded/locked process
+  memory under v0.63.1 limitations; no recoverable bytes cross a process crash,
+  and restart requires exact user/provider reacquisition through an admitted
+  source or abort before authority publication;
+- `PlatformSealed` permits persistent staging only as authenticated ciphertext
+  under an independently provisioned OS-keystore, HSM, or key-agent key whose
+  identity, purpose, assurance, availability, rollback, backup, and recovery
+  semantics are declared; the exact admitted whole-record AEAD/wrapping suite
+  and key handle are explicit, and associated data binds retained store,
+  ceremony, profile, credential commitment, receiver, delivery attempt, platform
+  key, provider/platform protection context, suite, and staging generation;
+- realm/WAL/bootstrap keys, the pending credential itself or any value derived
+  from it, public ceremony data, deterministic machine attributes, timestamps,
+  counters, ordinary files, and unauthenticated obfuscation cannot protect
+  persistent pending credential bytes;
+- durable WAL/ceremony state stores only the domain-separated credential
+  commitment, storage-mode/provider-or-platform-handle metadata, receiver,
+  delivery-attempt ID, status, challenge state, and protected-staging ciphertext
+  reference where applicable, never recoverable secret bytes or a self-derived
+  staging key;
+- pending bytes or provider/platform handles remain available until possession
+  confirmation and the consuming bootstrap transaction are durable; only then
+  may staging ciphertext be deleted or the scoped handle retired under explicit
+  idempotent cleanup evidence, with uncertain cleanup and residual snapshots/
+  provider copies reported rather than treated as completed erasure;
+- crash recovery resumes only with the exact provider-held, volatile-reacquired,
+  or platform-unsealed credential and verifies it against the pending commitment;
+  unavailable independent protection, mismatch, rollback, or missing recovery
+  path aborts before authority publication and never silently generates a
+  replacement;
+- possession challenge suite is
+  `sagnir:pending-credential-possession:hmac-sha3-256:v1`; it uses the complete
+  canonical generated ASCII credential as the HMAC-SHA3-256 key and a fresh
+  32-byte OS-CSPRNG challenge; its canonical length-framed transcript binds
+  suite/version, retained store and ceremony IDs,
+  bootstrap profile, credential commitment, storage/source class, receiver,
+  delivery-attempt ID, challenge, challenge sequence, and replay domain;
+- the response is exactly 32 bytes, is read through the separately admitted
+  confirmation channel or provider operation, and is compared with the locally
+  expected response using the admitted constant-time comparison boundary; short,
+  long, repeated, stale, cross-store, cross-receiver, cross-attempt, and cross-
+  suite responses fail before possession state advances;
+- each challenge sequence is durably reserved before release, may be answered
+  once, and becomes consumed or failed without reuse; only the non-secret result
+  and transcript commitment are retained, never the expected/received MAC;
 - generating salts or generated secrets fails closed on OS-CSPRNG failure;
   user-supplied password quality is policy input based only on observable rules
   such as minimum length or a reviewed denylist, and Sagnir never claims to
@@ -6309,7 +6355,12 @@ Deliverables:
   argument/config rejection, generated-secret destination, credential-provider,
   receiver close/partial delivery, retained-but-unconfirmed credentials,
   provider retrieval/challenge failure, independent confirmation-channel
-  substitution, crash after delivery, exact resume, and regeneration refusal,
+  substitution, all pending-storage modes, self-derived staging-key rejection,
+  unavailable platform key, staged-secret/store/platform-context substitution,
+  copied staging on another machine refused unless the exact declared recovery
+  context admits it, snapshot rollback, crash after delivery, exact resume,
+  cleanup ambiguity, MAC transcript/length/replay/domain vectors, constant-time
+  comparison, and regeneration refusal,
   source/profile incompatibility, non-ASCII/composed/decomposed text, NUL/control,
   LF/CRLF/standalone-CR, invalid UTF-8/UTF-16, descriptor non-UTF-8/trailing data,
   generated-secret canonical encoding, maximum length, cross-source equivalence,
@@ -6321,6 +6372,8 @@ Verification:
 - `cargo test -p sagnir-cli`
 - `cargo test -p sagnir-crypto`
 - secret-source API compile-fail/redaction suite;
+- independent pending-credential HMAC transcript known-answer, malformed,
+  response-length, domain-substitution, and replay vectors;
 - Unix PTY and Windows console/input-handle integration suites where available;
 - cancellation/panic/sanitization fault injection.
 
@@ -6334,6 +6387,9 @@ Exit criteria:
 - A generated credential is consumable only after exact possession confirmation;
   delivery loss, confirmation failure, or unrecoverable pending state aborts
   before authority publication and cannot trigger replacement generation.
+- Persisted pending credentials are protected only by independently established
+  provider/platform keys; volatile mode persists no recoverable bytes, and the
+  normative possession transcript is replay-resistant across every bound scope.
 - Cross-platform interactive and generated-secret KDF bytes are normative, and
   incompatible source/profile pairs are rejected before secret acquisition.
 - Every recoverable exit restores terminal state and sanitizes owned secret
@@ -6452,6 +6508,18 @@ Deliverables:
   old/new signing transcript, expected state head, provider/key/epoch, suite,
   governance context, and one provider idempotency key, then consumes one sealed
   `AuthoritativeOperationCapability` for that exact request;
+- before reservation or signer contact, local admission rejects an expected head
+  already known stale; a byte-identical candidate already reserved, signed, or
+  terminal returns its existing state without signer contact, and at most one
+  in-flight signing reservation exists per `(realm, expected head, transition
+  scope)` unless canonical policy explicitly grants a larger bounded concurrency
+  value; no policy value may exceed the implementation hard maximum;
+- canonical resource policy defines checked hard limits per actor, device,
+  replica, and realm for `Reserved`/in-progress, `Ambiguous`, and active
+  superseded transparency operations plus prepared bytes/pages/log nodes; exact
+  defaults and non-bypassable maxima live in a versioned resource table;
+  offline/concurrent excess reconciles to explicit over-quota quarantine and
+  never drops evidence, chooses by arrival order, or invokes another signer;
 - a returned signature and provider-result commitment are persisted through the
   authority transaction substrate before final map/log/head CAS; pre-admission
   refusal, invalid signature, or cancellation leaves the old head authoritative,
@@ -6476,12 +6544,36 @@ Deliverables:
   signed, the exact signature, result commitment, reservation, and stale signed
   transition remain authenticated superseded evidence; they cannot be discarded,
   rewritten, or rebased onto the winning/new head;
+- reconciliation records terminal `SupersededAfterSignature` only after the exact
+  signing result is known and the expected head is provably no longer current;
+  this state preserves operation/transcript/result commitments, signer identity,
+  superseding head/transition, and dispute status and can never return to a
+  signable, publishable, or ambiguous state;
+- each unreachable prepared map page/log node set has a bounded authenticated
+  lease tied to its operation, expected head, root commitments, ambiguity state,
+  byte/page counts, retention class, and expiry frontier; lease renewal is
+  policy-bounded and cannot bypass actor/device/realm quotas;
+- prepared bytes remain pinned while needed to resolve signer ambiguity or an
+  admitted publication attempt; once safe under ambiguity, dispute, retention,
+  and legal-hold policy, canonical map/log bytes may be deterministically rebuilt
+  and reverified from retained transition inputs/root commitments, so unreachable
+  prepared bytes become GC-eligible instead of permanent active state;
+- causally stable `SupersededAfterSignature` operations move through the active/
+  covered-fence/exception/archive path admitted by v0.23.6 and activated by
+  v0.52.0; archive compaction retains the signed transition, signature/provider-
+  result/transcript commitments, supersession proof, quota/accounting lineage,
+  and required dispute evidence without retaining unreachable prepared pages or
+  log nodes indefinitely;
+- `Ambiguous` operations remain active and quota-charged until v0.23.4 provider
+  reconciliation or governed/manual recovery reaches an admitted terminal state;
+  resource pressure, lease expiry, or archive demand cannot convert ambiguity
+  into supersession, success, cancellation, or evidence deletion;
 - signed periodic transparency checkpoints consume one admitted state head and
   bind both roots/counts/versions; monitor replay checks the atomic history but
   is detection/evidence, never a repair mechanism for locally split authority;
   checkpoint signing uses the same v0.23.4 durable reservation, sealed
   capability, idempotency, result persistence, ambiguity, reconciliation, and
-  stale/superseded-evidence rules;
+  stale/superseded-evidence rules plus the same in-flight/resource limits;
 - algorithm/version changes use a governed transition binding old/new map and
   log suites together; changing only one side or downgrading either fails closed;
 - crash/fault injection covers every page/node write, file/directory sync,
@@ -6492,8 +6584,11 @@ Deliverables:
   subject mismatch, map-only/log-only version change, stale head, missing page/
   node, signer completion followed by response loss, ambiguity reconciliation
   before and after a competing CAS, stale signed transition retention, checkpoint
-  signer ambiguity, repeated exact retry, and interruption between every
-  reservation/result/publication boundary.
+  signer ambiguity, repeated exact retry, locally stale pre-sign refusal, stale-
+  head signing floods, concurrent authorized replicas, quota exhaustion and
+  merge quarantine, permanently ambiguous operations, lease expiry/rebuild/GC,
+  stable superseded archival and recovery, and interruption between every
+  reservation/result/publication/archive boundary.
 
 Verification:
 
@@ -6515,6 +6610,10 @@ Exit criteria:
 - A lost signer response never mints a second signing authority or silently
   repeats provider work; stale signed results remain evidence and are never
   reinterpreted as signatures over a rebased transition.
+- Contention and malicious authorized clients cannot create unbounded local
+  signing reservations, active superseded evidence, or unreachable prepared
+  bytes; bounded archival removes cold prepared storage without erasing signed
+  dispute or provider-operation evidence.
 
 ### v0.99.2 - Compartment Translation Format Admission Stop
 
@@ -6979,6 +7078,12 @@ Deliverables:
   PossessionConfirmed -> BootstrapHeaderPublished -> BootstrapMaterialReady`;
   `BootstrapMaterialReady` cannot be reached from `Delivered` alone, and non-
   generated profiles skip these states without fabricating possession evidence;
+- generated-credential profile state binds one exact v0.98.2
+  `PendingCredentialStorage` mode before generation: `ProviderHeld` references
+  independently established provider custody, `VolatileLocked` requires exact
+  reacquisition after restart, and `PlatformSealed` requires an independently
+  provisioned admitted platform key; genesis cannot establish or authorize the
+  protection on which its own pending credential depends;
 - `MinimalPlaintextBootstrap` permits only bounded v0.23.5 bootstrap/genesis and
   normal-WAL-key provisioning reservations, public commitments, and provider
   results in the initial plaintext log; object writes, user changes, sync,
@@ -7068,10 +7173,17 @@ Deliverables:
   output descriptor; otherwise interactive user input is explicit and no secret
   value is accepted from argv/environment/config;
 - crash recovery before header publication resumes only with the exact pending
-  generated credential from protected staging/provider state or exact admitted
-  reacquisition; unavailable or mismatched pending material aborts without
-  authority publication, and recovery never generates a new credential under
-  the prior ceremony or reports an unconfirmed delivery as usable;
+  generated credential from `ProviderHeld`, exact `VolatileLocked` reacquisition,
+  or authenticated `PlatformSealed` staging under its pre-existing platform key;
+  unavailable/mismatched keys or material, staging rollback/substitution, or
+  missing recovery semantics abort without authority publication, and recovery
+  never generates a new credential under the prior ceremony or reports an
+  unconfirmed delivery as usable;
+- the consuming bootstrap transaction durably binds the possession-transcript
+  commitment and exact pending storage generation before publishing the header/
+  authority result; provider handle retirement or platform staging deletion runs
+  idempotently only afterward and records confirmed, pending, unavailable, or
+  ambiguous cleanup without rolling authority back or claiming secret erasure;
 - platform matrix records which HSM/keystore, passphrase, and durability profiles
   are supported on Linux, Windows, BSD, MacOS, Android, and iOS; unknown behavior
   is refused rather than inferred from a similar platform;
@@ -7079,17 +7191,20 @@ Deliverables:
   verification, salt/header write and parent sync, KDF, first encrypted/plaintext
   segment creation, provider lost response, genesis signing/publication, normal
   WAL-key provisioning, generated credential delivery/confirmation and pending-
-  state recovery, successor publication, bootstrap-key retirement, retry, wrong
-  passphrase, and locked recovery;
+  storage-mode recovery/cleanup, successor publication, bootstrap-key retirement,
+  retry, wrong passphrase, and locked recovery;
 - tests cover profile substitution/downgrade, plaintext fallback, stale/replayed
   attestation, wrong store/ceremony binding, exportable or wrong-purpose handle,
   malformed/extreme KDF parameters, repeated salt/entropy failure, partial
   header, receiver close/partial delivery, retained-but-unconfirmed credential,
   confirmation/provider-retrieval failure, crash after delivery or confirmation,
-  mismatched reacquisition, accidental regeneration, bootstrap/realm-key
-  aliasing, passphrase purpose-separation and reuse-warning output, ordinary
-  operation before cutover, old-key early deletion, stable assurance labels,
-  offline-guess verifier fixture, and unsupported-platform refusal.
+  mismatched reacquisition, unavailable independent platform key, self-derived
+  staging protection, staging store/platform-context substitution, undeclared
+  cross-machine copy and snapshot rollback, cleanup ambiguity, accidental
+  regeneration, bootstrap/realm-key aliasing,
+  passphrase purpose-separation and reuse-warning output, ordinary operation
+  before cutover, old-key early deletion, stable assurance labels, offline-guess
+  verifier fixture, and unsupported-platform refusal.
 
 Verification:
 
@@ -7112,7 +7227,9 @@ Exit criteria:
   the user's passphrase entropy and the exact admitted KDF cost.
 - Generated-credential bootstrap cannot publish its header or genesis until the
   selected receiver proves possession, and interrupted delivery can only resume
-  with the exact pending credential or abort safely.
+  through its exact independently protected storage mode with the same pending
+  credential or abort safely; staging cleanup starts only after consumption is
+  durable.
 
 ### v0.102.0 - Encrypt Project Command
 
@@ -9211,8 +9328,9 @@ Deliverables:
   credential leases, generated-secret destinations, cancellation/unwind, and the
   prohibition on argv/environment/config/diagnostic secret channels, with exact
   UTF-8/UTF-16 conversion, Enter framing, descriptor framing, generated-secret
-  encoding, delivery/possession-confirmation state, exact pending-secret resume
-  or pre-authority abort, and non-convertible local-KDF/provider-handle classes;
+  encoding, exact HMAC-SHA3-256 possession transcript, independently protected
+  provider-held/volatile/platform-sealed pending state, exact resume or pre-
+  authority abort, and non-convertible local-KDF/provider-handle classes;
 - transparency composition keeps history-independent current-state map proofs
   separate from append-log consistency proofs and binds both roots in one signed
   checkpoint without cross-structure substitution; every key transition moves
@@ -9220,6 +9338,9 @@ Deliverables:
   or leaves the complete prior state authoritative, while v0.23.4 reservations,
   provider ambiguity reconciliation, and superseded signed evidence prevent a
   lost signer response or competing CAS from duplicating signing authority;
+  bounded in-flight/quota state, terminal `SupersededAfterSignature`, prepared-
+  data leases/GC, and v0.23.6/v0.52 archival prevent contention from creating
+  unbounded active evidence without discarding ambiguous or dispute material;
 - duplicate-equivalence representative CAS, conflict-head preservation,
   anti-grinding selection, replica/actor/device quota continuity, and persistent
   authenticated index union/split models;
@@ -9323,8 +9444,10 @@ Deliverables:
   authority, no stale move overwrite or newer-source removal, no redacted-body
   resurrection, no stale restore admission, no stale admission, no authority
   from delivered-but-unconfirmed generated credentials, no silent pending-secret
-  regeneration, no duplicate signer operation after ambiguity, no signed-
-  transition rebase, and eventual convergence under documented assumptions;
+  regeneration, no self/circular pending-secret protection, no possession-proof
+  replay, no duplicate signer operation after ambiguity, no signed-transition
+  rebase, no unbounded active superseded/prepared state, no ambiguity deletion by
+  quota/lease expiry, and eventual convergence under documented assumptions;
 - model execution instructions and CI smoke bounds.
 - model-run manifests inherit v0.115.1 exact bounds, assumptions, property
   classes, reductions, coverage counters, resources, seeds/configuration, and
@@ -9353,8 +9476,10 @@ Exit criteria:
   neutral-domain confusion, sparse/redacted descendant bypass, manifest resume
   substitution, partial final commit, recursive move leakage, stale
   compartment-move CAS, stale redaction lineage, unconfirmed generated-secret
-  publication, accidental credential regeneration, ambiguous signer duplication,
-  signed-transition rebase, lost divergence, and replay are represented in
+  publication, accidental credential regeneration, circular staging-key use,
+  possession-proof replay, ambiguous signer duplication, signed-transition
+  rebase, stale-head signing flood, superseded/prepared-state amplification,
+  unsafe ambiguous archival, lost divergence, and replay are represented in
   executable models rather than prose alone.
 - This release is full-system assurance, not the first time foundational
   formats are modeled.
@@ -9378,12 +9503,16 @@ Deliverables:
 - secret-handle/provider-session cancellation, panic, agent-disconnect, cleanup,
   and process-boundary tests proving no partial authorization result;
 - generated-credential receiver-close, partial-delivery, possession-confirmation,
-  provider retrieval, protected-pending-state, exact-reacquisition, crash-resume,
-  and pre-authority abort boundaries with silent regeneration prohibited;
+  provider retrieval, provider-held/volatile/platform-sealed pending state,
+  independent-platform-key availability, exact reacquisition, staging rollback/
+  substitution, post-consumption cleanup, crash resume, and pre-authority abort
+  boundaries with circular protection and silent regeneration prohibited;
 - transparency transition/checkpoint signing crashes before and after durable
   reservation, provider admission, result persistence, response loss,
   reconciliation, competing head CAS, superseded-evidence retention, and exact
-  retry, proving no second signer operation or transcript rebase occurs;
+  retry, plus prepared-data lease expiry/rebuild/GC and stable archive movement,
+  proving no second signer operation, transcript rebase, evidence loss, or active-
+  state amplification occurs;
 - atomic forward/reverse private-index update and rebuild interruption tests;
 - multi-instance forward/reverse update tests proving no instance is lost,
   aliased, or charged to the wrong quota class;
@@ -9490,6 +9619,16 @@ Deliverables:
   reconciliation;
 - conflicting partitioned representative selections, stale expected-root CAS,
   multi-head propagation, and authorized multi-parent resolution;
+- concurrent authorized replicas preparing/signing from one transparency head,
+  stale-head signing floods, actor/device/realm pending/ambiguous/superseded quota
+  exhaustion, offline over-quota reconciliation, permanently ambiguous provider
+  operations, prepared-data lease pressure, stable archive propagation, and
+  archive recovery without signature/transcript/dispute-evidence loss;
+- cloned/rolled-back pending-credential staging, provider/platform-key
+  unavailability, copied staging outside its declared platform recovery context,
+  cross-store/receiver possession-response replay, and concurrent delivery
+  attempts prove no partition can substitute protection, confirm the wrong
+  receiver, publish authority, or generate a replacement credential;
 - authorized-replica duplicate amplification, per-replica quota replay,
   authenticated locator-index reconciliation, actor/device aggregate quota
   evasion, locator-rotation carry-forward, new-incarnation evasion, concurrent
@@ -9675,14 +9814,18 @@ Deliverables:
   vectors with stable redacted output snapshots, exact Unix UTF-8/Windows UTF-16
   conversion, LF/CRLF framing, descriptor length/EOF behavior, canonical
   generated-secret encoding, cross-source byte equivalence, generated delivery/
-  possession challenge vectors, exact pending-state resume, regeneration
-  refusal, and source/profile incompatibility before secret acquisition;
+  exact HMAC-SHA3-256 possession transcript/response vectors, provider-held/
+  volatile/platform-sealed staging vectors, circular-key and staging-substitution
+  refusal, exact pending-state resume/cleanup, regeneration refusal, and source/
+  profile incompatibility before secret acquisition;
 - transparency current-map and append-event-log independent vectors, atomic
   old/new map-log-head transition and concurrent-CAS/crash vectors, monitor
   replay, dual-root checkpoint, map/log proof-substitution, split-view, and
   jointly governed algorithm/version-transition tests, plus v0.23.4 signer
   reservation/result vectors for lost responses, provider reconciliation,
-  competing-CAS supersession, stale signed transitions, and exact retry;
+  competing-CAS supersession, stale signed transitions, exact retry, stale-head
+  pre-sign rejection, bounded concurrency/quota accounting, prepared-data lease/
+  rebuild/GC, and v0.23.6/v0.52 superseded archive/recovery;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - plaintext-to-encrypted authority-log cutover model/vectors and crash benchmarks
@@ -9975,7 +10118,9 @@ Deliverables:
   config/diagnostic channels, PTY/console restore, descriptor/provider/generated
   input, strict UTF-8/UTF-16 conversion, LF/CRLF and descriptor framing,
   canonical generated-secret encoding, cross-source equivalence, generated-
-  credential possession confirmation, exact pending-secret crash recovery or
+  credential HMAC-SHA3-256 possession confirmation, independently protected
+  provider-held/volatile/platform-sealed pending modes, circular/self-derived
+  staging-key and rollback/substitution refusal, exact crash recovery/cleanup or
   pre-authority abort, regeneration refusal, source/profile type refusal before
   acquisition, CSPRNG failure, cancellation/unwind, and sanitization tests pass;
 - v0.99.0 transparency current-state map and append-only event log use separate
@@ -9987,7 +10132,10 @@ Deliverables:
   old state or complete new state and never a split authoritative pair; signing
   uses durable v0.23.4 reservation/result state, ambiguous-response provider
   reconciliation, and non-rebased superseded evidence for transitions and
-  periodic checkpoints;
+  periodic checkpoints; stale pre-sign rejection, bounded in-flight and active-
+  evidence quotas, terminal supersession, prepared-data leases/GC, and stable
+  v0.23.6/v0.52 archival pass tests for floods, ambiguity, retention, and
+  recovery;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -9996,8 +10144,9 @@ Deliverables:
   platform refusal matrix, no-fallback tests, first-log key proof, normal-key
   replacement, passphrase offline-guess disclosure/labels/policy refusal, and
   v0.98.2-only secret ingestion plus generated delivery/possession confirmation,
-  exact pending-credential resume or pre-authority abort, and crash/recovery/
-  bootstrap-key-retirement suites pass;
+  independently protected pending storage, exact resume or pre-authority abort,
+  post-consumption cleanup, and crash/recovery/bootstrap-key-retirement suites
+  pass;
 - deterministic fact-language stratification, typed parameterized obligation
   template/instance identity preimages, preallocated issuance-operation cycle
   break, self-inclusion refusal, evidence-consumption/independence and discharge
@@ -10101,8 +10250,11 @@ Deliverables:
   measurable; strict cross-platform Unicode-to-UTF-8, Enter and descriptor
   framing, canonical generated-secret bytes, source equivalence, and typed local-
   KDF/provider-handle compatibility are normative; generated opaque credentials
-  require possession confirmation and interrupted delivery resumes with the
-  exact pending credential or aborts before authority without regeneration;
+  require a normative HMAC-SHA3-256 possession proof and provider-held,
+  volatile-locked, or independently platform-sealed pending storage; interrupted
+  delivery resumes with the exact credential or aborts before authority without
+  circular protection or regeneration, and cleans staging only after durable
+  consumption;
 - checkpoint-anchored chained WAL with exact CRC-32C, explicit log incarnations,
   exhaustion, encrypted-profile activation only after clone-safe nonce evidence,
   locked recovery, old-key retention, signed event DAG, and rollback/
@@ -10203,7 +10355,9 @@ Deliverables:
   split-view evidence, with every key mutation publishing map, event log, and
   state head atomically through one expected-head WAL transition and every
   transition/checkpoint signature using durable one-use reservation, ambiguous-
-  response reconciliation, and retained non-rebased superseded evidence;
+  response reconciliation, retained non-rebased superseded evidence, stale pre-
+  sign rejection, bounded active quotas/prepared-data leases, terminal
+  supersession, and authenticated stable archival without dispute-evidence loss;
 - no operational encryption mode before sealed-private prerequisites;
 - sealed-private migration and honest prior-leakage accounting;
 - forward-only plaintext-to-encrypted authority-log cutover with exclusive
