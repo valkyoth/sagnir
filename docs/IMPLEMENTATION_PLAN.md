@@ -596,7 +596,7 @@ Format-admission rule:
   endpoint-placement formats before private index persistence, including
   format-specific fuzzing and early no-op/edit/unwrap/proof/rebuild performance
   rejection thresholds;
-- v0.99.1 admits compartment translation, target-only attestation, neutral
+- v0.99.2 admits compartment translation, target-only attestation, neutral
   lifecycle, and redacted-placeholder formats before implementation, including
   revocation staples, format-specific fuzzing, and early translation/proof
   performance thresholds;
