@@ -1247,6 +1247,60 @@ Exit criteria:
 - Membership and append-only consistency are not overloaded onto one structure
   when their required security properties differ.
 
+### v0.17.1 - Bounded Persistent Authenticated Map Pages
+
+Goal: give every long-lived authenticated map a canonical bounded persistent
+representation before authority, policy, key, or private-index roots depend on
+unbounded in-memory serialization.
+
+Deliverables:
+
+- immutable bounded-fanout page format with independent leaf/internal domain
+  labels, exact page version, level, entry/child count, key range, payload byte
+  length, and child/page commitments;
+- canonical key ordering, split/merge thresholds, separator selection, empty
+  root, and deterministic bulk-build algorithm produce one unique logical root
+  for one admitted map independent of insertion order, worker scheduling, page
+  placement, allocator behavior, or host architecture;
+- authenticated root descriptor binds map kind/version, commitment suite,
+  logical entry count, tree height, reachable page count, root page commitment,
+  and declared key/value schemas;
+- protocol limits bound page bytes, entries, fanout, height, key/value lengths,
+  proof nodes, update-set pages, and cumulative decode/hash/work budgets before
+  allocation or cryptographic work;
+- logarithmic lookup, inclusion, absence, update, range, and page-set
+  completeness proof formats with independent reference verification;
+- deterministic full rebuild streams bounded sorted entries and independently
+  recomputes root/count/height/page-count without loading or trusting the whole
+  map at once;
+- copy-on-write update result is an immutable bounded page set plus old/new root
+  descriptors and replaced-page commitments suitable for atomic publication by
+  a later WAL transaction; no mutable page can become authoritative in place;
+- file offsets, mmap pointers, cache identity, filesystem order, and mutable
+  index metadata are never authenticated authority; reads copy or integrity-bind
+  bounded page bytes before parsing and verify page commitment plus parent/root
+  path before use;
+- malformed offset/range, page/level substitution, omitted or duplicate page,
+  duplicate/out-of-order key, separator mismatch, count/height/page-count
+  mismatch, deep tree, fanout violation, cyclic page reference, stale root,
+  update-set omission, and rebuild-budget exhaustion tests;
+- independent vectors cover empty, singleton, split, merge, minimum/maximum
+  fanout, multi-page update, full rebuild, and equivalent insertion histories.
+
+Verification:
+
+- `cargo test -p sagnir-proof`
+- `cargo test -p sagnir-store`
+- independent authenticated-map page/root/proof vector validator;
+- bounded rebuild and malformed-page corpus.
+
+Exit criteria:
+
+- No admitted authenticated map requires one unbounded record or whole-map
+  allocation to load, update, prove, or rebuild it.
+- Equivalent admitted maps have one root, while missing, substituted, mutable,
+  or structurally non-canonical pages fail before becoming authority.
+
 ### v0.18.0 - Realm Genesis And Governance Schema
 
 Goal: define the canonical origin and governance schema before live
@@ -1778,11 +1832,24 @@ Deliverables:
 - transaction commit frames bind the ordered frame commitments, exact frame and
   byte counts, transaction ID, first/final sequence, prior committed transaction
   or log-checkpoint commitment, and resulting logical authority-state root;
-- canonical `AuthorityStateRoot` commits to a sorted operation-ID map whose
-  values bind capability class, request digest, reservation sequence, status,
-  provider-result commitment or explicit absence, and ambiguity/equivocation
-  state; duplicate IDs, non-canonical order, unknown status, or omitted terminal
-  evidence fail closed;
+- canonical `AuthorityStateRoot` is a versioned composite committing to the
+  v0.17.1 active-operation map descriptor, terminal-fence map descriptor, sparse
+  exception-map descriptor, authenticated epoch-archive manifest root, exact
+  active/terminal/exception/archive counts, and commitment suite; v0.23.3 starts
+  with canonical empty terminal/archive roots and v0.23.6 activates movement
+  between those components without changing this root schema;
+- active-map values bind operation ID, issuer/replica/incarnation and reservation
+  sequence, capability class, request digest, status, provider-result commitment
+  or explicit absence, and ambiguity/equivocation state; duplicate IDs, non-
+  canonical order, unknown status, or omitted terminal evidence fail closed;
+- active-map create/update commits v0.17.1 copy-on-write pages and an exact page-
+  publication manifest through the same WAL transaction; all new pages and
+  required parent-directory entries are durable before the transaction exposes
+  the new root, and recovery ignores unreachable prepared pages;
+- lookup/update/proof work is logarithmic and bounded; checkpoint, compaction,
+  rebuild, migration, and cutover stream independently verified pages under
+  cumulative budgets rather than encoding, copying, hashing, or authenticating
+  the complete operation map as one record;
 - canonical `AuthorityLogCheckpoint` binds store/log incarnation, final
   sequence, record count, physical chain root, `AuthorityStateRoot`, and
   predecessor authority-log checkpoint; physical history and logical operation
@@ -1815,11 +1882,14 @@ Deliverables:
   commitments, while the agent journal commits execution/admission/result;
   reconciliation binds operation ID, request digest, provider/key/session,
   sequence, result commitment/status, and ambiguity evidence;
-- compaction creates a predecessor-linked `AuthorityLogCheckpoint` and may
-  change segment layout, record count, and physical chain root only while
+- physical log compaction creates a predecessor-linked `AuthorityLogCheckpoint`
+  and may change segment layout, record count, and physical chain root only while
   preserving the exact logical `AuthorityStateRoot`; retained ambiguous/
   equivocation evidence remains committed and `Consumed`, `Cancelled`, or
   `Ambiguous` IDs can never become reusable;
+- logical terminal-state compaction is a distinct v0.23.6 authenticated state
+  transition that may change active/fence/exception/archive component roots only
+  while preserving exact replay and historical-verification semantics;
 - hash-suite transition requires a new critical format and signed transition
   binding old/new suite IDs, complete old/new logical roots, old/new physical
   checkpoints, and effective frontier; old history is never reinterpreted under
@@ -1847,6 +1917,7 @@ Verification:
 - hardware/software CRC-32C differential vectors;
 - independent SHA3-256 authority commitment and domain-separation vectors;
 - process-kill and deterministic repeated-recovery suite;
+- bounded persistent authority-map page/update/rebuild differential suite;
 - provider/store reconciliation state-machine fixtures.
 
 Exit criteria:
@@ -1855,6 +1926,8 @@ Exit criteria:
   returned before the exact local/provider result is durably reconciled.
 - Torn data, races, exhaustion, repeated recovery, and compaction cannot mint,
   reuse, lose, or silently change an authority reservation.
+- Authority-state admission and rebuild remain bounded as operation count grows;
+  no whole-map record, allocation, mmap view, or mutable cache is authoritative.
 - CRC detects accidental corruption; cryptographic chain/state commitments
   become tamper evidence only relative to genesis, a later signed checkpoint,
   or an independently retained witness.
@@ -2013,7 +2086,12 @@ Deliverables:
   and governed/manual-recovery outcomes;
 - `Reserved` durably binds ceremony/realm-initialization ID, retained new-store
   identity, provider and suite, intended first actor/device/key roles, transcript
-  schema, limits, and all required v0.23.4 provider operation reservations;
+  schema, limits, bootstrap-log profile ID/public-header commitment, and all
+  required v0.23.4 provider operation reservations;
+- v0.23.5 implements only the bounded plaintext bootstrap-log profile and records
+  its metadata-leakage class; direct encrypted bootstrap profile IDs and fields
+  are reserved but have no production path until v0.101.2 completes their key-
+  before-first-reservation state machines;
 - each transition consumes one separately minted narrowly bound
   `BootstrapCryptoCapability`; key generation/import, genesis signing, key-
   usability/finalization, and any orphan-key destruction are distinct provider
@@ -2024,8 +2102,9 @@ Deliverables:
   operations;
 - `GenesisTranscriptFixed` freezes canonical genesis bytes/transcript including
   realm/genesis identity, first actor/device, key/handle commitment, bootstrap
-  operation IDs, suite, policy/bootstrap table, store format, and the initial
-  closed `AuthorityStateRoot` plus `AuthorityLogCheckpoint` before signing;
+  operation IDs, suite, policy/bootstrap table, store format, bootstrap-log
+  profile/evidence commitment, and the initial closed `AuthorityStateRoot` plus
+  `AuthorityLogCheckpoint` before signing;
 - the genesis authority anchor ends at the exact pre-sign frontier with the
   genesis-signing operation durably reserved; a signed root never claims to
   contain its own signature result, which is consumed into the next authority
@@ -2082,6 +2161,86 @@ Exit criteria:
   means both durability domains reached the exact final bound state.
 - Genesis authenticates the initial logical authority state and physical log
   checkpoint without a circular claim that it contains its own signing result.
+
+### v0.23.6 - Authority Terminal Fences And Epoch Archives
+
+Goal: bound active authority-state growth while preserving exact replay
+rejection, ambiguity evidence, and historical operation verification.
+
+Deliverables:
+
+- model and canonical formats complete before terminal entries can leave the
+  active map; the v0.23.3 composite `AuthorityStateRoot` schema is reused rather
+  than replaced by an incompatible root;
+- active map retains every `Reserved`, `InProgress`, `Ambiguous`, `Disputed`,
+  equivocation-bearing, sequence-gap, and policy-retained completed operation;
+  only explicitly terminal, contiguous, retention-eligible entries may archive;
+- canonical fence scope is domain-separated by realm, authority domain, issuer,
+  replica ID and incarnation, and reservation-sequence domain so unrelated
+  issuers, restored replicas, or operation classes cannot advance one another's
+  replay boundary;
+- authenticated terminal-fence map records each scope's greatest contiguous
+  archived terminal reservation sequence, terminal-status summary commitment,
+  archive epoch, archive-manifest commitment, and previous fence value;
+- an operation at or below an admitted terminal high-water mark is rejected
+  before provider/key-agent execution even when its full active entry is no
+  longer locally materialized; changing operation-ID randomness or request bytes
+  cannot bypass the sequence fence;
+- sparse exception map commits every sequence gap, ambiguous/disputed state,
+  equivocation, non-contiguous terminal entry, retention hold, and explicitly
+  unresolved operation needed to interpret the fence; exceptions cannot be
+  summarized into the high-water mark;
+- canonical predecessor-linked `AuthorityTerminalEpochArchive` binds scope,
+  inclusive sequence range, exact sorted terminal entries and result/evidence
+  commitments, entry/page counts, v0.17.1 page-set root, prior archive root,
+  retention class, and producing authority checkpoint;
+- result commitments and evidence needed for genesis, historical signatures,
+  provider reconciliation, emergency recovery, erasure/destruction evidence,
+  legal hold, or configured audit policy remain authenticated and reachable;
+  archival unavailability may block historical verification but never permits
+  replay or fabricates successful verification;
+- one WAL transaction copy-on-write publishes archive pages, exception/fence
+  pages, active-map removals, new archive manifest, and resulting composite
+  `AuthorityStateRoot`; partial publication or recovery keeps the old root;
+- full rebuild streams active, fence, exception, and archive manifests under
+  cumulative limits and independently recomputes every component/count/root;
+- no Bloom filter, cuckoo filter, approximate set, cache hit/miss, wall clock,
+  archive availability, or caller assertion may decide authoritative replay
+  acceptance;
+- live deletion/retirement of replaced active pages or detailed archive bodies
+  remains unavailable until v0.27.0 signed checkpoints, v0.35.0 retention
+  policy, and v0.52.0 all-active-replica causal stability or governed replica
+  retirement authorize it; this release admits formats, state transitions,
+  exact replay checks, and model/tests without creating pre-governance or
+  quorum-in-place-of-missing-replica deletion authority;
+- fence advancement binds the acknowledged stable frontier, per-replica
+  sequence watermark, required parent frontier, and replica incarnation from
+  v0.52.0; hidden higher-sequence stale-lineage events, cloned replica state, or
+  a retired incarnation cannot be legitimized by terminal compaction;
+- archive compaction preserves predecessor roots and fence/exception meaning;
+  restoration behind an admitted fence/checkpoint is rollback evidence and
+  cannot reopen archived operation sequences;
+- tests cover archive absence/substitution, high-water rollback/jump, exception
+  omission, sequence gap, wrong issuer/incarnation, crafted old-sequence new ID,
+  ambiguous/equivocated archival attempt, result-reference loss, stale root,
+  partial page/WAL publication, rebuild exhaustion, and old-checkpoint restore.
+
+Verification:
+
+- bounded terminal-fence/archive state-machine model;
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-crypto`
+- independent active/fence/exception/archive root vectors;
+- process-kill copy-on-write archive/rebuild suite.
+
+Exit criteria:
+
+- Active authority state can remain proportional to unresolved and retained work
+  rather than total lifetime operations without making any old sequence usable.
+- Every replay decision is exact and authenticated; missing archives or caches
+  can reduce historical availability but cannot weaken replay refusal.
+- Terminal compaction cannot discard ambiguity, equivocation, gaps, governed
+  retention evidence, or commitments needed to verify reachable history.
 
 ### v0.24.0 - Key Lifecycle And Anti-Replay
 
@@ -3168,6 +3327,13 @@ Deliverables:
 - bounded frontier and concurrent-head representation;
 - tombstone and retirement-evidence retention rules;
 - safe dotted-context or Merkle-clock compaction;
+- causal-stability certificate is the required authority for advancing the
+  matching v0.23.6 terminal-operation fence and archive eligibility; its replica
+  set/frontiers/watermarks/incarnations must cover every affected operation
+  scope, and a governance quorum cannot stand in for a missing acknowledgement;
+- terminal fence/archive transition records the exact stability or retirement
+  evidence root so later restoration, stale-lineage submission, or hidden
+  higher-sequence operation fails against both causal and replay boundaries;
 - replica-creation quotas and governance-backed Sybil controls;
 - actor- and device-level aggregate replica and duplicate-creation budgets whose
   accounting survives new replica incarnations, device restoration, replica
@@ -6307,10 +6473,18 @@ Deliverables:
   commits to both the signed cutover anchor and terminal plaintext tail seal;
   the next signed realm checkpoint or retained witness anchors the successor and
   covers the cutover-signing result;
-- the encrypted segment begins with a canonical state-carry record preserving
-  the complete logical operation-ID/status map and prior `AuthorityStateRoot`;
-  consumed, cancelled, ambiguous, or equivocated IDs remain terminal and no
-  reservation sequence or operation ID becomes reusable;
+- the encrypted segment begins with a bounded authenticated state-carry manifest
+  binding the complete active, terminal-fence, sparse-exception, and epoch-
+  archive map descriptors, exact counts, required v0.17.1 page commitments,
+  separate encrypted-page storage-manifest root, and prior composite
+  `AuthorityStateRoot`; it never embeds the lifetime operation map as one record;
+- page transfer/re-encryption is streamed under cumulative byte/page/work
+  budgets, verifies every plaintext page path and resulting encrypted page, and
+  independently proves the encrypted page set decodes to the identical logical
+  composite root/counts before activation; encryption changes physical storage
+  commitments, not `AuthorityStateRoot`; consumed, cancelled, ambiguous, or
+  equivocated IDs retain exact v0.23.6 terminal/exception semantics and no
+  reservation sequence becomes reusable;
 - encrypted segment bytes, authentication data, file metadata, directory entry,
   and every required parent directory are durable before `EncryptedActive` is
   published or any encrypted operation is accepted;
@@ -6335,7 +6509,8 @@ Deliverables:
 - tests cover status-map omission/substitution, consumed-ID resurrection,
   ambiguous-record deletion, wrong epoch/suite, predecessor substitution,
   parallel writer/reservation race, stale clone, rollback to plaintext-active,
-  partial archive/delete, and inability to unlock the encrypted successor.
+  page/manifest/count substitution, cumulative-budget exhaustion, partial
+  archive/delete, and inability to unlock the encrypted successor.
 
 Verification:
 
@@ -6352,8 +6527,109 @@ Exit criteria:
 - The encrypted successor preserves the complete logical authority state and
   cryptographically descends from the sealed plaintext history without
   rewriting historical transaction bytes.
+- Cutover work is bounded by active/exception pages plus authenticated fence and
+  archive manifests, not by one unbounded lifetime-operation record.
 - Sagnir reports that encryption protects future WAL contents; it never claims
   to erase metadata or bytes already observed before cutover.
+
+### v0.101.2 - Encrypted Genesis Bootstrap Profiles
+
+Goal: create encrypted realms without circularly requiring an authority-log
+reservation to provision the key needed to encrypt that first reservation.
+
+Deliverables:
+
+- canonical bootstrap-log profile enum admits exactly
+  `MinimalPlaintextBootstrap`, `ExternallyProvisionedEncryptedBootstrap`, and
+  `PassphraseDerivedBootstrap`; profile ID, version, public header/evidence
+  commitment, leakage class, initial segment mode, bootstrap key epoch, and
+  replacement policy are bound into the v0.23.5 ceremony and genesis transcript;
+- common modeled lifecycle is `ProfileSelected -> BootstrapMaterialReady ->
+  InitialSegmentReady -> GenesisReconciled -> RealmWalKeyProvisioned ->
+  NormalKeySegmentPublished -> BootstrapKeyRetired -> EncryptedGenesisActive`,
+  with profile-specific skipped states and explicit `Aborted`, `Ambiguous`,
+  `Quarantined`, and manual-recovery outcomes;
+- `MinimalPlaintextBootstrap` permits only bounded v0.23.5 bootstrap/genesis and
+  normal-WAL-key provisioning reservations, public commitments, and provider
+  results in the initial plaintext log; object writes, user changes, sync,
+  ordinary signing, and all non-bootstrap operations remain unavailable;
+- minimal-plaintext bootstrap automatically executes v0.101.1 immediately after
+  genesis and normal WAL-key reconciliation, and `saga` reports success only
+  after `EncryptedActive`; CLI output and durable metadata disclose the exact
+  limited provider/key, actor/device, operation-class, purpose/frequency, and
+  recovery metadata that may have been observable before cutover;
+- `ExternallyProvisionedEncryptedBootstrap` accepts only an already-created
+  non-exportable WAL-key handle from an admitted HSM, OS keystore, or key agent
+  plus independently verifiable signed/attested evidence created before the
+  first Sagnir log record and bound to retained new-store identity, ceremony ID,
+  profile, suite, key purpose, provider identity, expiry/freshness, and anti-
+  replay nonce;
+- externally provisioned evidence is verified without treating the not-yet-
+  created realm or authority log as its own trust root; unsupported/untrusted/
+  stale provider evidence fails before segment creation, and Sagnir does not
+  record a fictitious internal reservation for the external provisioning act;
+- `PassphraseDerivedBootstrap` atomically publishes a bounded public bootstrap
+  header containing retained new-store/ceremony binding, random salt, exact
+  admitted KDF/suite parameters, key epoch/purpose, and header commitment before
+  deriving a narrowly scoped initial WAL key and writing the first reservation;
+- passphrase-derived bootstrap uses v0.98.0/v0.98.1 KDF limits and anti-oracle
+  behavior, fails closed on entropy or KDF failure, changes no authority state
+  on wrong passphrase, and never uses the bootstrap key as or derives it from the
+  long-term realm master key, private-locator key, data-encryption key, or normal
+  realm WAL key;
+- the pre-log passphrase KDF is a narrow local bootstrap primitive over user
+  input and the committed public header, not a provider/key-agent operation that
+  requires an authority capability or reservation; deployments requiring remote
+  or provider-authorized KDF execution must use externally provisioned bootstrap
+  material or refuse this profile;
+- every profile provisions a fresh normal realm WAL key through its admitted
+  initial log, publishes a predecessor-linked encrypted successor segment under
+  that key, and retains the old bootstrap/plaintext evidence and any required
+  bootstrap key handle until a signed checkpoint plus recovery/retention policy
+  permits retirement; key replacement never rewrites old segment bytes;
+- bootstrap-key retirement means the key/handle loses all write and current-
+  state authority; it is not called cryptographic erasure while retained header,
+  passphrase, provider recovery, or archive material can recover it, and old
+  encrypted bootstrap segments remain verifiable only while their admitted key-
+  recovery path or a sufficient successor checkpoint/archive is retained;
+- direct encrypted genesis is claimed only for the external or passphrase
+  profiles after their prerequisites pass; unavailable provider attestation,
+  keystore support, KDF, secure entropy, or durable-header semantics causes
+  explicit unsupported/refused status and never plaintext fallback;
+- profile selection is explicit in command/config output and dry-run; automation
+  cannot silently choose a more revealing profile, while a user may explicitly
+  select minimal plaintext after receiving its stable leakage warning;
+- platform matrix records which HSM/keystore, passphrase, and durability profiles
+  are supported on Linux, Windows, BSD, MacOS, Android, and iOS; unknown behavior
+  is refused rather than inferred from a similar platform;
+- crash/fault injection covers profile/header selection, external evidence
+  verification, salt/header write and parent sync, KDF, first encrypted/plaintext
+  segment creation, provider lost response, genesis signing/publication, normal
+  WAL-key provisioning, successor publication, bootstrap-key retirement, retry,
+  wrong passphrase, and locked recovery;
+- tests cover profile substitution/downgrade, plaintext fallback, stale/replayed
+  attestation, wrong store/ceremony binding, exportable or wrong-purpose handle,
+  malformed/extreme KDF parameters, repeated salt/entropy failure, partial
+  header, bootstrap/realm-key aliasing, ordinary operation before cutover,
+  old-key early deletion, and unsupported-platform refusal.
+
+Verification:
+
+- bounded cross-domain model for all three bootstrap profiles;
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-vault`
+- `cargo test -p sagnir-cli`
+- process-kill and provider/key-agent bootstrap-profile integration suite.
+
+Exit criteria:
+
+- Every first authority reservation is either intentionally bounded plaintext or
+  encrypted by key material established without depending on that reservation.
+- Direct encrypted genesis never silently falls back to plaintext, and minimal
+  plaintext genesis cannot admit ordinary work before encrypted cutover.
+- Bootstrap key material is purpose-separated, replaced by a normal realm WAL
+  key, and retained or retired only under explicit checkpointed recovery policy.
 
 ### v0.102.0 - Encrypt Project Command
 
@@ -6362,10 +6638,13 @@ Goal: enable sealed-private encrypted realm storage through `saga`.
 Deliverables:
 
 - `saga encrypt project`;
+- `saga init --encrypted --bootstrap-profile <profile>` requires an explicit
+  admitted profile and never selects a more revealing fallback implicitly;
 - sealed-private vault initialization transaction;
 - execute the v0.101.1 authority-log cutover for an existing plaintext realm;
-  new encrypted realms start directly with the admitted encrypted WAL profile
-  and do not synthesize a plaintext migration history;
+- new encrypted realms must select and complete one admitted v0.101.2 bootstrap
+  profile; only external/passphrase profiles may claim direct encrypted genesis,
+  while minimal plaintext must finish its automatic cutover before success;
 - encryption-enabled canonical event and compiled fact;
 - required migration/repack for an existing open realm;
 - irreversible-disclosure warning for previously exposed metadata;
@@ -6377,6 +6656,9 @@ Verification:
 
 - `cargo test -p sagnir-cli`
 - `cargo test -p sagnir-store`
+- `cargo test -p sagnir-vault`
+- `cargo test -p sagnir-crypto`
+- encrypted-init bootstrap-profile integration suite.
 
 Exit criteria:
 
@@ -6384,6 +6666,9 @@ Exit criteria:
   immutable semantic commitments, protected metadata, recipients, compartments,
   envelopes, and encrypted indexes exist.
 - The command never labels metadata-visible encryption as sealed-private.
+- New encrypted initialization succeeds only after the selected bootstrap
+  profile reaches `EncryptedGenesisActive`; unsupported direct encryption is a
+  refusal, not an undocumented plaintext bootstrap.
 
 ### v0.103.0 - Unlock Command
 
@@ -8412,6 +8697,13 @@ Deliverables:
 - composition of cumulative decoder/work budgets, body-derived graph-class
   admission, durability-profile publication, deterministic fact stratification/
   queries, opaque secret sessions, and two-phase bundle quarantine/admission;
+- composition of bounded authenticated-map pages with authority active/fence/
+  exception/archive roots, exact replay refusal after terminal archival,
+  checkpoint rollback detection, archive unavailability, and cutover carry;
+- encrypted-genesis composition for minimal-plaintext, externally provisioned,
+  and passphrase-derived bootstrap profiles, proving first-log key availability,
+  no plaintext fallback, normal-key replacement, and crash recovery without a
+  reservation/key provisioning cycle;
 - duplicate-equivalence representative CAS, conflict-head preservation,
   anti-grinding selection, replica/actor/device quota continuity, and persistent
   authenticated index union/split models;
@@ -8762,6 +9054,8 @@ Deliverables:
 
 - independent canonical-codec reference implementation;
 - differential canonical bytes and object-ID tests;
+- v0.17.1 authenticated-map page/root/proof vectors and million-entry bounded
+  lookup, update, rebuild, malformed-page, and unique-representation benchmarks;
 - cumulative decode-budget and atomic-encoder benchmarks across nested objects,
   packs, bundles, proofs, WAL, and encrypted envelopes;
 - minimal authority transaction-substrate model/vectors and crash benchmarks
@@ -8770,9 +9064,12 @@ Deliverables:
   record-kind extension;
 - independent `sagnir-authority-sha3-256-v1` frame, transaction, logical-state,
   and physical-checkpoint vectors, including genesis/checkpoint anchoring,
-  non-circular signing frontiers, compaction root preservation, cross-domain
-  substitution, available-byte mock-collision refusal, and declared hash-suite
-  collision assumptions;
+  non-circular signing frontiers, physical-compaction logical-root preservation,
+  cross-domain substitution, available-byte mock-collision refusal, and
+  declared hash-suite collision assumptions;
+- authority active-map, terminal-fence, sparse-exception, and epoch-archive
+  differential vectors plus million-operation compaction/replay/rebuild budgets
+  proving active memory and cutover do not scale with all historical entries;
 - parallel budget-lease stress and schedule benchmarks proving child
   reservations cannot mint capacity and cancellation/panic accounting remains
   deterministic under maximum admitted parallelism;
@@ -8830,11 +9127,16 @@ Deliverables:
 - bootstrap/genesis cross-domain stage and crash vectors covering orphan keys,
   lost provider results/signatures, pending non-authoritative genesis, provider
   ambiguity, exact-key usability confirmation, and final CLI success;
+- encrypted-genesis profile vectors and crash benchmarks covering bounded
+  plaintext cutover, external handle/attestation admission, passphrase header/
+  KDF derivation, direct-encryption refusal, normal WAL-key replacement, and
+  bootstrap-key retirement;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - plaintext-to-encrypted authority-log cutover model/vectors and crash benchmarks
-  covering writer exclusion, terminal tail sealing, complete status-map carry,
-  encrypted successor publication, locked recovery, rollback, and retention;
+  covering writer exclusion, terminal tail sealing, bounded authenticated page/
+  manifest carry with identical logical root, encrypted successor publication,
+  locked recovery, rollback, and retention;
 - unlock committed-target/range/slot/result-class validation, protected-state
   typestate, chosen-ciphertext/AD rejection, response-shape, rate/resource, and
   staging-cleanup benchmarks;
@@ -9040,6 +9342,9 @@ Deliverables:
   authoritative signing/manifest APIs unless explicitly promoted and reviewed;
 - shared store platform boundary is the only authoritative filesystem path used
   by CLI, daemon, migration, and recovery code, with no private frontend fork;
+- v0.17.1 bounded immutable authenticated-map page format, unique representation,
+  logarithmic proofs/updates, streaming full rebuild, cumulative budgets, and
+  malformed/mutable-page refusal pass independent vectors and release tests;
 - v0.23.3 minimal authority transaction model, base format, durability profile,
   torn-record/race/compaction/recovery suites, provider/store reconciliation,
   and in-place later record-kind extension pass; no legacy/new log authority
@@ -9047,7 +9352,10 @@ Deliverables:
 - exact SHA3-256 authority frame/transaction/state/checkpoint transcripts,
   independent vectors, genesis and signed-checkpoint anchors, non-circular
   signing frontiers, algorithm-transition refusal/migration, and logical-root-
-  preserving compaction pass;
+  preserving physical-compaction pass;
+- v0.23.6 active/fence/exception/archive root model, exact terminal high-water
+  replay rejection, reachable historical evidence, copy-on-write archival,
+  archive-unavailability behavior, and old-checkpoint restoration tests pass;
 - cumulative decode budgets, atomic encoders, body-derived typed graph admission,
   graph-class DAG/SCC semantics, and optimized/reference differential results
   pass their first-admission and release profiles;
@@ -9102,9 +9410,12 @@ Deliverables:
   typestate, no-self-authorization, chosen-ciphertext/AD refusal, anti-oracle
   response shapes, and cleanup tests pass;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
-  anchor, terminal tail seal, encrypted predecessor, complete logical-state
-  carry, single-writer activation, locked recovery, prior-leakage disclosure,
-  and crash/rollback/retention suites pass;
+  anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
+  preserving the logical root, single-writer activation, locked recovery, prior-
+  leakage disclosure, and crash/rollback/retention suites pass;
+- v0.101.2 all three encrypted-genesis bootstrap-profile models, vectors,
+  platform refusal matrix, no-fallback tests, first-log key proof, normal-key
+  replacement, and crash/recovery/bootstrap-key-retirement suites pass;
 - deterministic fact-language stratification, typed parameterized obligation
   template/instance identity preimages, preallocated issuance-operation cycle
   break, self-inclusion refusal, evidence-consumption/independence and discharge
@@ -9168,13 +9479,18 @@ Deliverables:
 - typed body-derived graph admission with indexed lookup, duplicate-edge
   refusal, authority DAGs, dependency/impact SCCs, and independent differential
   verification;
-- authenticated maps, append-only commitments, and complete checkpoints;
+- bounded immutable uniquely represented authenticated-map pages, logarithmic
+  proofs/updates, streaming rebuild, append-only commitments, and complete
+  checkpoints;
 - one formally modeled authority transaction substrate used from bootstrap
   capability reservations through the general WAL, with durable reservations
   before capability minting, durable reconciled results before success,
   provider-side journal separation, deterministic crash recovery, and no
   temporary authorization log, migration, dual writer, or authority-source
   selection;
+- bounded composite authority state with active-operation pages, exact terminal
+  sequence fences, sparse exceptions, predecessor-linked epoch archives, and no
+  probabilistic replay decision or whole-lifetime map record;
 - exact domain-separated SHA3-256 frame, transaction, logical authority-state,
   and physical log-checkpoint commitments anchored by genesis, signed realm
   checkpoints, or retained witnesses, with non-circular signing frontiers and
@@ -9183,6 +9499,10 @@ Deliverables:
   non-authoritative until the exact provider key, signature result, and store
   publication are durably reconciled, including explicit orphan, lost-response,
   ambiguous, abort, and recovery states;
+- explicit minimal-plaintext, externally provisioned, and passphrase-derived
+  encrypted-genesis bootstrap profiles that break the first-reservation/key
+  cycle, never silently fall back, and replace purpose-scoped bootstrap keys
+  with a normal realm WAL key;
 - checkpoint-anchored chained WAL with exact CRC-32C, explicit log incarnations,
   exhaustion, encrypted-profile activation only after clone-safe nonce evidence,
   locked recovery, old-key retention, signed event DAG, and rollback/
@@ -9283,8 +9603,9 @@ Deliverables:
 - sealed-private migration and honest prior-leakage accounting;
 - forward-only plaintext-to-encrypted authority-log cutover with exclusive
   writer fencing, signed closed-frontier anchor, terminal plaintext tail seal,
-  complete status-map carry, durably published encrypted successor, locked
-  recovery, and no claim that previously observed metadata can be recalled;
+  bounded authenticated page/manifest carry preserving the logical state root,
+  durably published encrypted successor, locked recovery, and no claim that
+  previously observed metadata can be recalled;
 - crash-safe nonce and live-key session handling;
 - independently wrapped erasure-unit data keys separated from private-locator
   keys and immutable semantic commitments;

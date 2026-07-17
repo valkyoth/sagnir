@@ -5,6 +5,9 @@ All notable Sagnir changes are recorded here.
 ## Unreleased
 
 - Updated the workspace and current documentation to Rust stable 1.97.1.
+- Added bounded persistent authenticated-map pages, exact authority terminal
+  fences and epoch archives, and explicit encrypted-genesis bootstrap profiles
+  that resolve first-log key provisioning without silent plaintext fallback.
 - Anchored logical authority state and physical log checkpoints in genesis and
   signed realm checkpoints, froze the base SHA3-256 commitment transcripts, and
   added a dedicated forward-only authority-log encryption cutover milestone.
