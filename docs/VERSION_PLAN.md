@@ -10723,10 +10723,10 @@ Deliverables:
   the prepared anchor transition;
 - immediately after external preparation reconciliation and before availability
   activation, recovery obtains fresh provider evidence that the challenged version
-  remains present and verifies enforceable lease/governance-lock or authenticated
-  append-only provider history proving continuous retention; a fresh metadata read
-  alone proves only current presence, while cached responses, mutable aliases and
-  listing-only evidence cannot prove uninterrupted retention;
+  remains present and verifies an admitted v0.111.41 enforceable, independently
+  attested or reviewed probabilistic retention mechanism; provider audit history
+  may corroborate but cannot independently prove continuous retrievability, and a
+  fresh metadata read alone proves only current presence;
 - retention time/horizon uses admitted provider/authority epochs or signed lease
   generations, not local wall-clock reconstruction; expiry, revocation, provider
   clock conflict or unavailable freshness before activation refuses protected
@@ -10785,7 +10785,8 @@ Deliverables:
 - hard cumulative maxima cover provider/witness endpoints, threshold participants,
   responses, redirects, handshakes, network/download bytes, signatures/proofs,
   provider calls, decode/crypto work, elapsed current-`ClockEpoch` work and temporary
-  storage; every attempt is charged before use under recovery accounting;
+  storage; before recovery accounting opens, attempts consume the token-bound
+  v0.111.39 bootstrap discovery budget and later import its exact receipt;
 - recovery authority is an explicit threshold/capability bound into the token and
   external transition; token possession alone does not bypass recipient signatures,
   hardware factors, policy epochs or quorum/diversity requirements;
@@ -10844,9 +10845,10 @@ Deliverables:
   checkpoint; fork, truncation, log/map mismatch or proof limit exhaustion refuses
   this maintenance attempt without requesting another external transition;
 - authenticated range/terminal/exception proofs account for every ordinary ticket
-  at or below the frontier cutoff as terminal, durably granted for execution, or
-  represented by exact unconsumed finite priority debt; missing, rewritten,
-  duplicated or unaccounted earlier priority blocks maintenance;
+  at or below the frontier cutoff as transaction-committed/terminal, owner of the
+  durable v0.111.40 next-writer handoff, represented by exact unconsumed finite
+  priority debt, or independently authorized terminal cancellation/supersession;
+  `GrantReserved` alone and any unaccounted earlier priority block maintenance;
 - maintenance grant leaf, certificate, authorization, policy epoch, frontier anchor
   and expected maintenance epoch are reverified against current state; a completed,
   cancelled, superseded, replayed or competing maintenance activation refuses;
@@ -10910,10 +10912,10 @@ Deliverables:
   lease/governance lock remains valid beyond the proposed activation horizon and
   that the challenged immutable version is still the retained object;
 - continuous-retention proof must derive from enforceable no-delete/version-lock
-  semantics, authenticated append-only provider audit history or an independently
-  reviewed equivalent mechanism covering challenge through activation; a current
-  metadata read, cached response, mutable alias or provider timestamp alone proves
-  only observation at one instant and cannot establish continuity;
+  semantics, independently attested storage enforcement or a reviewed proof-of-
+  retrievability/data-possession construction under v0.111.41; provider audit
+  history can corroborate such evidence but never independently establishes
+  retrievability, and a current metadata read proves only one instant;
 - canonical `RecoveryAvailabilityActivated` binds prepared transition, fresh
   retention/continuity evidence root, final copy/diversity evaluation, exact final
   availability class, activation horizon, expected pending anchor state and current
@@ -10953,6 +10955,196 @@ Exit criteria:
 - Failed, expired, ambiguous or conflicting final verification remains pending or
   recovery-required without implicit activation or downgrade.
 
+### v0.111.39 - Pre-Accounting Bootstrap Discovery Budget
+
+Goal: bound and preserve cold-discovery work before the recovered accounting key
+can authenticate normal anchor-recovery accounting.
+
+Deliverables:
+
+- canonical `BootstrapDiscoveryBudget` is committed directly by each
+  `DaemonRecoveryBootstrapToken` and binds token/daemon-scope commitment, budget
+  epoch, fixed endpoint set/order, threshold policy and checked maxima for endpoint
+  queries, redirects, responses, bytes, signatures/proofs, handshakes, provider/
+  witness calls, decode/crypto work, temporary storage and current-process duration;
+- discovery begins with a random CSPRNG `DiscoveryAttemptId` and domain-separated
+  idempotency key bound to token generation, query key, expected recovery-root
+  fingerprint, endpoint and exact requested latest-value operation;
+- provider/witness endpoints maintain a purpose-specific operation journal,
+  monotonic use counter or admitted hardware-backed equivalent keyed by token
+  generation/budget epoch; each attempt/operation is subordinate to one cumulative
+  compare-and-consume budget, so a fresh random attempt ID, response loss, process
+  restart, recipient retry or cloned state cannot obtain fresh capacity;
+- endpoint operation evidence records reservation, execution, exact bounded result
+  class and consumed counters without exposing confidential daemon identity; an
+  ambiguous result remains charged at the maximum reservation until the exact
+  idempotent operation is reconciled;
+- recovery recipients retain authenticated `BootstrapDiscoveryReceipt` records for
+  every endpoint attempt, including absence/refusal/conflict, request/response
+  commitments, provider counter, consumed budgets and predecessor receipt root;
+  local receipt loss does not permit a new provider-side attempt under the same key;
+- state machine is `DiscoveryAuthorized -> QueryPending -> DiscoveryReceipted ->
+  AccountingImported`, with explicit `Ambiguous`, `Exhausted` and `Conflict`; no
+  `AnchorRecoveryAccountingEpoch` operation, reset or refill is invoked before the
+  exact accounting key/root has been recovered and verified;
+- opening recovery accounting atomically imports token commitment, discovery attempt,
+  provider journal/use-counter evidence, complete receipt root and consumed work
+  into the first resumed `AnchorRecoveryAccountingEpoch` transition before any
+  managed-copy query; duplicate, partial, reordered or cross-token import refuses;
+- imported discovery work consumes the corresponding recovery resource classes and
+  cannot be refunded, imported twice or hidden by a larger normal recovery budget;
+  subsequent endpoint/copy work uses only the authenticated recovery accounting;
+- providers without durable idempotent attempt tracking are admitted only under an
+  explicit weaker profile that pre-authorizes one fixed endpoint operation per
+  token generation and cannot retry after ambiguous completion, or refuses cold
+  discovery where policy requires restart-abuse resistance;
+- crash/response-loss tests cover every state before accounting-key availability,
+  provider committed/local receipt missing, local receipt written/provider response
+  lost, restart/clone/new-attempt-ID churn, one-attempt weaker profile, import crash,
+  duplicate import, counter rollback, budget exhaustion and successful handoff.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- bootstrap-discovery budget/receipt/import state-machine model;
+- provider idempotency/use-counter and crash/restart integration suite.
+
+Exit criteria:
+
+- Every pre-accounting endpoint operation consumes a token-bound finite budget that
+  restart, response loss, receipt loss or clone cannot reset.
+- Recovery accounting is unused before key/root verification and atomically imports
+  the complete discovery receipt before any managed-copy operation.
+- Providers lacking durable attempt tracking expose an explicit one-attempt/weaker
+  guarantee and never gain silent retry capacity.
+
+### v0.111.40 - Durable Ordinary Next-Writer Handoff
+
+Goal: ensure a pre-cutoff ordinary writer that has only been granted cannot be
+overtaken by maintenance before its transaction or priority is resolved.
+
+Deliverables:
+
+- canonical `OrdinaryWriterHandoff` binds admission ledger/checkpoint, ticket ID/
+  leaf version, grant certificate/generation, journal transaction/idempotency key,
+  expected writer-lease generation, principal/capability commitment, payload or
+  resumability commitment, handoff sequence and predecessor handoff root;
+- scheduler creates at most one durable next-writer handoff through admission-ledger
+  CAS after `GrantReserved`; handoff states are `Reserved`, `LeaseClaimed`,
+  `TransactionCommitted`, `ConvertedToPriorityDebt`, `TerminalCancelled` and
+  `Conflict`, with no reusable or arrival-order-selected state;
+- writer-lease CAS gives precedence to the exact current ordinary handoff and
+  rejects every maintenance lease while that handoff is `Reserved` or
+  `LeaseClaimed`; a grant certificate without the durable handoff never counts as
+  satisfied frontier priority and cannot authorize a maintenance bypass;
+- the ordinary writer claims the exact handoff/lease generation, executes one
+  idempotent journal transaction and atomically binds its committed result back to
+  the admission leaf/handoff; response loss reconciles that transaction before
+  either writer class can advance the handoff;
+- disconnect, process death or unavailable non-resumable payload cannot silently
+  cancel or leave permanent lease priority; bounded recovery either resumes the
+  exact payload or performs one independently authorized atomic conversion to
+  unconsumed finite priority debt before maintenance can satisfy the cutoff;
+- independently authorized cancellation/supersession binds ticket, handoff, reason,
+  authority/policy epoch and proof no journal result exists; a local disconnect,
+  timeout, maintenance urgency or caller receipt is insufficient authority;
+- `AdmissionFrontierSatisfied` accepts each pre-cutoff ordinary ticket only when
+  its transaction is committed/terminal, it owns the exact current handoff whose
+  writer lease must run before maintenance, it has unconsumed priority debt, or it
+  has an independently authorized terminal cancellation/supersession;
+- if a handoff remains runnable, frontier satisfaction may record it as accounted
+  but the maintenance writer-lease CAS must fail until the handoff transaction
+  commits or an authorized debt/terminal transition produces a new checkpoint and
+  bounded satisfaction revalidation;
+- handoff compaction/backup retains every live or ambiguous handoff, terminal
+  result/debt binding and exact lease-generation evidence; restart reconstructs the
+  next handoff before granting any writer or maintenance lease;
+- model/tests cover grant before handoff, grant-before-lease crash, disconnected
+  grantee, payload loss, ordinary/maintenance simultaneous CAS, response loss after
+  journal commit, handoff-to-debt conversion, cancellation forgery, restart and
+  maintenance-overtake attempts.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- ordinary handoff/writer-lease/frontier state-machine model;
+- response-loss, disconnect, restart and concurrent-CAS integration suite;
+- sustained ordinary/maintenance fairness tests.
+
+Exit criteria:
+
+- `GrantReserved` alone always blocks maintenance frontier satisfaction.
+- A live ordinary handoff either receives the next writer lease or transitions
+  through independently authorized terminal/debt authority before maintenance.
+- Maintenance cannot overtake an earlier ordinary grant across crash, disconnect,
+  response loss or competing lease CAS.
+
+### v0.111.41 - Retention Assurance Mechanisms And Policy
+
+Goal: distinguish enforceable or independently verifiable retrievability from
+provider assertions when activating protected recovery availability.
+
+Deliverables:
+
+- canonical `RetentionAssuranceDescriptor` classifies each copy's evidence as
+  `EnforcedRetention`, `IndependentlyAttestedStorage`, `ProbabilisticRetrievability`
+  or `ProviderAsserted`, bound to copy/version, provider/failure domain, mechanism/
+  parameter revision, verifier roots, challenge schedule, horizon and evidence root;
+- `EnforcedRetention` requires governance/no-delete lock below the mutable account
+  plane or provider-enforced immutable-object/version retention whose authorization,
+  expiry and deletion semantics are independently authenticated and cannot be
+  shortened by the ordinary account credential;
+- `IndependentlyAttestedStorage` requires admitted hardware or independent storage-
+  enforcement attestation with measured component identity, trusted verifier/root,
+  freshness, rollback/revocation state, object/version commitment and declared
+  physical/storage assurance; provider self-attestation remains provider-asserted;
+- `ProbabilisticRetrievability` uses a separately reviewed proof-of-retrievability
+  or proof-of-data-possession construction with domain-separated unpredictable
+  challenges, authenticated object encoding/metadata, sample count, adversarial
+  model, extraction/soundness bound, verifier key lifecycle and exact probabilistic
+  guarantee; no plan text converts sampling into deterministic continuous storage;
+- challenge randomness is generated after the copy/version/commitment is fixed,
+  cannot be provider-selected or replayed, and uses the v0.23/v0.91 entropy boundary;
+  response verification is bounded and charged under v0.111.30 accounting;
+- authenticated append-only provider audit history, current metadata, receipts and
+  self-reported retention flags are corroborating `ProviderAsserted` evidence only;
+  they may expose contradiction/equivocation but cannot independently establish
+  uninterrupted storage, retrievability or a protected failure domain;
+- policy declares admitted mechanism classes, minimum attestation independence,
+  probabilistic soundness threshold/challenge cadence, retention horizon, mechanism
+  diversity and common-mode dependencies; `ProviderAsserted` never contributes a
+  copy or failure domain toward `ProtectedDiverse`;
+- v0.111.38 activation binds each copy's assurance descriptor and verifies fresh
+  evidence spanning preparation through activation; an expired/revoked attestation,
+  failed/missed challenge, weakened parameters or mechanism downgrade remains
+  pending/recovery-required and cannot be replaced by provider audit entries;
+- status/proofs state whether the claim is enforced, independently attested,
+  probabilistic or provider-asserted and disclose probabilistic bounds without
+  revealing hidden topology; historical evidence preserves the exact mechanism/
+  parameters while current health records later failure or revalidation;
+- tests cover forged provider audit history, bytes deleted while logs claim present,
+  account-plane lock bypass, mutable-version alias, self-attestation, stale/revoked
+  attestation, predictable/replayed challenge, insufficient samples, invalid PoR/
+  PoDP response, mechanism downgrade and mixed-assurance diversity policy.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- independent retention-assurance format and challenge vectors;
+- assurance-policy/two-stage-activation state-machine model;
+- malicious provider, attestation and probabilistic benchmark suite.
+
+Exit criteria:
+
+- Provider assertions and audit history alone never count toward
+  `ProtectedDiverse` or claim continuous retrievability.
+- Every protected copy has an admitted enforceable, independently attested or
+  reviewed probabilistic mechanism with exact fresh evidence and honest bounds.
+- Policy rejects expired, weakened, replayed or cross-mechanism evidence rather
+  than silently downgrading protected availability.
+
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
 Goal: ensure untrusted remote data cannot influence trusted state before full
@@ -10982,7 +11174,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.38 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.41 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -10993,8 +11185,9 @@ Deliverables:
   ledger consistency checkpoints, purpose-separated frontier anchoring, verified
   recovery availability, retention-bound challenges, recipient-held recovery
   bootstrap tokens, post-anchor frontier satisfaction and two-stage availability
-  activation, admitted authentication suite/provider-capacity mode, and one
-  reconciled active store quarantine key,
+  activation, pre-accounting discovery receipts, durable ordinary next-writer
+  handoffs and retention-assurance policy, admitted authentication suite/provider-
+  capacity mode, and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
   authorized-realm metadata key, and converts it into the candidate's durable
   quota charge while
@@ -11007,7 +11200,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.38 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.41 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -11280,7 +11473,8 @@ Deliverables:
   descriptor-independent accounting-key bootstrap/rollback checkpoints, restore-
   challenged availability classes, common-failure-domain evaluation and immutable
   retention evidence spanning two-stage external activation; cold discovery uses
-  finite recipient-held endpoint/query tokens without provider enumeration;
+  finite recipient-held endpoint/query tokens with provider-side attempt tracking,
+  bootstrap receipts imported into recovery accounting and no provider enumeration;
 - online-migration states model immutable prefix pins, streamed prefix/suffix
   checkpoints, bounded catch-up rounds, short fair final tail and maintenance-
   epoch exclusion with rotation/capsule update/segment refresh/compaction plus
@@ -11294,7 +11488,8 @@ Deliverables:
   current-leaf/terminal proofs, completion path-copy CAS, purpose-separated
   frontier-anchor preparation/reconciliation followed by current-ledger frontier-
   satisfaction and exact lease CAS, cross-log reconciliation, anchored roots/
-  limited caller receipts, FIFO grants, priority debt and spam bounds;
+  limited caller receipts, durable ordinary next-writer handoffs, FIFO grants,
+  priority debt and spam bounds;
 - checkpoint, policy epoch, evidence, and key-rotation interactions;
 - equivocation and bounded fork handling;
 - invariants for no lost heads, no lost duplicate identity, no locator-based
@@ -11331,7 +11526,8 @@ Deliverables:
   undeclared recovery-copy search, cross-purpose accounting reset or unverified/
   falsely diverse protected availability claim, no descriptor-dependent recovery-
   accounting key, unbounded recovery-authority discovery, accounting-root rollback
-  refill, challenge/delete race or protected claim from pending preparation, no
+  refill, pre-accounting discovery budget reset, challenge/delete race, provider-
+  asserted retention as protected or protected claim from pending preparation, no
   full-history work under writer lease,
   unbounded catch-up or restart-refilled migration budget, no cover-to-real
   overwrite, slot/nonce reuse or partially published active segment, no sparse-
@@ -11339,7 +11535,8 @@ Deliverables:
   writer ticket, state-map-only ancestry claim, mutable-root grant invalidation,
   certified-leaf/terminal substitution, bootstrap-anchor frontier reuse,
   unanchored/unsatisfied maintenance frontier, stale satisfaction lease CAS,
-  cross-log duplicate grant, ledger rollback/
+  grant-only priority satisfaction, ordinary-handoff overtake, cross-log duplicate
+  grant, ledger rollback/
   priority erasure or unbounded phantom/debt/spam denial,
   no unmanaged-backup recoverability
   claim, no local counter as physical provider reservation, no hard claim from
@@ -11446,12 +11643,15 @@ Deliverables:
   sealed-segment publication with measured staging-observer traces, managed-backup
   scope and challenged failure-domain availability, purpose-separated recovery
   accounting with descriptor-independent key bootstrap/rollback checkpoints,
-  finite recipient-held discovery tokens, retention-through-two-stage-activation
-  evidence, independently recoverable ledger keys, immutable grant certificates,
+  finite recipient-held discovery tokens with restart-stable pre-accounting receipt
+  handoff, retention-through-two-stage activation under explicit enforceable/
+  attested/probabilistic assurance, independently recoverable ledger keys,
+  immutable grant certificates,
   append-only checkpoint consistency/current-leaf/terminal proofs, completion CAS,
   purpose-separated maintenance-frontier anchors, post-reconciliation satisfaction/
-  exact lease CAS, cross-log reconciliation, limited caller receipts, durable FIFO/
-  debt fairness and spam bounds under partitions, crashes, sustained appends and restart;
+  exact lease CAS plus ordinary next-writer handoffs, cross-log reconciliation,
+  limited caller receipts, durable FIFO/debt fairness and spam bounds under
+  partitions, crashes, sustained appends and restart;
 - model invariants for no lost encryption instance, no semantic/index
   completeness gap, no Byzantine manifest omission accepted, no hidden
   compartment disclosure, no endpoint-placement overwrite, no clock-derived
@@ -11482,15 +11682,17 @@ Deliverables:
   authority, no external-anchor advancement over unavailable staged bytes, no
   undeclared/unbounded external recovery search, cross-purpose recovery-accounting
   replay, cold-key bootstrap cycle, accounting rollback refill, false protected
-  diversity, unbounded endpoint discovery, challenge/delete race or protected claim
-  from pending preparation, no unbounded migration catch-up, restart-
+  diversity, unbounded endpoint discovery, pre-accounting retry reset, provider-
+  asserted retention, challenge/delete race or protected claim from pending
+  preparation, no unbounded migration catch-up, restart-
   refilled accounting or maintenance-order race, no cover-slot rewrite, nonce
   reuse, sparse-hole masquerade, partial publication or staging-observer leakage
   outside the selected profile, no ledger-key circular recovery, mutable-root
   grant rejection, state-map-only ancestry, log/map checkpoint splice, terminal-
   transition omission, certified-leaf substitution, caller-receipt system-anchor
   substitution, capsule-anchor reuse, unsatisfied-frontier maintenance, stale
-  satisfaction-to-lease CAS, duplicate cross-log grant, rollback
+  satisfaction-to-lease CAS, grant-only satisfaction, ordinary-handoff overtake,
+  duplicate cross-log grant, rollback
   priority erasure, phantom ticket blocking forever or ticket-spam
   permanent rotation denial, no arrival-order transition selection,
   and eventual convergence under documented authority, availability, and
@@ -11588,7 +11790,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.38 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.41 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -11599,8 +11801,9 @@ Deliverables:
   availability classification plus cold accounting-key bootstrap, append-only
   ledger checkpoints/consistency proofs, purpose-separated frontier anchors and
   retention-bound copy challenges, finite recovery bootstrap tokens, post-anchor
-  frontier satisfaction and two-stage availability activation through v0.111.38,
-  and the v0.111.7 reconciled active store key; ambiguous/
+  frontier satisfaction, two-stage availability activation, bootstrap discovery-
+  receipt import, ordinary next-writer handoffs and retention-assurance policy
+  through v0.111.41, and the v0.111.7 reconciled active store key; ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
   descriptor/anchor mismatch, confidentiality downgrade, cyclic or retiring-key-
   only rotation, incomplete staging/migration/segment publication, catch-up
@@ -11610,7 +11813,9 @@ Deliverables:
   diversity/retention, unavailable cold accounting key/root, accounting rollback,
   ledger checkpoint/log/map inconsistency, frontier-anchor ambiguity or cross-
   purpose accounting/anchor conflict, missing/invalid recovery token, unsatisfied
-  frontier or stale lease CAS, pending/failed availability activation, exhausted/
+  frontier, stale lease CAS or unresolved ordinary handoff, pending/failed
+  availability activation, unimported/ambiguous discovery receipt, provider-
+  asserted-only protected retention, exhausted/
   unverifiable capacity or rotation/writer-accounting state refuse transfer,
   preserve existing candidate presence/
   quota, and never trigger automatic reprovisioning, budget refill or plaintext
@@ -12596,7 +12801,8 @@ Deliverables:
   staged-byte recovery, committed recovery-set/query-budget, domain-separated
   accounting, cold accounting-key bootstrap/checkpoint, restore-challenged
   availability/failure-domain, retention-capability, recipient bootstrap-token/
-  query, availability-prepared and availability-activated target set;
+  query/discovery-budget/receipt/import, retention-assurance mechanism/challenge,
+  availability-prepared and availability-activated target set;
 - migration frontier/pin/checkpoint/catch-up/final-tail/maintenance-epoch target
   set, including `MigrationAccountingEpoch`, persistent counters, in-flight
   conservative charge and maximum round/work/authoritative-age exhaustion;
@@ -12605,7 +12811,7 @@ Deliverables:
   admission key lifecycle, ticket/leaf version/grant certificate/log checkpoint/
   consistency proof/current terminal state/completion CAS/maintenance frontier/
   purpose-separated frontier anchor/frontier-satisfaction/lease-CAS/journal-result/
-  debt target set;
+  ordinary next-writer handoff/debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -12657,15 +12863,17 @@ Deliverables:
   `ClockEpoch`/accounting-epoch budgets, external-anchor prepare/reconcile/
   activation with finite committed recovery search, purpose-separated recovery
   accounting with cold bootstrap/rollback checkpoints, challenged failure-domain
-  availability with finite token discovery and retention-through-two-stage-
-  activation evidence, immutable-frontier
+  availability with finite token discovery, restart-stable discovery-receipt
+  accounting import and retention-through-two-stage activation under explicit
+  enforceable/attested/probabilistic evidence, immutable-frontier
   streamed migration with bounded catch-up/final lease and restart-persistent
   accounting, single-write segment-slot generations with measured observer-aware
   whole-segment publication, and independently keyed/anchored durable writer-ticket/
   priority-debt scheduling with immutable grant certificates, append-only ledger
   consistency plus current-leaf/terminal proofs, completion CAS, purpose-separated
-  maintenance-frontier anchoring, current-ledger satisfaction/lease CAS and cross-
-  log result reconciliation, and atomic partial cleanup;
+  maintenance-frontier anchoring, current-ledger satisfaction/lease CAS, durable
+  ordinary next-writer handoff and cross-log result reconciliation, and atomic
+  partial cleanup;
 - composition of the history-independent map algorithm/pages with authority
   active/covered-fence/exception/archive roots, a permanent low-sequence
   exception plus later archival, exact replay refusal, checkpoint rollback
@@ -12834,16 +13042,17 @@ Deliverables:
   request starvation, no external-anchor advance before durable bytes or rollback
   after reconcile, undeclared recovery copy, unbounded recovery work, cross-domain
   accounting replay, cold-key bootstrap cycle, old-root budget refill, false
-  availability diversity, unbounded tokenless discovery, challenge/delete race or
-  protected claim before second activation, no full-
+  availability diversity, unbounded tokenless discovery, pre-accounting retry reset,
+  provider-asserted retention, challenge/delete race or protected claim before
+  second activation, no full-
   history writer lease/unbounded catch-up/restart migration refill/maintenance
   race, no cover overwrite/slot nonce reuse/sparse masquerade/partial segment
   publication or unmodeled staging trace, no journal-bound or circular-key writer
   ledger, state-map-only ancestry, log/map splice, terminal omission, mutable-root
   grant invalidation, certificate/leaf substitution, bootstrap-anchor frontier
   reuse, unanchored/unsatisfied maintenance frontier, stale satisfaction lease CAS,
-  duplicate cross-log result, rollback priority loss or unbounded ticket/debt/spam
-  denial, no
+  grant-only satisfaction, ordinary-handoff overtake, duplicate cross-log result,
+  rollback priority loss or unbounded ticket/debt/spam denial, no
   unmanaged-backup recoverability
   claim, no opaque cleanup of published data, no partial durable
   candidate after resource refusal, no abuse digest or `ResourceLimit` as
@@ -12948,6 +13157,9 @@ Deliverables:
   v0.111.36 token-deliver/query/threshold/supersede/loss boundaries,
   v0.111.37 reconcile/satisfy/checkpoint/lease-CAS boundaries,
   v0.111.38 availability-prepare/reconcile/prove/activate/finalize boundaries,
+  v0.111.39 discovery-authorize/query/receipt/import boundaries,
+  v0.111.40 grant/handoff/lease/result/debt/cancel boundaries,
+  v0.111.41 assure/challenge/attest/verify/activate boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -13108,17 +13320,20 @@ Deliverables:
   exhaustion, migration/recovery accounting substitution, fake diversity and
   restore-receipt attacks, descriptor-loss accounting-key cycle, restored valid
   old accounting roots, token namespace guessing/enumeration/redirect/endpoint
-  substitution, delete/replace/lease-expiry after challenge, prepared-as-activated
-  availability forgery, gapped continuity history, sustained-write migration
-  starvation, restart-refill
+  substitution, pre-accounting response loss/restart/receipt deletion budget reset,
+  duplicate discovery import, delete/replace/lease-expiry after challenge,
+  provider-audit-with-missing-bytes, predictable/replayed PoR challenge, forged/
+  stale attestation, prepared-as-activated availability forgery, sustained-write
+  migration starvation, restart-refill
   and maintenance races, cover-to-real/slot-nonce/sparse/refresh, staging-traffic
   correlation and partial segment-publication attacks, writer-ledger key loss/
   rollback/truncation, mutable-root races, forged checkpoint consistency proofs,
   log/map splice, terminal omission, forged/stale grant certificates, certified-
   leaf mutation, capsule/recovery/frontier anchor substitution, frontier-provider
   exhaustion, post-reconcile ordinary-ticket insertion, omitted cutoff ticket,
-  stale frontier satisfaction/lease CAS, competing maintenance activation,
-  unanchored maintenance, caller-receipt overclaim,
+  grant-only satisfaction, disconnected grantee, ordinary handoff response loss/
+  debt race, maintenance-overtake CAS, stale frontier satisfaction/lease CAS,
+  competing maintenance activation, unanchored maintenance, caller-receipt overclaim,
   cross-log response ambiguity, ticket spam/phantom/debt/restart races, unmanaged-
   backup restore after key
   retirement, privacy-profile change, quota-refund, padding-budget, cross-purpose
@@ -13446,8 +13661,9 @@ Deliverables:
   bounded deterministic query schedules, domain-separated accounting, availability
   classes/failure-domain proofs, descriptor-independent accounting-key bootstrap,
   external accounting checkpoints, recipient bootstrap-token/query/supersession,
-  retention capabilities, restore challenges, availability-pending/activated and
-  continuous-retention proofs, and missing-staged-byte recovery;
+  discovery budget/provider-counter/receipt/import, retention assurance descriptors,
+  enforced/attested/probabilistic challenges, availability-pending/activated and
+  honest retention bounds, and missing-staged-byte recovery;
 - online-migration vectors/benchmarks cover immutable frontier pins, streamed
   prefix/suffix checkpoints, maximum catch-up rounds/work/time, final-tail latency,
   sustained-write throughput, restart-stable counter/age accounting and
@@ -13462,8 +13678,9 @@ Deliverables:
   reconciliation, immutable grant certificates, consistency/current-leaf proofs,
   append-only checkpoint consistency/terminal proofs, path-copy completion CAS,
   purpose-separated maintenance-frontier anchors, current frontier-satisfaction/
-  lease-CAS records, anchored roots/limited receipts, rollback refusal, phantom
-  cleanup, spam ceilings, fairness and ledger compaction;
+  lease-CAS records, ordinary next-writer handoff/result/debt transitions, anchored
+  roots/limited receipts, rollback refusal, phantom cleanup, spam ceilings,
+  fairness and ledger compaction;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - plaintext-to-encrypted authority-log cutover model/vectors and crash benchmarks
@@ -13930,6 +14147,15 @@ Deliverables:
 - v0.111.38 availability preparation asserts only pending recoverability; a second
   expected-state external transition activates the final class after enforceable
   continuous-retention and diversity evidence is freshly verified;
+- v0.111.39 token-bound bootstrap discovery uses provider-side idempotent attempt
+  tracking and recipient receipts before recovery accounting opens, then atomically
+  imports exact consumed work without restart or response-loss budget reset;
+- v0.111.40 an ordinary `GrantReserved` is unsatisfied until its transaction is
+  terminal, it owns a non-overtakeable durable next-writer handoff, it becomes
+  finite priority debt or has independent terminal cancellation authority;
+- v0.111.41 protected retention identifies exact enforced, independently attested
+  or reviewed probabilistic mechanisms and honest bounds; provider audit/self-
+  assertions can corroborate but never independently satisfy `ProtectedDiverse`;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -14084,6 +14310,15 @@ Deliverables:
 - v0.111.38 prepare/activate dual-CAS and response-loss reconciliation, pending-
   state proof, continuous-retention mechanism, metadata-only refusal, deletion/
   expiry, conflicting activation, abandonment/lower-class and success fixtures pass;
+- v0.111.39 bootstrap budget/attempt/receipt formats, provider idempotency/use
+  counter, pre-accounting crash/response loss/restart/clone, one-attempt weaker
+  profile, complete import, replay and exhaustion fixtures pass;
+- v0.111.40 grant-before-handoff/lease, ordinary/maintenance CAS, disconnected
+  payload, journal-result response loss, handoff-to-debt, cancellation authority,
+  restart and maintenance-overtake fixtures pass;
+- v0.111.41 enforced-lock, independent attestation and PoR/PoDP vectors plus forged
+  audit, deleted bytes, self-attestation, stale/revoked evidence, predictable/
+  replayed challenge, insufficient sampling and downgrade fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -14398,10 +14633,16 @@ Deliverables:
   an unguessable recipient-held bootstrap token binds the finite authenticated
   provider/witness endpoints, daemon-scope/recovery fingerprints, exact latest-
   value query and hard work limits so absent local identity never triggers discovery;
+  before normal accounting opens, token-bound discovery uses provider-side
+  idempotent attempt tracking and recipient receipts, then atomically imports all
+  consumed work into the recovered `AnchorRecoveryAccountingEpoch`;
   zero-copy transitions are explicitly local-only/non-recoverable, while protected
   availability requires restore-challenged copies across independently evidenced
   provider, credential, region/device and encryption-key failure domains, each
-  held by an immutable retention capability; preparation asserts only pending
+  held by an immutable retention capability and an admitted enforced, independently
+  attested or reviewed probabilistic retrievability mechanism with honest bounds;
+  provider audit/self-assertion alone never counts toward protected diversity;
+  preparation asserts only pending
   recoverability, and a second expected-state external transition activates the
   final class only after enforceable continuous retention is proven through the
   activation boundary and declared minimum horizon;
@@ -14437,6 +14678,9 @@ Deliverables:
   then revalidates that prefix against the current ledger, accounts for every
   pre-cutoff ordinary ticket/debt, appends `AdmissionFrontierSatisfied` and binds
   the exact current checkpoint/satisfaction record into the writer-lease CAS,
+  but `GrantReserved` alone remains unsatisfied: an earlier ordinary writer must
+  own the durable non-overtakeable next-writer handoff, have a committed/terminal
+  transaction, become finite priority debt or carry independent terminal authority,
   while caller receipts expose only caller-relative rollback and cannot replace
   system-wide anchoring or require a ticket to repair the ledger;
 - durable quarantine candidate metadata uses a purpose-separated
