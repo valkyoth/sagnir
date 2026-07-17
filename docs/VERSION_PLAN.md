@@ -8524,8 +8524,8 @@ Deliverables:
   provisioning operation ID/request digest, provider operation/idempotency and
   result commitments, activated root handle/assurance evidence/key epoch,
   wrapped-root/header and active descriptor commitments, daemon journal format
-  version, physical commitment algorithm, authentication suite/parameters, and
-  domain-separated purpose;
+  version, physical commitment algorithm, the v0.111.8 authentication suite/key
+  epoch, and domain-separated purpose;
 - the purpose-separated journal-authentication key is derived or wrapped only
   after the provider-confirmed daemon root is available; cutover generation is
   an idempotent bound provider/local operation and cannot request another root or
@@ -8593,6 +8593,9 @@ Deliverables:
   it once into the v0.111.4 journal, recording its daemon operation, expected
   store root/incarnation, request digest, and one provider idempotency key; a
   different or already-consumed reservation is refused before provider contact;
+- before stage 3 provider execution, v0.111.9 atomically reserves one exact
+  provider-handle capacity charge for this operation/profile and refuses without
+  provider contact when no capacity is available;
 - stage 3: provider/key agent creates or wraps exactly one key under the bound
   operation/idempotency key and durably journals handle/wrap/result/evidence so
   an exact retry returns the prior result or remains explicitly ambiguous;
@@ -8658,6 +8661,165 @@ Exit criteria:
   reconciliation or separately authorized destruction; arrival order never
   chooses authority.
 
+### v0.111.8 - Daemon Journal Authentication Suite Admission
+
+Goal: freeze one exact authenticated-journal construction and key lifecycle
+before daemon cutover or successor bytes become durable compatibility promises.
+
+Deliverables:
+
+- admit suite `daemon-journal-hmac-sha3-256-v1` with numeric suite ID `0x0001`
+  encoded as canonical little-endian `u16`, HMAC-SHA3-256, a 256-bit key, and an
+  exact 32-byte tag; truncation, variable tag lengths, provider-selected
+  algorithms, and runtime substitution are forbidden;
+- create an independent random 256-bit `DaemonJournalAuthenticationKey` through
+  the v0.23.0 OS-CSPRNG/provider boundary and wrap or hold it under the active
+  daemon root/provider; the daemon root is never used directly as a MAC key and
+  no application-side derivation requires export of a non-exportable root;
+- non-exportable profiles use one idempotent provider operation to create/import
+  and wrap or retain the purpose-separated journal key; the operation transcript
+  binds daemon-root handle/epoch, daemon identity/incarnation, provisioning
+  operation, journal key epoch, suite ID, purpose/domain, provider/profile and
+  wrapping recipients, and remains queryable after response loss;
+- provider capability admission requires exact HMAC-SHA3-256 support or a
+  reviewed wrapped-key path preserving the profile's secret boundary; unsupported
+  providers refuse the profile before cutover and cannot silently select HMAC-
+  SHA-256, KMAC, a shorter tag, or software fallback;
+- exact MAC transcript is the canonical length-delimited encoding of fixed
+  domain label `SAGNIR-DAEMON-JOURNAL-MAC-V1`, suite ID, journal-key epoch,
+  daemon identity, daemon-state incarnation, record kind, record format version,
+  sequence, exact encoded record length, exact encoded payload bytes, previous
+  record commitment, previous authenticated chain root, and previous tag;
+- the first cutover record uses explicit genesis sentinels for previous
+  authenticated root/tag while its payload commits the complete plaintext prefix
+  under v0.111.6; every successor uses the exact prior root/tag and checked
+  sequence, so splice, deletion, reordering and cross-incarnation replay fail;
+- recovery obtains the authoritative suite ID/key epoch from the active daemon-
+  root policy/descriptor and provider-bound key descriptor, never from untrusted
+  journal bytes; mismatch, absent descriptor, unknown suite or unavailable key
+  returns typed refusal before semantic record interpretation;
+- parser reads only the fixed bounded outer frame needed to locate exact bytes,
+  applies cumulative size/work limits, verifies the full tag in constant time,
+  and only then semantically decodes payload fields or acts on record kind;
+  authentication failure has one bounded non-oracular result class;
+- unknown suites fail closed; retired suites remain available read-only while
+  reachable records depend on them, cannot authorize new writes, and cannot be
+  dropped while admitted history/rollback/recovery still references their keys
+  or decoders;
+- authorized daemon operational-policy suite rotation creates an old-suite-
+  authenticated `DaemonJournalSuiteTransition` binding old final root/sequence,
+  old/new suite and key epochs, new key descriptor/assurance, transition operation
+  and first-new-chain commitment; the first new-suite record binds that transition
+  and prior old root, preserving both histories without re-MACing old records;
+- suite downgrade, old-key early retirement, transition omission, dual active
+  writers, new-suite record on old epoch, and old-suite write after activation
+  fail closed; rollback cannot reopen the retired suite for writes;
+- normative independent known-answer vectors include empty/max payloads, cutover
+  and successor records, every field mutation, wrong previous root/tag, wrong
+  length/sequence/incarnation/epoch, unknown/truncated/extended tags, provider
+  child-key/wrapped-key transcripts, constant-time comparison instrumentation,
+  and old-to-new suite transition chains across at least two providers.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- independent HMAC-SHA3-256 transcript/vector implementation;
+- software and non-exportable provider interoperability fixtures;
+- authenticate-before-decode parser and suite-rotation state-machine tests.
+
+Exit criteria:
+
+- Every authenticated daemon-journal byte has one unambiguous transcript, full-
+  length tag, purpose-separated key, trusted descriptor-selected suite and
+  authenticate-before-decode verification path.
+- Non-exportable roots do not need export or direct MAC use; unsupported provider
+  profiles refuse rather than weaken the admitted suite.
+- Historical suite verification and forward rotation preserve old roots and keys
+  without permitting downgrade, reinterpretation or silent algorithm selection.
+
+### v0.111.9 - Provider Handle Capacity And Orphan Accounting
+
+Goal: prevent failed, ambiguous or abandoned provisioning from exhausting HSM,
+key-agent or provider handle capacity before durable destruction is available.
+
+Deliverables:
+
+- versioned provider resource table defines checked hard totals and non-bypassable
+  implementation maxima per daemon, provider account/namespace, provider/profile,
+  key purpose/class, store aggregate and global local deployment for physical
+  handles/slots, wrapped-key objects and provider-journal operations;
+- exact charged states include `Reserved`, `Pending`, `Ambiguous`,
+  `CompletedUnpublished`, `Orphan`, `Conflict`, active published handles, and
+  `AbandonedPendingDestruction`; state movement transfers one charge atomically
+  and never refunds or duplicates it;
+- before any create/generate/import/wrap provider call, daemon and provider
+  journals durably reserve capacity for the exact v0.111.7 operation/request
+  digest and provider idempotency key; unavailable local/provider capacity returns
+  stable `ProviderCapacityUnavailable` before provider execution or key material
+  creation and leaves no provider-side operation claim;
+- a reservation may release without provider confirmation only when durable
+  local/provider evidence proves execution was never admitted; after provider
+  admission, timeout, unknown result or lost response remains charged until exact
+  query reconciliation establishes the resulting state;
+- exact retry reuses the original provider operation/result/handle and charge;
+  while an operation is pending, ambiguous, completed-unpublished, orphaned,
+  conflicted or destruction-pending, no retry, new daemon, actor identity, store
+  recreation/incarnation, migration, restart, rollback or copied request may
+  allocate another handle for that logical attempt;
+- deleting/recreating a store or daemon state cannot erase provider charges;
+  daemon recovery rebuilds accounting from its journal, store reservations/
+  descriptors and provider inventory, preserving operation/store/incarnation/
+  purpose binding and reporting missing evidence as conflict rather than free;
+- bounded paginated provider inventory reconciliation compares provider handles,
+  operations and destruction results against daemon/store journals; unknown
+  handles enter a separately bounded `UnknownProviderHandleConflict` inventory
+  and are never silently adopted, rebound, destroyed or ignored;
+- unknown/conflict inventory overflow, unavailable enumeration, stale provider
+  cursor or incomplete scan makes affected provider capacity unavailable for new
+  work; bounded local memory is preserved without pretending excess physical
+  handles do not exist;
+- providers shared with non-Sagnir clients declare namespace/quota/isolation and
+  inventory visibility limits; Sagnir reports when physical free capacity cannot
+  be established and does not infer it from local handle counts alone;
+- orphan/conflict abandonment before v0.122.0 marks the operation permanently
+  non-publishable but remains fully charged and makes no destruction or physical-
+  capacity-refund claim; evidence remains reachable for later reconciliation;
+- v0.121.1/v0.122.0 destruction reserves its own idempotent provider operation;
+  capacity releases only after durable provider-confirmed destruction evidence,
+  daemon/provider/store journal reconciliation, and proof that no active/
+  recoverable descriptor still references the handle; lost destruction response
+  remains charged and ambiguous;
+- scheduling reserves bounded capacity shares for stores/profiles or equivalent
+  fair admission so one hostile or broken store cannot consume every exceptional
+  slot, while borrowing unused shares never exceeds provider/global maxima;
+- CLI/API/status exposes exact typed capacity state and remediation at privileged
+  granularity, but privacy profiles coarsen external counts under v0.111.3 without
+  changing exact internal accounting or creating a provider-capacity oracle;
+- tests cover thousands of failed store incarnations, provider-success/store-
+  loss loops, daemon-state deletion/restore, ambiguous queries, unknown handles,
+  conflict overflow, unavailable inventory, retry reuse, identity/store/daemon
+  reset attempts, quota persistence across restart/migration/clone, fairness,
+  abandonment before destruction activation, destruction-confirmation loss and
+  confirmed release after complete reconciliation.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- provider-capacity state-machine and bounded-inventory model;
+- software provider plus constrained HSM/key-agent capacity fixtures;
+- v0.111.7/v0.122.0 cross-journal destruction-reconciliation suite.
+
+Exit criteria:
+
+- No provisioning provider call occurs without one durable exact capacity charge,
+  and every uncertain or physically existing handle remains charged.
+- Store/daemon identity churn and retry cannot multiply handles; unknown provider
+  inventory fails closed within bounded local resources rather than disappearing.
+- Capacity is refunded only after durable confirmed destruction and complete
+  reference/journal reconciliation, never from abandonment or local deletion.
+
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
 Goal: ensure untrusted remote data cannot influence trusted state before full
@@ -8687,7 +8849,8 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.7 daemon cutover and reconciled active store
+  requires the v0.111.4-v0.111.9 daemon cutover, admitted authentication suite,
+  provider-capacity charge, and reconciled active store
   quarantine key, re-protects candidate metadata under that store/authorized-
   realm metadata key, and converts it into the candidate's durable quota charge
   while
@@ -8700,7 +8863,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.7 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.9 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -8741,6 +8904,8 @@ Exit criteria:
 - Store/daemon/provider provisioning ambiguity or conflict blocks candidate
   publication, and an active daemon descriptor requires the complete verified
   bootstrap-prefix cutover.
+- Provider-capacity exhaustion refuses before execution, and no authenticated
+  daemon journal is accepted under an unknown or journal-selected suite.
 
 ### v0.113.0 - Bundle Import
 
@@ -8932,6 +9097,11 @@ Deliverables:
   states model the six store/daemon/provider stages, one operation/request digest,
   ambiguous/orphan/conflict outcomes, store-commit/finalize lag, query-only
   reconciliation, and separately authorized abandonment/destruction;
+- daemon-journal HMAC-SHA3-256 suite/key states model descriptor-selected suite,
+  authenticate-before-decode, full transcript chaining, unknown/retired suite
+  refusal and old/new-root-preserving rotation; provider-capacity states model
+  reservation before execution, charged uncertainty/orphans/conflicts, bounded
+  unknown inventory, churn-resistant aggregates and destruction-confirmed release;
 - checkpoint, policy epoch, evidence, and key-rotation interactions;
 - equivocation and bounded fork handling;
 - invariants for no lost heads, no lost duplicate identity, no locator-based
@@ -8950,6 +9120,9 @@ Deliverables:
   key releasing quota, no active descriptor over a substituted/truncated
   plaintext prefix, no cross-journal operation/request mismatch, no provider
   orphan rebound, no store-commit response loss causing reprovision/destruction,
+  no journal-selected/unknown/truncated authentication suite or decode-before-
+  authentication, no provider execution without capacity reservation, no handle
+  refund before confirmed destruction, no identity/store churn capacity reset,
   no cross-purpose key use, no opaque cleanup deleting published state, no
   linear locator-proof requirement, no stale admission, no partial trust, and
   eventual convergence under documented assumptions;
@@ -9028,6 +9201,9 @@ Deliverables:
   authenticated-prefix and store/daemon/provider reconciliation states preserve
   the same bootstrap prefix, request digest, store root and provider result under
   lost responses, concurrent recovery and partitioned observations;
+  journal-suite and provider-capacity states preserve MAC chain/key epochs and
+  exact handle charges under provider partition, inventory pagination, unknown
+  handles, daemon/store churn, destruction ambiguity and migration;
 - model invariants for no lost encryption instance, no semantic/index
   completeness gap, no Byzantine manifest omission accepted, no hidden
   compartment disclosure, no endpoint-placement overwrite, no clock-derived
@@ -9043,9 +9219,11 @@ Deliverables:
   no quarantine-key unavailability releasing candidate quota, no cross-purpose
   key substitution, no accepted cutover over a replaced plaintext prefix, no
   three-journal conflict or orphan selected by arrival order, no active store key
-  destroyed/reprovisioned after finalize-response loss, no arrival-order
-  transition selection, and eventual convergence under documented authority,
-  availability, and partition assumptions;
+  destroyed/reprovisioned after finalize-response loss, no provider-capacity
+  reset/refund through partition/restart/identity churn, no unknown provider
+  handle silently adopted or dropped, no journal suite selected by message bytes,
+  no arrival-order transition selection, and eventual convergence under
+  documented authority, availability, and partition assumptions;
 - counterexample corpus and deterministic bounded model-check command required
   by the v0.116.0 release gate;
 - immutable model-run manifest records model source digest, tool and solver
@@ -9139,8 +9317,9 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.7 reconciled active store
-  quarantine key; ambiguous/lost/conflicting provisioning or unavailable keys
+  descriptor with v0.111.6 prefix cutover, v0.111.8 admitted suite and v0.111.7/
+  v0.111.9 reconciled active store key/provider capacity; ambiguous/lost/
+  conflicting provisioning, unavailable keys or exhausted/unknown capacity
   refuse transfer, preserve existing candidate presence/quota, and never trigger
   automatic reprovisioning;
 - transfer cancellation;
@@ -9400,6 +9579,10 @@ Deliverables:
 - provider capability contract for idempotency, post-crash query, authentication,
   assurance, revocation, retirement, compromise, contradiction, and permanent
   ambiguity;
+- provider-capacity destruction/release evidence format binds the v0.111.9
+  original handle charge, destruction operation/idempotency token, provider
+  confirmation, final inventory observation, daemon/store reconciliation roots,
+  remaining-reference proof and atomic released-capacity transition;
 - local wrapper/key-slot and wrapping-epoch destruction evidence formats;
 - recovery-path enumeration and proof that `KeysDestroyed` cannot be reached
   while any wrapper, share, escrow copy, ancestor derivation path, provider
@@ -9549,6 +9732,11 @@ Deliverables:
   idempotency token before retrying; Sagnir never interprets timeout, missing
   response, local key-file absence, or an uncommitted success response as proof
   of destruction;
+- every v0.111.9 provider-handle charge remains consumed through destruction
+  ambiguity; durable confirmed destruction is reconciled with provider inventory,
+  daemon journal, originating store reservation/descriptor and all reachable
+  references before one compare-and-swap releases capacity, while lost release/
+  confirmation responses remain charged and exact retry is idempotent;
 - a confirmed-not-destroyed path may receive a newly journaled retry intent,
   while an uncertain request is never replaced with a fresh request merely to
   make the journal appear complete;
@@ -10090,6 +10278,8 @@ Deliverables:
   substitution refusal;
 - daemon plaintext-prefix/cutover/authenticated-successor and three-journal
   store/daemon/provider operation/request/state transition target set;
+- daemon-journal MAC transcript/suite/key-epoch/rotation and provider-handle
+  capacity reservation/state/inventory/destruction-release target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -10129,7 +10319,9 @@ Deliverables:
   exact-versus-coarse accounting, candidate reprotection, atomic candidate-
   charge conversion, daemon first-root reservation/provider reconciliation,
   authenticated complete-prefix cutover, store quarantine-key lifecycle/realm
-  adoption, six-stage three-journal reconciliation, and atomic partial cleanup;
+  adoption, six-stage three-journal reconciliation, fixed HMAC-SHA3-256 journal
+  authentication/rotation, provider-capacity accounting, and atomic partial
+  cleanup;
 - composition of the history-independent map algorithm/pages with authority
   active/covered-fence/exception/archive roots, a permanent low-sequence
   exception plus later archival, exact replay refusal, checkpoint rollback
@@ -10282,10 +10474,12 @@ Deliverables:
   no accepted cutover over a modified/truncated/substituted plaintext prefix, no
   cross-journal request/result mismatch, no provider orphan rebound, no store-
   commit response loss causing key destruction/reprovision, no cross-purpose key
-  substitution, no opaque cleanup of published data, no partial durable candidate
-  after resource refusal, no abuse digest or `ResourceLimit` as authority
-  evidence, no arrival-order authority selection, and eventual convergence under
-  documented assumptions;
+  substitution, no journal-byte suite selection or decode-before-authentication,
+  no provider execution without capacity charge, no churn-based charge reset, no
+  pre-destruction refund, no unknown-handle inventory drop, no opaque cleanup of
+  published data, no partial durable candidate after resource refusal, no abuse
+  digest or `ResourceLimit` as authority evidence, no arrival-order authority
+  selection, and eventual convergence under documented assumptions;
 - model execution instructions and CI smoke bounds.
 - model-run manifests inherit v0.115.1 exact bounds, assumptions, property
   classes, reductions, coverage counters, resources, seeds/configuration, and
@@ -10352,9 +10546,11 @@ Deliverables:
   boundaries, v0.111.5 quarantine-key provisioning/rotation/rewrap/realm-adoption
   boundaries, v0.111.6 plaintext-prefix/cutover/descriptor publication boundaries,
   v0.111.7 six-stage store/daemon/provider reconciliation and pending-finalize
-  boundaries, `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and
-  final authority publication prove all-or-nothing durable quarantine and no
-  resource-refusal authority evidence;
+  boundaries, v0.111.8 journal-key create/wrap/MAC/cutover/suite-transition
+  boundaries, v0.111.9 provider-capacity reserve/inventory/abandon/destruction-
+  release boundaries, `ResourceLimit`, abuse-receipt rotation, cleanup, re-
+  admission, and final authority publication prove all-or-nothing durable
+  quarantine and no resource-refusal authority evidence;
 - secret-handle/provider-session cancellation, panic, agent-disconnect, cleanup,
   and process-boundary tests proving no partial authorization result;
 - generated-credential receiver-close, partial-delivery, possession-confirmation,
@@ -10493,10 +10689,13 @@ Deliverables:
   quarantine-key unavailability/conservative hold, daemon rewrap, realm adoption,
   plaintext-prefix truncation/substitution, cutover/successor rollback, three-
   journal lost responses and concurrent recovery, store-commit/finalize loss,
-  privacy-profile change, quota-refund, padding-budget, cross-purpose key, and
-  identifier/timing leakage probes, sender-held refusals, bounded abuse-receipt
-  rotation, expiry and restart accounting, partial-candidate cleanup, and
-  attempts to reinterpret `ResourceLimit` as signature/policy/authority evidence;
+  journal-suite/key-epoch/tag downgrade/substitution, provider-capacity exhaustion,
+  thousands of orphan/store-incarnation loops, unknown inventory and destruction-
+  response loss, privacy-profile change, quota-refund, padding-budget, cross-
+  purpose key, and identifier/timing leakage probes, sender-held refusals,
+  bounded abuse-receipt rotation, expiry and restart accounting, partial-
+  candidate cleanup, and attempts to reinterpret `ResourceLimit` as signature/
+  policy/authority evidence;
 - cloned/rolled-back pending-credential staging, provider/platform-key
   unavailability, copied staging outside its declared platform recovery context,
   cross-store/receiver possession-response replay, and concurrent delivery
@@ -10591,7 +10790,8 @@ Exit criteria:
   replaced or refunded by privacy buckets, daemon-root ambiguity cannot create a
   second root, active roots retain their complete bootstrap-prefix anchor, store/
   daemon/provider recovery cannot rebind or select conflicts, unavailable
-  quarantine keys keep quota held, fair capacity remains available to other
+  quarantine keys and provider orphans keep capacity charged, journal bytes
+  cannot choose/weaken authentication, fair capacity remains available to other
   peers, and arrival order affects backpressure only.
 - Hostile peers cannot force unbounded recursive expansion or partial trust.
 
@@ -10749,6 +10949,16 @@ Deliverables:
   vectors cover all six stages, one operation/request digest, every lost response
   and crash pair, provider orphan non-rebinding, store-commit/finalize recovery,
   conflict preservation, two-daemon recovery, and destruction separation;
+- daemon-journal suite vectors cover fixed HMAC-SHA3-256/32-byte tags, exact
+  length-delimited transcript and genesis sentinels, independent random wrapped/
+  provider-held key creation, trusted descriptor selection, constant-time full-
+  tag verification before decode, every field/tag/root mutation, unknown/retired
+  suite refusal, and old/new-root-preserving suite rotation across providers;
+- provider-capacity vectors and benchmarks cover every charged state, reserve-
+  before-execute, exact retry reuse, thousands of failed incarnations/orphans,
+  daemon/store churn, bounded unknown/conflict inventory and overflow, shared-
+  provider visibility limits, fair shares, pre-v0.122 abandonment without refund,
+  destruction-response loss, and confirmed reconciled capacity release;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - plaintext-to-encrypted authority-log cutover model/vectors and crash benchmarks
@@ -11102,6 +11312,16 @@ Deliverables:
   and request digest; provider-orphan, ambiguity/conflict, every lost response,
   store-commit/pending-finalize recovery, non-rebinding, two-daemon recovery,
   store rollback/clone, and separately authorized destruction fixtures pass;
+- v0.111.8 daemon journals use only descriptor-selected HMAC-SHA3-256 with a
+  256-bit purpose-separated independently random provider-held/wrapped key and
+  32-byte tag over the exact transcript; authenticate-before-decode, unknown/
+  retired-suite refusal, non-exportable-provider behavior, independent known-
+  answer/cross-provider vectors, and old/new-root-preserving rotation pass;
+- v0.111.9 provider handle/slot capacity is durably reserved before execution
+  and remains charged through pending/ambiguous/completed-unpublished/orphan/
+  conflict/abandoned-destruction states; churn, unknown inventory, fair sharing,
+  pre-destruction abandonment and confirmation-loss suites pass, and release
+  occurs only after confirmed destruction plus complete journal reconciliation;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -11159,6 +11379,13 @@ Deliverables:
 - v0.111.7 stage-by-stage crash/lost-response, store-commit/daemon-finalize loss,
   provider-success/store-failure orphan, request mismatch, conflict, abandonment/
   destruction separation, and concurrent daemon recovery fixtures pass;
+- v0.111.8 fixed-suite/tag/key transcript, provider key creation/wrapping,
+  constant-time verify-before-decode, field/root/tag mutation, unknown/retired
+  suite, downgrade, key-epoch and suite-transition fixtures pass;
+- v0.111.9 reserve-before-execution, every charged state, failed-incarnation/
+  orphan flood, ambiguous/unknown inventory, daemon-state loss, migration/clone,
+  fair-share, abandonment-no-refund and destruction-confirmation-loss fixtures
+  pass against constrained provider profiles;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -11409,6 +11636,12 @@ Deliverables:
   incarnation, provider result, active descriptor, format and commitment suite;
   every successor descends from it, and post-cutover tamper evidence is not
   misrepresented as prior confidentiality or pre-anchor modification prevention;
+- daemon-journal authentication is fixed to descriptor-selected HMAC-SHA3-256
+  with a separate random 256-bit provider-held/wrapped purpose key, full 32-byte
+  tag and exact domain-separated length-delimited transcript covering record/
+  chain/incarnation context; verification is constant-time and precedes semantic
+  decode, unknown/retired suites fail closed, and suite rotation binds old/new
+  roots without reinterpreting prior records;
 - durable quarantine candidate metadata uses a purpose-separated
   `StoreQuarantineMetadataKey` active before first publication, wrapped to
   admitted daemon/provider and recovery recipients, bound to store/quarantine/
@@ -11421,6 +11654,12 @@ Deliverables:
   finalization lag is authenticated and query-only, provider orphans cannot be
   rebound, conflicts remain explicit, and destruction requires its own admitted
   durable operation;
+- daemon/provider/profile hard capacity is reserved before provider execution
+  and charged across every pending, ambiguous, unpublished, orphaned, conflicted,
+  active and abandonment-pending-destruction handle; store/daemon/identity churn
+  cannot reset it, unknown inventory fails closed within bounded resources, and
+  only durable confirmed destruction plus journal/reference reconciliation
+  releases physical capacity;
 - privacy-preserving inner signatures, exact outer integrity/authenticity claim
   taxonomy, retained-handle preflight followed by integrity-bound capture and
   sealed/service/owned-memory/authenticated-page trusted reads, and durable
