@@ -8532,14 +8532,17 @@ Deliverables:
   cutover encryption/authentication is an idempotent bound provider/local
   operation and cannot request another root or alter the already confirmed
   provider result;
-- cutover bytes and the matching active daemon-root descriptor are prepared,
-  verified, synchronized, and published in one v0.23.3 daemon-domain transaction;
-  a crash exposes the prior `ProviderReconciled` state or the exact cutover plus
-  descriptor, never an active descriptor with an unauthenticated prefix;
+- cutover bytes and the matching authoritative daemon-root descriptor
+  representation are prepared, verified, synchronized, and published in one
+  v0.23.3 daemon-domain transaction; a crash exposes the prior
+  `ProviderReconciled` state or the exact cutover plus descriptor representation,
+  never an active descriptor state with an unauthenticated prefix;
 - under the protected v0.111.14 profile, the cutover's semantic payload is the
-  first encrypted daemon-journal payload and its active descriptor supplies the
-  independently trusted encryption suite/key epoch needed before open; the exact
-  outer ciphertext representation is authenticated by v0.111.8;
+  first encrypted daemon-journal payload and the independently anchored v0.111.16
+  bootstrap capsule supplies only the pre-open suite/key epochs, opaque key-set
+  locator and encrypted-private-descriptor commitment; the private descriptor is
+  authenticated/decrypted before identity use, and v0.111.8 authenticates the
+  exact outer cutover ciphertext representation;
 - every authenticated successor commits to the cutover or preceding
   authenticated record/root and exact daemon identity/incarnation; no later
   chain may start from the active descriptor, provider handle, or a reconstructed
@@ -8575,8 +8578,9 @@ Exit criteria:
 
 - No active daemon root or authenticated successor is accepted unless the exact
   complete preceding plaintext journal prefix verifies against its cutover.
-- Activation publishes the cutover and descriptor together or remains in the
-  prior recoverable state; rollback cannot reopen an unanchored bootstrap chain.
+- Activation publishes the cutover and authoritative descriptor representation
+  together or remains in the prior recoverable state; rollback cannot reopen an
+  unanchored bootstrap chain.
 - Documentation distinguishes post-cutover tamper evidence from confidentiality
   and from any guarantee about modifications before the first anchor existed.
 
@@ -8698,11 +8702,14 @@ Deliverables:
   daemon identity, daemon-state incarnation, record kind, record format version,
   sequence, exact encoded record length, exact encoded payload bytes, previous
   record commitment, previous authenticated chain root, and previous tag;
-- for the protected v0.111.14 confidentiality profile, `record kind` is the
-  fixed outer encrypted-record kind, and `exact encoded payload bytes` are the
+- for the protected v0.111.14/v0.111.16 confidentiality profile, transcript
+  identity/incarnation fields are replaced by the active bounded bootstrap-
+  capsule epoch and encrypted-private-descriptor commitment, `record kind` is the
+  fixed outer encrypted-record kind, `sequence` is the v0.111.18 profile-scoped
+  physical sequence/slot coordinate, and `exact encoded payload bytes` are the
   complete canonical encryption framing, associated-data commitment, ciphertext
-  and AEAD tag exactly as stored; plaintext semantic fields are never rebuilt to
-  compute or verify this HMAC;
+  and AEAD tag exactly as stored; confidential identity, semantic sequence or
+  other inner fields are never required or rebuilt to compute or verify this HMAC;
 - the first cutover record uses explicit genesis sentinels for previous
   authenticated root/tag while its payload commits the complete plaintext prefix
   under v0.111.6; every successor uses the exact prior root/tag and checked
@@ -9176,8 +9183,14 @@ Deliverables:
 - named confidentiality profiles are `ProtectedEncrypted` and explicitly weaker
   `AuthenticatedPlaintext`; protected deployments default to
   `ProtectedEncrypted`, profile choice is authenticated in the active daemon-root
-  descriptor, and changing it requires an authorized forward transition rather
-  than a local flag or journal-controlled downgrade;
+  private descriptor, and ordinary rotation may only preserve or strengthen
+  confidentiality rather than select `AuthenticatedPlaintext`, use a local flag
+  or accept a journal-controlled downgrade;
+- plaintext declassification, if enabled by policy, is a separately named
+  destructive export/migration ceremony with independent authorization, explicit
+  destination and scope, operator confirmation, permanent signed leakage evidence
+  and no claim that prior or exported bytes remain protected; it is never a normal
+  journal/profile/key rotation or in-place weakening of the active chain;
 - an independently random 256-bit `DaemonJournalEncryptionKey` is created through
   the v0.23.0 OS-CSPRNG/provider boundary, purpose-separated from the daemon root,
   journal HMAC key, store quarantine key, payload/realm/WAL keys, private-locator
@@ -9195,18 +9208,20 @@ Deliverables:
   under the selected suite before persistence; bootstrap records that necessarily
   precede root/key availability remain the minimal plaintext prefix committed by
   that encrypted authenticated cutover;
-- visible record framing contains only fixed magic/version, confidentiality
-  profile, encryption suite/key epoch, HMAC suite/key epoch, checked sequence/
-  nonce allocation fields needed before open, padded ciphertext-length class and
-  one fixed outer encrypted-record kind/version; daemon/store/provider identities,
+- visible record framing contains only fixed magic/version, encryption suite/key
+  epoch, HMAC suite/key epoch, profile-admitted physical sequence/nonce allocation
+  fields needed before open, padded ciphertext-length class and one fixed outer
+  encrypted-record kind/version; daemon/store/provider identities,
   operation status, semantic record kind/version, exact lengths, generations,
   paths, handles, assurance details, failure reasons and topology remain
   ciphertext;
-- AEAD associated data binds domain/version, daemon identity/incarnation from the
-  trusted descriptor, fixed outer record kind/version, sequence, encryption
-  suite/key epoch, HMAC suite/key epoch, nonce/subkey domain, padded length class
-  and previous authenticated chain root; semantic record kind/version exists only
-  in the encrypted inner header and is validated after successful open;
+- AEAD associated data binds domain/version, fixed outer record kind/version,
+  profile-scoped physical sequence/slot coordinate, encryption suite/key epoch,
+  HMAC suite/key epoch, nonce/subkey domain, padded length class, previous
+  authenticated chain root and the active v0.111.16 bootstrap-capsule/private-
+  descriptor commitment; it never requires daemon identity before open, while the
+  encrypted inner header binds daemon identity/incarnation and semantic sequence
+  and must match the recovered private descriptor/chain before semantic use;
 - v0.111.8 computes its full-length HMAC over the exact canonical outer framing,
   associated-data commitment and ciphertext/tag bytes as stored; verification
   authenticates those exact bytes before AEAD open, and neither side reconstructs
@@ -9231,9 +9246,9 @@ Deliverables:
   or retire an encryption key;
 - old encryption keys/decoders remain available read-only while reachable journal
   or staged history depends on them; rotation writes new ciphertext under a new
-  epoch through an authenticated descriptor transition, while physical re-
-  encryption is a separate copy-on-write migration preserving authenticated
-  logical record commitments and rollback evidence;
+  epoch through an authenticated descriptor transition, while v0.111.17 physical
+  re-encryption creates a separate copy-on-write representation with a new HMAC/
+  physical root linked to the old root by authenticated migration evidence;
 - locked, revoked, unavailable, lost or wrong encryption keys produce typed
   `JournalConfidentialityUnavailable` before payload decode, rotation recovery,
   provider-handle use or authority mutation; there is no plaintext fallback,
@@ -9247,6 +9262,10 @@ Deliverables:
   opaque operation references; privileged decrypted inspection requires an
   explicit capability and remains sanitized, while remote/public telemetry never
   reveals rotation timing, provider changes, failure history or exact volumes;
+- journal filesystem, timing, count, churn and backup/block leakage claims inherit
+  v0.111.18's concrete v0.95.0 profile composition; random names, encrypted
+  payloads and padded records alone make no claim to hide append frequency,
+  sequence growth, timestamps, changed blocks or rotation timing;
 - documentation states that HMAC-only `AuthenticatedPlaintext` intentionally
   exposes bounded operational payloads and that the pre-root bootstrap prefix and
   observations made before encryption cannot be concealed retroactively;
@@ -9269,9 +9288,10 @@ Exit criteria:
 
 - Protected post-root journal payloads and rotation manifests are never durable
   as plaintext, and their exact ciphertext representation is HMAC-authenticated.
-- Visible bytes and names reveal only the declared bounded framing, epochs and
-  padded length class; provider, topology, operation and failure details remain
-  inside authenticated ciphertext.
+- Visible bytes and names reveal only the declared record-level framing and
+  profile fields; provider, topology, operation and failure details remain inside
+  authenticated ciphertext, while count/timing/churn/backup leakage is exactly
+  what the selected v0.111.18 traffic profile declares and measures.
 - Encryption-key unavailability refuses protected recovery or mutation without
   fallback, while minimal bootstrap and weaker-profile leakage stay explicit.
 
@@ -9305,7 +9325,7 @@ Deliverables:
   retried request cannot reacquire ahead of those writers, split into Sybil
   attempts, or maintain effective exclusivity through timeout/requeue loops;
 - hard checked limits cover concurrent pending attempts, queued attempts per
-  principal/daemon, cumulative lease-hold time per rolling admitted window,
+  principal/daemon, cumulative lease-hold time per v0.111.19 accounting epoch,
   consecutive failed attempts, prepared bytes and unresolved provider operations;
   exhaustion returns a typed refusal before lease acquisition and cannot evict
   existing ordinary writes, active state or ambiguous provider evidence;
@@ -9315,9 +9335,14 @@ Deliverables:
   publication; key generation, unconstrained network discovery, interactive
   approval and provider retry loops are prohibited inside it;
 - a maximum critical-section duration is enforced from a trusted monotonic clock
-  and is shorter than and independent of provider/network timeout; reaching it
-  aborts pre-publication authority, releases the writer lease and schedules queued
-  ordinary writes even when an external provider operation remains unresolved;
+  bound to the current v0.111.2 `ClockEpoch` and is shorter than and independent
+  of provider/network timeout; reaching it aborts pre-publication authority,
+  releases the writer lease and schedules queued ordinary writes even when an
+  external provider operation remains unresolved;
+- process death releases the OS writer lock but never refunds attempt/failure/
+  cumulative-hold or ambiguous-provider charges; v0.111.19 recovery accounts the
+  interrupted lease conservatively without comparing monotonic instants across
+  process epochs before another rotation may queue;
 - provider/key/MAC/encryption operations started inside the section use one
   idempotent operation and bounded local wait; timeout becomes separately charged
   `Ambiguous`, its later result is reconciled outside the lease and stale staged
@@ -9355,10 +9380,325 @@ Exit criteria:
 - Unauthorized or ineligible callers cannot acquire the rotation lease, and
   provider provisioning/ambiguity outside the final frontier does not block
   ordinary journal writes.
-- Every exclusive section has an independent hard duration and cumulative budget;
-  queued ordinary writers run before a failed requester can reacquire.
+- Every exclusive section has a current-`ClockEpoch` hard duration and a durable
+  restart-stable cumulative budget; queued ordinary writers run before a failed
+  requester can reacquire.
 - Failure releases local lease resources atomically while retaining every
   ambiguous provider charge and confidential audit event for reconciliation.
+
+### v0.111.16 - Daemon Journal Bootstrap Capsule And Private Descriptor
+
+Goal: make protected cold-start recovery possible without exposing or requiring
+confidential daemon identity and topology before descriptor decryption.
+
+Deliverables:
+
+- canonical bounded `DaemonJournalBootstrapCapsule` contains only fixed magic/
+  format version, capsule epoch, HMAC and journal-encryption suite IDs/key epochs,
+  private-descriptor encryption suite/key epoch, one opaque provider key-set
+  locator and a commitment to the exact encrypted private descriptor
+  representation; descriptor envelope size is fixed by capsule format version;
+- the capsule contains no daemon identity/incarnation, provider identity/account,
+  store/realm identity, topology, operation history/status, assurance details,
+  raw handle, path, exact descriptor length, failure reason or semantic journal
+  kind, and unknown fields/versions/suites fail within fixed pre-key bounds;
+- capsule acceptance is anchored by the v0.111.4 daemon-root provisioning state,
+  platform-sealed bootstrap anchor or separately admitted recovery root that pins
+  the expected capsule commitment/epoch; the capsule cannot authenticate itself
+  through the provider locator or keys it names, and copied/rolled-back capsules
+  conflict with a later admitted anchor;
+- opaque provider key-set locator resolves only under the admitted local provider/
+  key-agent boundary to the exact HMAC key, journal encryption key and an
+  independently purpose-separated `DaemonJournalPrivateDescriptorKey`; malformed,
+  substituted, cross-daemon or multi-result resolution fails without trying
+  alternate providers or exposing locator detail;
+- canonical `DaemonJournalPrivateDescriptor` encrypts daemon identity/incarnation,
+  provider identity/profile/assurance and key descriptors, active chain and
+  physical roots, rotation/recovery authority, store relationships, profile
+  parameters, previous capsule/descriptor lineage and all operational topology;
+- private-descriptor AEAD uses one admitted v0.92.0/v0.92.2 construction and
+  purpose domain distinct from journal records; associated data binds capsule
+  format/epoch, suite/key epochs, opaque locator commitment, fixed descriptor-
+  envelope size, prior admitted capsule commitment or explicit genesis sentinel,
+  and daemon-root bootstrap-anchor commitment, excluding only the descriptor-
+  ciphertext commitment that is computed afterward;
+- the capsule's descriptor commitment covers the exact canonical descriptor outer
+  frame, nonce/subkey fields, ciphertext and AEAD tag; the capsule/anchor then
+  authenticate that commitment without requiring any descriptor plaintext, and
+  descriptor open releases no plaintext before complete tag verification;
+- protected journal HMAC and record AEAD transcripts bind capsule epoch,
+  authenticated capsule commitment and encrypted private-descriptor commitment
+  instead of confidential daemon identity/incarnation; after successful open,
+  every inner record identity/incarnation and chain context must match the private
+  descriptor before semantic decode, authority use or provider operation;
+- exact cold-start recovery order is: bounded capsule parse, independent anchor/
+  rollback verification, opaque key-set resolution, descriptor-ciphertext
+  commitment verification, descriptor AEAD open, private descriptor semantic/
+  provider/epoch validation, journal HMAC verification over stored ciphertext,
+  journal AEAD open, and inner identity/chain validation; no step is reordered or
+  inferred from filenames, newest timestamps, directory order or journal bytes;
+- capsule/private-descriptor creation and rotation use a v0.23.3 daemon-domain
+  transaction: new descriptor ciphertext is durable and verified first, then one
+  anchor/capsule/active-descriptor switch publishes it; recovery sees the complete
+  old pair or complete new pair, never a capsule pointing to missing/unverified
+  ciphertext or a private descriptor active without its capsule anchor;
+- HMAC, journal-encryption and private-descriptor-key epochs remain separately
+  versioned; changing one does not reinterpret another, and old capsule/
+  descriptor/key/decoder material remains read-only reachable while retained
+  journal chains, migration manifests or rollback evidence depend on it;
+- capsule leakage contract declares fixed format/suite IDs and key epochs, opaque
+  key-set locator linkability, update cadence and ciphertext commitment changes;
+  v0.111.18 governs traffic/churn observations, and no claim treats opaque bytes
+  as absence of correlation;
+- vectors and recovery tests cover capsule truncation/extension/unknown fields,
+  anchor rollback, locator substitution/multiple results, descriptor commitment/
+  nonce/tag/AD mutation, wrong key/epoch, copied daemon state, capsule/descriptor
+  split publication, crash at every sync/CAS boundary, unavailable key agent and
+  identity mismatch discovered only after authenticated descriptor/record open.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- independent capsule/private-descriptor encoding and AEAD/HMAC vectors;
+- cold-start recovery ordering and rollback state-machine tests;
+- provider/key-agent opaque-locator and process-kill publication fixtures.
+
+Exit criteria:
+
+- Protected cold start verifies one independently anchored minimal capsule and
+  decrypts one exact private descriptor before any confidential identity is used.
+- Journal HMAC/AEAD verification requires only authenticated opaque commitments
+  before descriptor open and validates all inner identity context afterward.
+- Capsule leakage is bounded and explicit, and no rollback, locator substitution
+  or partial capsule/descriptor publication can select authority.
+
+### v0.111.17 - Copy-On-Write Daemon Journal Re-Encryption Migration
+
+Goal: migrate journal ciphertext without overwriting authenticated history or
+claiming that ciphertext-bound HMAC roots remain unchanged.
+
+Deliverables:
+
+- canonical concealed `DaemonJournalSemanticRecordCommitment` uses a purpose-
+  separated daemon migration-commitment key independent of HMAC/encryption keys
+  over canonical inner record bytes, semantic kind/version, daemon/incarnation,
+  logical sequence/predecessor, operation domain and original authority context;
+  commitments never appear in capsules, filenames, blind metadata or public logs;
+- commitment-key lifecycle is versioned and retained for historical migration
+  verification; changing it requires a separately linked commitment-key migration
+  and cannot silently claim equality with roots produced by another key/epoch;
+- migration first authenticates/decrypts every selected old record in chain order,
+  computes its concealed semantic commitment, and builds an ordered commitment
+  root/count before producing new ciphertext; unavailable old keys, gaps,
+  conflicts, bad tags or decode limits refuse without modifying active history;
+- new representation is written copy-on-write under fresh v0.92 nonce/subkey
+  domains and the target encryption epoch, receives fresh HMAC tags and a new
+  physical chain root, and is independently reread, HMAC-verified, decrypted and
+  checked against the exact ordered semantic-commitment root;
+- canonical encrypted `DaemonJournalRepresentationMigrationManifest` binds
+  migration format/operation/authorization, daemon/capsule/private-descriptor
+  lineage, old representation ID/physical root/count/HMAC/encryption epochs,
+  ordered semantic-commitment root/count/key epoch, new representation ID/
+  physical root/count/HMAC/encryption epochs, durability profile and retention
+  horizon;
+- migration authorization is purpose-separated from routine journal rotation and
+  binds expected active representation/root and exact target descriptor; stale,
+  replayed, cross-daemon, partially verified or arrival-order-selected migrations
+  conflict and cannot rebase onto a changed source root;
+- no authenticated journal record, ciphertext, tag, physical root, capsule or
+  descriptor is overwritten in place; temporary/new names are opaque, all new
+  bytes and manifest are durable first, and one daemon authority transaction
+  atomically activates the new representation plus updated v0.111.16 descriptor/
+  capsule lineage or leaves the old representation active;
+- recovery validates old root, migration manifest, ordered semantic commitments,
+  new root and activation CAS before choosing a representation; a new root without
+  its manifest/activation is non-authoritative staging, while an activation with
+  missing/corrupt new bytes is `RecoveryRequired` and never falls back by mtime;
+- old physical root, exact old bytes, decoder/key descriptors and rollback/
+  migration evidence remain verifiable through the declared rollback and
+  retention horizon; rollback is an explicit authorized transition that records
+  the newer representation rather than deleting or hiding it;
+- old encryption/HMAC/commitment keys retire only after complete old/new
+  verification, expiration of the declared rollback/retention horizon, proof no
+  reachable capsule/descriptor/manifest/backup requires them, and durable
+  provider-destruction evidence where policy requires it;
+- backup/restore treats old/new representations and the encrypted migration
+  manifest as one retention set; restoring only changed ciphertext blocks or an
+  old capsule cannot create an unlabeled hybrid representation or rewrite the
+  active physical root;
+- tests cover same plaintext with different ciphertext/tag/root, semantic record
+  mutation, reorder/omit/duplicate, wrong commitment key/epoch, old/new root or
+  count substitution, migration authorization replay, crash at every write/sync/
+  manifest/CAS boundary, concurrent journal append/rotation, rollback, premature
+  key retirement and mixed backup restore.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- independent old/new physical-root and semantic-commitment vectors;
+- copy-on-write migration/activation/rollback state-machine model;
+- process-kill, concurrent-writer and mixed-backup recovery fixtures.
+
+Exit criteria:
+
+- Re-encryption always creates a new authenticated physical representation and
+  links it to the preserved old root through one authorized migration manifest.
+- Ordered concealed semantic commitments prove record equivalence without
+  claiming ciphertext, HMAC tags or physical chain roots were preserved.
+- Old verification material retires only after complete verification and the
+  declared rollback/retention horizon, never as a migration side effect.
+
+### v0.111.18 - Daemon Journal Traffic Privacy Profiles
+
+Goal: compose encrypted daemon-journal storage with v0.95.0 so profile claims
+cover filesystem, timing, count, churn and backup/block observations.
+
+Deliverables:
+
+- daemon journals are a named v0.95.0 consumer with machine-readable
+  `JournalBaseline`, `JournalPadded` and `JournalHighSecurity` profile IDs,
+  parameters committed inside the v0.111.16 private descriptor; no traffic-
+  profile ID is added to the bootstrap capsule, though externally observable
+  behavior may reveal or distinguish profiles as declared by their contracts;
+- `JournalBaseline` encrypts semantic metadata and uses opaque names but explicitly
+  admits observable record/segment count, append and rotation cadence, directory
+  churn, allocation/padded size classes, filesystem timestamps, changed backup/
+  CoW blocks, process I/O timing and any outer physical sequence growth;
+- `JournalPadded` uses preallocated fixed-size segments, fixed slot/envelope
+  classes, bounded epoch batching, minimum/maximum batch size, maximum latency,
+  copy-on-write replacement cadence and profile-specific timestamp normalization;
+  unused slots are indistinguishable authenticated encrypted cover records within
+  the declared local-storage observer model;
+- padded/high-security outer frames use profile-scoped physical segment/slot
+  coordinates and random nonce domains rather than exposing a global semantic
+  journal sequence; semantic sequence/predecessor remains encrypted, and recovery
+  follows authenticated private indexes/chain roots rather than counting files;
+- `JournalHighSecurity` adds scheduled write windows, minimum cover-record ratio,
+  fixed segment replacement/compaction cadence, bounded dummy reads/writes where
+  admitted, filesystem timestamp handling, backup batching/padding and declared
+  full-segment or fixed-block rewrite rules that bound changed-block leakage;
+- every profile specifies measurable count, size, frequency, timing-resolution,
+  batching-window, timestamp, access-order, backup/block, crash/recovery,
+  compaction and rotation leakage plus maximum storage/bandwidth/latency overhead;
+  no profile claims to hide observations outside its admitted platform/provider/
+  backup threat boundary;
+- cover records use the same outer size classes and cryptographic verification as
+  real records but a distinct encrypted inner kind, consume nonce/key/work/
+  storage budgets, cannot satisfy operation history or authority, and are removed
+  from semantic replay only after successful authentication/decryption;
+- filenames/directories remain opaque under v0.111.14, while segment allocation,
+  replacement, timestamp and block-write behavior follows the selected profile;
+  backup software, filesystem, CoW/snapshot and local-provider capabilities are
+  admitted and tested rather than assumed from random names or padding alone;
+- profile health instantiates v0.95.0 `Healthy`, `Degraded`, `Unavailable` and
+  `Recovering`; stopped/distinguishable cover traffic, missed schedule/batch,
+  queue exhaustion, timestamp failure, unsupported sparse/CoW behavior, backup-
+  padding failure or exceeded overhead enters the required weaker state;
+- protected policy decides whether degraded journal traffic pauses sensitive new
+  operations or uses a separately bounded recovery channel; traffic emitted
+  during degradation is permanently labeled with observed assurance and cannot
+  be retroactively claimed as high-security after health recovers;
+- ordinary rotation may preserve or strengthen the profile; weakening is not a
+  normal transition and uses the v0.111.14 destructive declassification/export
+  ceremony with permanent leakage evidence when policy admits it;
+- encrypted health/audit records retain exact internal observations without
+  becoming a public activity oracle; locked/remote status exposes only fixed or
+  coarsened state, and loss of the health key never returns `Healthy` by default;
+- deterministic/statistical fixtures compare no-op, append, failed rotation,
+  successful rotation, restart, compaction, migration and idle cover traces under
+  malicious filesystem/backup observation, including count, cadence, timestamps,
+  changed blocks and profile degradation/recovery thresholds.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- v0.95.0 malicious local-storage/backup observer simulation;
+- deterministic and statistical traffic-shape/profile-health trace suite;
+- cross-platform filesystem timestamp/allocation/CoW capability matrix.
+
+Exit criteria:
+
+- Every daemon-journal profile names and measures count, timing, churn, timestamp
+  and backup/block leakage; baseline admits it rather than implying padding hides
+  operation frequency or rotation timing.
+- Padded and high-security claims hold only while required batching, segment,
+  cover, timestamp and backup controls are measured `Healthy`.
+- Semantic sequence and operation details remain encrypted, while all unavoidable
+  physical traffic leakage and overhead are explicit per profile.
+
+### v0.111.19 - Restart-Stable Rotation Attempt Accounting
+
+Goal: preserve rotation hold/failure budgets across process epochs without
+comparing monotonic instants across restart or refilling from untrusted time.
+
+Deliverables:
+
+- each exclusive lease binds random v0.111.2 `ClockEpoch`, start monotonic value,
+  checked duration/absolute deadline and accumulated hold debit; only clock reads
+  from that exact epoch determine its live duration, timeout or in-process release;
+- process death releases the OS writer lock and creates a new random `ClockEpoch`
+  on restart; recovery first reconciles the v0.111.13 publication transaction,
+  retains a completely published attempt as successful, and otherwise marks the
+  interrupted attempt conservatively failed/aborted without refunding attempt,
+  prepared-byte, cumulative-hold or ambiguous-provider charges merely because the
+  prior monotonic deadline is incomparable;
+- persisted accounting stores integer debits, attempt/failure sequences and an
+  authenticated `RotationAccountingEpoch`, never raw `Instant` arithmetic across
+  process epochs, reconstructed downtime, boot-ID ordering or wall-clock deltas;
+- each lease charges its maximum admitted hold before acquisition or increments
+  hold consumption monotonically under the same authority transaction; clean
+  early release may refund only a durably measured same-`ClockEpoch` unused debit,
+  while crash/clock failure retains the conservative maximum charge;
+- accounting-epoch refill/reset requires exactly one admitted mechanism selected
+  by policy: fresh v0.28.0 authoritative-time statement in the rotation-budget
+  domain, signed/checkpointed daemon quota-epoch advancement after a configured
+  operation frontier, or conservative independently authorized administrative
+  reset recording prior/new counters and reason;
+- refill authorization binds daemon/incarnation, prior accounting epoch/root,
+  exact consumed counters, new limits, authority/policy epoch and idempotent reset
+  operation; stale, duplicate, conflicting, cross-daemon or rollback reset
+  evidence refuses and cannot erase ambiguous provider operations;
+- without an available admitted trusted-time/frontier/reset authority, restart
+  does not automatically refill a rolling-window budget; exhausted rotation
+  capacity remains exhausted while ordinary journal writes continue, and status
+  reports a coarse typed recovery requirement under v0.111.14/v0.111.18 privacy;
+- kill/restart loops, process/daemon identity churn, restored snapshots, cloned
+  state and `ClockEpoch` replacement cannot reduce cumulative hold/failure totals,
+  gain queue priority or turn a charged provider ambiguity into free capacity;
+- fair scheduling persists queued-writer precedence/reacquisition penalties in
+  authenticated accounting rather than process-local queue state alone; restart
+  drains/reconstructs ordinary-writer priority before another failed principal or
+  equivalent rotation operation may acquire exclusivity;
+- clock read failure, backward movement, wrap, suspend/resume discontinuity or
+  source change within one epoch conservatively aborts the lease and charges its
+  maximum hold; it never extends the critical section or authorizes a refill;
+- encrypted exact audit records bind attempt, clock/accounting epochs, charged/
+  refunded hold, failure count, provider ambiguity, reset evidence and scheduler
+  priority, while external status cannot expose rotation timing or restart cadence;
+- model/tests cover kill at acquisition/release/publication, repeated restart
+  churn, crash after early release before refund, unavailable/conflicting time
+  authority, quota-epoch replay, administrative reset conflict, snapshot rollback,
+  cloned daemon, suspend/clock discontinuity, queued-writer reconstruction and
+  eventual authorized refill without provider-charge loss.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-core`
+- `ClockEpoch`/accounting-epoch scheduler state-machine model;
+- process-kill/restart/suspend/clock-discontinuity integration matrix;
+- v0.28.0 time-statement and checkpoint/reset authorization vectors.
+
+Exit criteria:
+
+- Individual lease duration uses only one process `ClockEpoch`, while durable
+  hold/failure/provider charges survive process death and restart.
+- No persisted budget compares monotonic instants across epochs or refills from
+  unauthenticated wall time; absent admitted reset evidence means no refill.
+- Restart cannot improve rotation priority or capacity, but ordinary journal
+  writes remain available while rotation accounting awaits authorized recovery.
 
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
@@ -9389,11 +9729,13 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.15 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.19 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
-  protected journal confidentiality and starvation-resistant scheduling,
-  admitted authentication suite/provider-capacity mode, and one reconciled
-  active store quarantine key, re-protects candidate metadata under that store/
+  protected journal confidentiality, anchored cold-start descriptor recovery,
+  copy-on-write re-encryption, measured traffic privacy, starvation-resistant
+  scheduling and restart-stable accounting, admitted authentication suite/
+  provider-capacity mode, and one reconciled active store quarantine key,
+  re-protects candidate metadata under that store/
   authorized-realm metadata key, and converts it into the candidate's durable
   quota charge while
   publishing either one complete `BoundedQuarantinedCandidate`/bundle generation
@@ -9405,7 +9747,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.15 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.19 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -9661,6 +10003,16 @@ Deliverables:
   byte budget reservation, pre-lease key reconciliation, fair writer queue,
   cumulative lease-hold/failure limits, independent critical deadline,
   cancellation/resource release and separately charged provider ambiguity;
+- bootstrap-capsule/private-descriptor states model independent anchor, opaque
+  key-set resolution, descriptor open before identity use, exact recovery order,
+  capsule/descriptor atomic switch, rollback and key unavailability;
+- journal-representation migration states model old/new physical roots, ordered
+  concealed semantic commitments, copy-on-write activation, rollback/retention
+  horizon and old-key retirement; traffic-profile states model segment/slot
+  padding, batching, cover records, timestamp/backup leakage and health;
+- restart accounting states model process `ClockEpoch`, conservative interrupted-
+  lease debit, authenticated accounting epochs, trusted refill/reset evidence,
+  queued-writer precedence and no automatic restart refill;
 - checkpoint, policy epoch, evidence, and key-rotation interactions;
 - equivocation and bounded fork handling;
 - invariants for no lost heads, no lost duplicate identity, no locator-based
@@ -9686,11 +10038,15 @@ Deliverables:
   suite chain, no retiring MAC key authorizing its successor, no closed-old-only
   publication state, no recovery-time provider MAC after activation, no protected
   journal plaintext or unauthenticated ciphertext, no AEAD nonce reuse or HMAC/
-  encryption epoch coupling, no confidentiality fallback, no unauthorized lease
+  encryption epoch coupling, no confidentiality fallback or normal downgrade, no
+  identity needed before private-descriptor open, no self-authenticating capsule,
+  no in-place journal re-encryption or unchanged ciphertext-root claim, no profile
+  health without required batching/cover/backup controls, no unauthorized lease
   acquisition, no provider provisioning under writer exclusion when independent
-  of the final frontier, no repeated rotation starvation or budget reset, no local
-  counter as physical provider reservation, no hard claim from unverifiable/non-
-  holding capacity, no cross-purpose key use, no opaque
+  of the final frontier, no repeated rotation starvation, restart budget reset or
+  cross-`ClockEpoch` instant comparison, no local counter as physical provider
+  reservation, no hard claim from unverifiable/non-holding capacity, no cross-
+  purpose key use, no opaque
   cleanup deleting published state, no linear locator-proof requirement, no stale
   admission, no partial trust, and eventual convergence under documented
   assumptions;
@@ -9781,6 +10137,11 @@ Deliverables:
   HMAC chains, nonce and independent key epochs, opaque storage metadata,
   preflight/budget charges, fair queued writers and cumulative hold limits under
   restart, provider delay, cancellation, repeated requests and recovery;
+- capsule/descriptor, representation-migration, traffic-profile and accounting-
+  epoch states preserve independent cold-start anchor, identity-after-open,
+  old/new physical roots with concealed semantic equivalence, measured filesystem/
+  backup leakage, profile health, conservative restart charges and authorized
+  refill under message delay, rollback, clone, provider loss and process churn;
 - model invariants for no lost encryption instance, no semantic/index
   completeness gap, no Byzantine manifest omission accepted, no hidden
   compartment disclosure, no endpoint-placement overwrite, no clock-derived
@@ -9805,8 +10166,11 @@ Deliverables:
   treated as hard capacity, no plaintext protected journal or profile downgrade,
   no key-unavailable empty/fallback state, no unauthorized or repeated rotation
   attempt starving ordinary writers, no ambiguous provider charge released with
-  the local lease, no arrival-order transition selection, and eventual convergence
-  under documented authority, availability, and partition assumptions;
+  the local lease, no unauthenticated/self-selected capsule or pre-open identity
+  dependency, no in-place/mixed-root re-encryption, no false traffic-profile
+  health, no cross-process monotonic comparison or restart refill without admitted
+  authority, no arrival-order transition selection, and eventual convergence under
+  documented authority, availability, and partition assumptions;
 - counterexample corpus and deterministic bounded model-check command required
   by the v0.116.0 release gate;
 - immutable model-run manifest records model source digest, tool and solver
@@ -9900,14 +10264,16 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.15 suite,
-  capacity, independent-authorization, atomic-cutover, confidentiality and
-  rotation-scheduling closures plus the v0.111.7 reconciled active store key;
-  ambiguous/lost/conflicting provisioning, unavailable HMAC/encryption keys,
-  confidentiality downgrade, cyclic or retiring-key-only rotation, incomplete
-  staging, exhausted/unverifiable capacity or rotation starvation state refuse
-  transfer, preserve existing candidate presence/quota, and never trigger
-  automatic reprovisioning or plaintext fallback;
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.19 suite,
+  capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
+  descriptor recovery, representation migration, traffic-profile, rotation-
+  scheduling and restart-accounting closures plus the v0.111.7 reconciled active
+  store key; ambiguous/lost/conflicting provisioning, unavailable HMAC/encryption
+  keys, capsule/descriptor mismatch, confidentiality downgrade, cyclic or
+  retiring-key-only rotation, incomplete staging/migration, degraded required
+  traffic profile, exhausted/unverifiable capacity or rotation-accounting state
+  refuse transfer, preserve existing candidate presence/quota, and never trigger
+  automatic reprovisioning, budget refill or plaintext fallback;
 - transfer cancellation;
 - accepted response;
 - denied response;
@@ -10873,11 +11239,17 @@ Deliverables:
   atomic publication/recovery target set;
 - encrypted daemon-journal outer frame/AD/ciphertext/HMAC transcript, fixed outer
   and encrypted inner kind, opaque name/index, padded-length class, AEAD nonce/
-  epoch/rotation/locked state and
-  authenticated-plaintext profile transition target set;
+  epoch/rotation/locked state and authenticated-plaintext profile transition
+  target set;
 - rotation-attempt preflight/budget record, fair writer queue, cumulative hold/
   failure accounting, critical deadline, cancellation/refund and ambiguous-
   provider-charge separation target set;
+- bootstrap capsule, private-descriptor outer/inner format, opaque key-set locator,
+  anchor/commitment/epoch and cold-start recovery-order target set;
+- semantic-record commitment, representation-migration manifest, old/new physical
+  root, copy-on-write activation/rollback/key-retirement target set;
+- journal segment/slot/cover-record, batching/profile-health/leakage record and
+  `ClockEpoch`/rotation-accounting-epoch/refill/reset target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -10923,7 +11295,10 @@ Deliverables:
   fully staged genesis and atomic bridge/descriptor publication, protected post-
   root encrypt-then-HMAC journal/manifests with independent AEAD/HMAC epochs and
   opaque storage names, preflighted/budgeted fair rotation scheduling with pre-
-  lease provider reconciliation, and atomic partial cleanup;
+  lease provider reconciliation, anchored bootstrap capsule/encrypted private
+  descriptor cold start, copy-on-write physical-root migration with concealed
+  semantic commitments, measured journal traffic profiles and restart-stable
+  `ClockEpoch`/accounting-epoch budgets, and atomic partial cleanup;
 - composition of the history-independent map algorithm/pages with authority
   active/covered-fence/exception/archive roots, a permanent low-sequence
   exception plus later archival, exact replay refusal, checkpoint rollback
@@ -11084,10 +11459,13 @@ Deliverables:
   recovery-time provider MAC after atomic publication, no local/advisory counter
   as physical capacity, no token cancellation refund under unknown execution,
   no unverifiable hard provider claim, no protected journal plaintext, no AEAD
-  nonce reuse or encryption/HMAC epoch confusion, no confidentiality downgrade,
-  no unauthorized lease acquisition, cumulative-hold bypass or rotation-request
-  starvation, no opaque cleanup of published data, no partial durable candidate
-  after resource refusal, no abuse digest or `ResourceLimit` as
+  nonce reuse or encryption/HMAC epoch confusion, no ordinary confidentiality
+  downgrade, no identity-before-descriptor-open or self-authenticating capsule,
+  no in-place re-encryption/unchanged physical-root claim, no unmeasured traffic-
+  privacy health, no unauthorized lease acquisition, cumulative-hold bypass,
+  cross-epoch instant comparison, restart refill without authority or rotation-
+  request starvation, no opaque cleanup of published data, no partial durable
+  candidate after resource refusal, no abuse digest or `ResourceLimit` as
   authority evidence, no arrival-order authority selection, and eventual
   convergence under documented assumptions;
 - model execution instructions and CI smoke bounds.
@@ -11166,6 +11544,10 @@ Deliverables:
   v0.111.14 encryption-key/nonce/outer-frame/ciphertext-HMAC/opaque-index/profile-
   transition boundaries, v0.111.15 preflight/budget/key-before-lease/fair-queue/
   critical-deadline/cancellation boundaries,
+  v0.111.16 capsule-anchor/key-set/private-descriptor/cold-start/switch boundaries,
+  v0.111.17 old-read/new-write/semantic-root/manifest/activation/key-retirement
+  boundaries, v0.111.18 segment/batch/cover/profile-health/backup boundaries,
+  v0.111.19 process-clock/debit/refill/reset/queue-reconstruction boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -11318,8 +11700,11 @@ Deliverables:
   AD/HMAC substitution, nonce/epoch replay, opaque-name correlation,
   confidentiality downgrade/locked-key fallback, unauthorized lease attempts,
   slow authorization/HSM, repeated timeout/reacquire, queued-writer starvation,
-  cumulative hold-limit exhaustion, privacy-profile change, quota-refund,
-  padding-budget, cross-purpose key, and identifier/timing leakage;
+  cumulative hold-limit exhaustion, capsule rollback/key-locator substitution/
+  identity-before-open, old/new representation splice or migration rollback,
+  filesystem/backup cadence and cover-traffic distinguishability, kill/restart
+  budget refill and cross-clock-epoch comparison, privacy-profile change, quota-
+  refund, padding-budget, cross-purpose key, and identifier/timing leakage;
   probes, sender-held refusals, bounded abuse-receipt rotation, expiry and restart
   accounting, partial-candidate cleanup, and attempts to reinterpret
   `ResourceLimit` as signature/policy/authority evidence;
@@ -11422,10 +11807,13 @@ Exit criteria:
   unique, retiring MAC keys cannot authorize successors, no old chain closes
   before the exact new genesis and descriptor switch can publish atomically,
   protected journal/staging data remains ciphertext with no locked-key fallback,
-  provider delay and repeated rotation requests cannot starve queued ordinary
-  writers or reset cumulative budgets, hard provider capacity uses an
-  authenticated enforceable capability, fair capacity remains available to other
-  peers, and arrival order affects backpressure only.
+  cold start cannot self-select a capsule or use identity before descriptor open,
+  re-encryption cannot overwrite/mix physical roots, traffic-profile health cannot
+  survive failed batching/cover/backup controls, provider delay and repeated/
+  restarted rotation requests cannot starve queued ordinary writers or reset
+  cumulative budgets, hard provider capacity uses an authenticated enforceable
+  capability, fair capacity remains available to other peers, and arrival order
+  affects backpressure only.
 - Hostile peers cannot force unbounded recursive expansion or partial trust.
 
 ### v0.132.0 - Differential Vectors And Performance Budgets
@@ -11618,6 +12006,18 @@ Deliverables:
   durable aggregate attempt/provider/byte budgets, pre-lease key reconciliation,
   maximum critical-section latency, fair queued-writer progress, cumulative hold/
   failure exhaustion, cancellation cleanup and ambiguous-provider retention;
+- bootstrap-capsule vectors cover minimal outer fields, independent root anchor,
+  opaque key-set resolution, private-descriptor AEAD/commitment, exact cold-start
+  order, identity-after-open, capsule/descriptor rotation and rollback refusal;
+- representation-migration vectors/benchmarks cover concealed ordered semantic
+  commitments, changed ciphertext/HMAC/physical roots, copy-on-write throughput,
+  manifest/activation/rollback, old-key retention and mixed-backup restore;
+- journal-traffic profile traces/benchmarks cover preallocated segments, batches,
+  cover ratios, schedule/compaction/timestamp/backup behavior, measured leakage,
+  overhead and `Healthy`/`Degraded`/`Unavailable`/`Recovering` transitions;
+- restart-accounting vectors cover process `ClockEpoch` duration, conservative
+  crash debit, accounting-epoch counters, authoritative time/frontier/admin reset,
+  no-authority no-refill, clone/rollback and queued-writer reconstruction;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - plaintext-to-encrypted authority-log cutover model/vectors and crash benchmarks
@@ -12010,6 +12410,21 @@ Deliverables:
   independent critical deadline/cumulative hold limit; unauthorized, slow,
   cancelled and repeated attempts cannot starve queued ordinary writes or erase
   ambiguous provider charges;
+- v0.111.16 cold start verifies one independently anchored minimal capsule,
+  resolves an opaque provider key set, authenticates/decrypts the committed
+  private descriptor, then verifies ciphertext HMAC/AEAD and inner identity in
+  exact order; capsule rollback/substitution and partial descriptor switch refuse;
+- v0.111.17 re-encryption produces a copy-on-write representation with new
+  ciphertext/HMAC/physical root and an authorized manifest binding the old root,
+  ordered concealed semantic commitments and new root; no in-place overwrite or
+  old-key retirement occurs before verification and retention completion;
+- v0.111.18 journal traffic instantiates measurable baseline, padded and high-
+  security v0.95.0 profiles covering count/timing/churn/timestamp/backup leakage,
+  segment/batch/cover behavior, overhead and fail-closed profile health;
+- v0.111.19 individual lease time is process-`ClockEpoch` scoped while durable
+  hold/failure/provider charges survive restart in authenticated accounting epochs;
+  refill requires admitted time/frontier/admin evidence and queued-writer priority
+  survives process churn;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -12089,12 +12504,24 @@ Deliverables:
   genesis/descriptor switch and every preparation/publication crash fixture pass;
 - v0.111.14 exact outer-frame/AEAD-AD/ciphertext-HMAC vectors, nonce/retry/clone,
   opaque-name/index and padded-length leakage, independent epoch rotation,
-  locked/unavailable key, profile downgrade, earlier plaintext-store migration
-  and plaintext-remnant fixtures pass;
+  locked/unavailable key, ordinary downgrade refusal, explicit declassification,
+  earlier plaintext-store migration and plaintext-remnant fixtures pass;
 - v0.111.15 unauthorized preflight, attempt/provider/byte budget persistence,
   key-before-lease ordering, slow/revoked authorization, unavailable HSM,
   timeout/reacquire, queued-writer fairness, cumulative hold/failure exhaustion,
   cancellation cleanup and ambiguous-provider retention fixtures pass;
+- v0.111.16 capsule bound/parser, independent anchor, opaque locator, descriptor
+  commitment/AEAD, exact recovery order, identity-after-open, rollback, copied-
+  daemon and every capsule/descriptor publication-crash fixture pass;
+- v0.111.17 old/new physical-root, semantic-commitment, migration-manifest,
+  copy-on-write activation, concurrent append, rollback, key-retention and mixed-
+  backup restore fixtures pass;
+- v0.111.18 filesystem/backup observer, fixed segment/slot, batching, cover,
+  schedule, timestamp, compaction, leakage threshold, overhead and profile-health
+  degradation/recovery fixtures pass on the admitted platform matrix;
+- v0.111.19 lease/accounting `ClockEpoch`, process-kill conservative debit,
+  restart/clone/rollback churn, unavailable/conflicting refill authority, reset
+  replay, no-refill exhaustion and queued-writer reconstruction fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -12362,15 +12789,36 @@ Deliverables:
 - protected post-root daemon-journal payloads, bridge records and prepared/
   publication manifests use a purpose-separated admitted AEAD key/suite with
   nonce-safe retry and independently versioned encryption/HMAC epochs; HMAC binds
-  exact ciphertext, names and kinds are opaque, lengths are padded, unavailable
-  keys refuse without plaintext fallback, and bootstrap/weaker-profile leakage is
-  explicit;
+  exact ciphertext, names are opaque, semantic kinds are encrypted, lengths are
+  padded, unavailable keys refuse without plaintext fallback, ordinary profile
+  transitions cannot weaken confidentiality, and bootstrap/weaker-profile leakage
+  or destructive declassification remains permanent and explicit;
+- cold start uses an independently anchored minimal bootstrap capsule with only
+  fixed format/suite/key epochs, opaque provider key-set locator and encrypted-
+  private-descriptor commitment; recovery decrypts and
+  validates that descriptor before using confidential identity, then verifies
+  exact ciphertext HMAC/AEAD and matching inner identity context;
+- physical journal re-encryption never overwrites a chain: an authorized encrypted
+  migration manifest links preserved old physical root, ordered concealed
+  semantic-record commitments and a newly HMACed ciphertext physical root, and
+  atomically activates the copy-on-write representation while old verification
+  material remains through its rollback/retention horizon;
+- daemon-journal traffic inherits measurable v0.95.0 baseline, padded and high-
+  security profiles for segment/slot allocation, batching, cover records,
+  schedules, compaction, timestamps and backup/block leakage; required profile
+  health degrades when those controls stop, and padding alone never claims to hide
+  append count, frequency or rotation timing;
 - rotation scheduling rejects unauthorized/ineligible requests before lease
   acquisition, durably budgets attempts/provider work/prepared bytes, reconciles
   new keys before writer exclusion, and limits the final frontier-bound critical
   section independently of provider timeout; fair queued ordinary writers and
   cumulative hold/failure limits prevent repeated rotation starvation while
   ambiguous provider work remains charged;
+- individual rotation lease duration uses only its process `ClockEpoch`; process
+  death releases the OS lock but preserves conservative hold/failure/provider
+  charges in an authenticated accounting epoch, and refill after restart requires
+  admitted authoritative-time, checkpoint frontier or administrative reset
+  evidence rather than cross-epoch `Instant` comparison or local wall time;
 - durable quarantine candidate metadata uses a purpose-separated
   `StoreQuarantineMetadataKey` active before first publication, wrapped to
   admitted daemon/provider and recovery recipients, bound to store/quarantine/
