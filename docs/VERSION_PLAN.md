@@ -8593,9 +8593,11 @@ Deliverables:
   it once into the v0.111.4 journal, recording its daemon operation, expected
   store root/incarnation, request digest, and one provider idempotency key; a
   different or already-consumed reservation is refused before provider contact;
-- before stage 3 provider execution, v0.111.9 atomically reserves one exact
-  provider-handle capacity charge for this operation/profile and refuses without
-  provider contact when no capacity is available;
+- before stage 3 provider execution, v0.111.9 atomically reserves one exact local
+  provider-handle capacity charge and v0.111.11 performs the selected holding-
+  token, atomic-quota, or static-slot provider admission for this operation/
+  profile; unavailable hard-mode capacity refuses without creating key material
+  or an ambiguous handle;
 - stage 3: provider/key agent creates or wraps exactly one key under the bound
   operation/idempotency key and durably journals handle/wrap/result/evidence so
   an exact retry returns the prior result or remains explicitly ambiguous;
@@ -8706,11 +8708,13 @@ Deliverables:
   reachable records depend on them, cannot authorize new writes, and cannot be
   dropped while admitted history/rollback/recovery still references their keys
   or decoders;
-- authorized daemon operational-policy suite rotation creates an old-suite-
-  authenticated `DaemonJournalSuiteTransition` binding old final root/sequence,
-  old/new suite and key epochs, new key descriptor/assurance, transition operation
-  and first-new-chain commitment; the first new-suite record binds that transition
-  and prior old root, preserving both histories without re-MACing old records;
+- authorized daemon operational-policy suite rotation uses the non-circular
+  v0.111.10 bridge: an old-suite-authenticated `DaemonJournalSuiteTransition`
+  binds old final root/sequence, old/new suite and key epochs, new key descriptor/
+  assurance, transition operation and a `NewChainGenesisDescriptor` that contains
+  no new-record tag or tag-dependent commitment; the first new-suite record binds
+  that exact authenticated transition/tag, descriptor and prior old root,
+  preserving both histories without re-MACing old records;
 - suite downgrade, old-key early retirement, transition omission, dual active
   writers, new-suite record on old epoch, and old-suite write after activation
   fail closed; rollback cannot reopen the retired suite for writes;
@@ -8753,11 +8757,12 @@ Deliverables:
   `CompletedUnpublished`, `Orphan`, `Conflict`, active published handles, and
   `AbandonedPendingDestruction`; state movement transfers one charge atomically
   and never refunds or duplicates it;
-- before any create/generate/import/wrap provider call, daemon and provider
-  journals durably reserve capacity for the exact v0.111.7 operation/request
-  digest and provider idempotency key; unavailable local/provider capacity returns
-  stable `ProviderCapacityUnavailable` before provider execution or key material
-  creation and leaves no provider-side operation claim;
+- before any create/generate/import/wrap provider call, the daemon durably
+  reserves local aggregate capacity and the authenticated v0.111.11 provider
+  capability profile either reserves physical capacity, atomically quota-checks
+  execution, or binds a dedicated slot for the exact v0.111.7 operation/request
+  digest and idempotency key; unavailable capacity returns stable
+  `ProviderCapacityUnavailable` without key material or an ambiguous handle;
 - a reservation may release without provider confirmation only when durable
   local/provider evidence proves execution was never admitted; after provider
   admission, timeout, unknown result or lost response remains charged until exact
@@ -8820,6 +8825,152 @@ Exit criteria:
 - Capacity is refunded only after durable confirmed destruction and complete
   reference/journal reconciliation, never from abandonment or local deletion.
 
+### v0.111.10 - Non-Circular Journal Suite Rotation Bridge
+
+Goal: rotate daemon-journal authentication suites without a commitment cycle
+between the old transition tag and the first new-chain record.
+
+Deliverables:
+
+- canonical `NewChainGenesisDescriptor` binds descriptor version, new suite ID,
+  new journal-key epoch and key-descriptor commitment, first new-chain sequence,
+  daemon identity/incarnation, random transition nonce, rotation operation ID,
+  expected old final sequence/root and old suite/key epoch, but contains no old-
+  transition tag, new-record bytes/tag, or commitment derived from either;
+- the old-suite-authenticated `DaemonJournalSuiteTransition` payload binds the
+  exact genesis descriptor and new key/provider assurance while its ordinary old-
+  suite transcript binds the prior old root/tag; it can be completely encoded
+  and tagged before any new-suite record exists;
+- the first new-suite record has a distinct `SuiteTransitionGenesis` kind whose
+  authenticated payload binds the complete old transition commitment and tag,
+  exact genesis descriptor/commitment, prior old final root/sequence, transition
+  operation and nonce; its new-suite transcript uses the descriptor's explicit
+  first sequence and genesis sentinels rather than an invented prior new tag;
+- subsequent new-suite records chain from the authenticated first new record
+  under the ordinary v0.111.8 transcript; they cannot attach directly to the old
+  root, descriptor alone, another transition, or another daemon incarnation;
+- rotation state machine is `OldWritable -> TransitionPrepared ->
+  OldTransitionCommitted -> NewGenesisCommitted -> NewActive`, with explicit
+  `Ambiguous`/`Conflict`; before old-transition commit the old chain remains the
+  sole writable chain, after commit it is permanently closed and recovery may
+  only publish/query the exact bound new genesis, and new writes begin only at
+  `NewActive`;
+- cutover publication is crash-safe: recovery exposes the complete old writable
+  chain when no transition committed, the complete closed old chain plus one
+  resumable exact pending descriptor after transition commit, or the new chain
+  with its exact authenticated bridge; it never reopens old writes or invents a
+  second descriptor/key/nonce;
+- construction API builds a directed dependency graph for descriptor fields,
+  old transition preimage/tag, new genesis preimage/tag and chain roots and
+  rejects any cycle, including direct/indirect descriptor dependence on old tag,
+  new tag, or a root containing either; review artifacts record this graph;
+- exact retry returns the existing transition/descriptor/new-genesis state;
+  concurrent rotations, different descriptors for one old root, descriptor nonce
+  reuse, new key replacement after old commit, and fixed-point search inputs enter
+  conflict without selecting by arrival order;
+- independent vectors prove old transition encoding/tagging before new record,
+  first-new-record binding to only its exact old transition/tag/descriptor,
+  mutation/substitution refusal for every bridge field, no multiple fixed points,
+  cycle-detector rejection corpus, concurrent rotation conflict, and crashes at
+  every prepare/commit/activate boundary.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- independent old-transition/new-genesis bridge vector validator;
+- dependency-cycle and rotation crash/concurrency state-machine tests.
+
+Exit criteria:
+
+- The old transition can be finalized without knowing any value derived from its
+  own tag or from the first new record.
+- The first new record is uniquely bound to one authenticated old transition and
+  descriptor, and all later records descend from that bridge.
+- Every partial rotation is one explicit recoverable old/bridged/new state; no
+  circular fixed point, dual writable chain or arrival-order choice exists.
+
+### v0.111.11 - Provider Capacity Capability Profiles
+
+Goal: enforce hard provider capacity only through capabilities the provider can
+actually guarantee, without treating local counters as physical reservations.
+
+Deliverables:
+
+- authenticated provider capability descriptor admits exactly
+  `ReserveThenExecute`, `AtomicQuotaCheckedExecute`, `DedicatedStaticSlot`, or
+  `UnverifiableCapacity`, bound to provider identity/account/namespace, profile,
+  assurance root/evidence/freshness, operation classes, quota/resource classes,
+  limits, inventory semantics and descriptor version;
+- capability discovery is authenticated and pinned by daemon/provider policy
+  before v0.111.7 provisioning; provisioning request bytes, remote peers, store
+  metadata and unauthenticated provider responses cannot select or upgrade a
+  mode, and capability changes require explicit re-admission;
+- `ReserveThenExecute` returns a durable single-use provider reservation token
+  that physically holds capacity and binds provider namespace, operation ID/
+  request digest/idempotency key, purpose, resource class/quantity, slot class,
+  creation sequence, expiry semantics and cancellation state; execution
+  atomically consumes that exact token or refuses;
+- reservation expiry/cancellation releases capacity only after the provider
+  durably proves the token unconsumed and no execution is pending/completed;
+  cancellation racing execution, timeout, lost response or unknown status remains
+  charged/ambiguous until exact provider query reconciliation;
+- `AtomicQuotaCheckedExecute` has no fictional pre-reservation: after the local
+  v0.111.9 charge, one idempotent provider operation atomically checks physical
+  quota, journals admission and creates/wraps the key, returning either one
+  durable result or a durable `ProviderCapacityUnavailable` refusal with no key,
+  handle, partial object or ambiguous capacity consumption;
+- a lost response after an admitted atomic operation follows ordinary ambiguous
+  result reconciliation; exact query distinguishes the prior key result from the
+  durable quota refusal and never re-executes to discover capacity;
+- `DedicatedStaticSlot` binds one preallocated provider slot to the exact
+  operation/request/purpose with provider compare-and-swap before generation;
+  the occupied slot is the capacity charge, cannot be rebound across store/
+  incarnation churn, and is released only by confirmed reset/destruction under
+  v0.111.9/v0.122.0;
+- `UnverifiableCapacity` means the provider cannot establish holding reservation,
+  atomic quota-checked execution, dedicated slot or complete inventory isolation;
+  it is unsupported for protected profiles and all claims of hard provider-
+  capacity bounds; explicitly lower-assurance advisory profiles may use local
+  limits only when policy permits and must report `ProviderCapacityAdvisory`;
+- a local reservation/accounting counter always bounds Sagnir's own attempts but
+  never proves physical free capacity when other clients can consume the provider
+  namespace; non-holding probes or check-then-create APIs are advisory and cannot
+  masquerade as `ReserveThenExecute`;
+- provider quota exhaustion in every hard mode is a durable typed refusal that
+  creates no key material, handle or ambiguous orphan; inability to prove this
+  behavior downgrades capability to `UnverifiableCapacity` and protected use
+  refuses before provisioning;
+- shared-provider profiles specify whether quotas are dedicated, partitioned or
+  globally contended, how external-client consumption affects guarantees, and
+  whether inventory/atomic operations are complete; post-discovery degradation
+  enters unavailable/advisory state rather than retaining a stale hard claim;
+- mode migration preserves every existing charge/token/slot/operation and cannot
+  reinterpret pending work under a stronger mode; hard-profile migration waits
+  for exact reconciliation or refuses, and downgrade never refunds capacity;
+- conformance tests cover authenticated discovery substitution, fake/non-holding
+  reservation, token replay/cross-namespace use, expiry/execution and cancel/
+  execution races, atomic refusal with zero artifacts, lost atomic response,
+  dedicated-slot CAS/rebind/reset, shared-client exhaustion, inventory limits,
+  capability downgrade/migration and protected refusal of unverifiable providers.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- provider capability-profile conformance suite;
+- constrained software, token-reservation, atomic-quota and static-slot fixtures;
+- reservation race and ambiguous-result state-machine model.
+
+Exit criteria:
+
+- Every hard physical-capacity claim names and verifies one provider-enforced
+  capability mode; local counters alone never establish provider capacity.
+- Quota refusal creates no key or ambiguous handle, while any execution/result
+  uncertainty remains charged until exact reconciliation.
+- Protected profiles refuse unverifiable or degraded capacity capabilities
+  instead of silently weakening resource-exhaustion guarantees.
+
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
 Goal: ensure untrusted remote data cannot influence trusted state before full
@@ -8849,11 +9000,11 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.9 daemon cutover, admitted authentication suite,
-  provider-capacity charge, and reconciled active store
-  quarantine key, re-protects candidate metadata under that store/authorized-
-  realm metadata key, and converts it into the candidate's durable quota charge
-  while
+  requires the v0.111.4-v0.111.11 daemon cutover, non-circular suite bridge,
+  admitted authentication suite/provider-capacity mode, and one reconciled active
+  store quarantine key, re-protects candidate metadata under that store/
+  authorized-realm metadata key, and converts it into the candidate's durable
+  quota charge while
   publishing either one complete `BoundedQuarantinedCandidate`/bundle generation
   or no durable quarantine object; expiry, short writes, crashes, cancellation,
   and `ResourceLimit` clean partial bytes, resume state, and accounting without
@@ -8863,7 +9014,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.9 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.11 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -8906,6 +9057,8 @@ Exit criteria:
   bootstrap-prefix cutover.
 - Provider-capacity exhaustion refuses before execution, and no authenticated
   daemon journal is accepted under an unknown or journal-selected suite.
+- Suite rotation cannot form a commitment cycle, and protected capacity claims
+  require an authenticated provider-enforced mode rather than a local estimate.
 
 ### v0.113.0 - Bundle Import
 
@@ -9102,6 +9255,10 @@ Deliverables:
   refusal and old/new-root-preserving rotation; provider-capacity states model
   reservation before execution, charged uncertainty/orphans/conflicts, bounded
   unknown inventory, churn-resistant aggregates and destruction-confirmed release;
+- suite-rotation bridge states model acyclic descriptor/old-transition/new-genesis
+  dependencies, old-chain close, exact pending bridge and new-chain activation;
+  provider modes model holding tokens, atomic quota-checked execution, dedicated
+  slots, unverifiable refusal, capability degradation and reservation races;
 - checkpoint, policy epoch, evidence, and key-rotation interactions;
 - equivocation and bounded fork handling;
 - invariants for no lost heads, no lost duplicate identity, no locator-based
@@ -9123,9 +9280,12 @@ Deliverables:
   no journal-selected/unknown/truncated authentication suite or decode-before-
   authentication, no provider execution without capacity reservation, no handle
   refund before confirmed destruction, no identity/store churn capacity reset,
-  no cross-purpose key use, no opaque cleanup deleting published state, no
-  linear locator-proof requirement, no stale admission, no partial trust, and
-  eventual convergence under documented assumptions;
+  no suite-transition commitment cycle or multiple fixed point, no dual writable
+  suite chain, no local counter as physical provider reservation, no hard claim
+  from unverifiable/non-holding capacity, no cross-purpose key use, no opaque
+  cleanup deleting published state, no linear locator-proof requirement, no stale
+  admission, no partial trust, and eventual convergence under documented
+  assumptions;
 - bounded model-check command required by the release gate.
 
 Verification:
@@ -9204,6 +9364,9 @@ Deliverables:
   journal-suite and provider-capacity states preserve MAC chain/key epochs and
   exact handle charges under provider partition, inventory pagination, unknown
   handles, daemon/store churn, destruction ambiguity and migration;
+  non-circular bridge and provider-mode states preserve one old/new transition,
+  token/slot/atomic-operation ownership and capability assurance under message
+  reorder, loss, partition, external capacity consumption and recovery;
 - model invariants for no lost encryption instance, no semantic/index
   completeness gap, no Byzantine manifest omission accepted, no hidden
   compartment disclosure, no endpoint-placement overwrite, no clock-derived
@@ -9222,8 +9385,10 @@ Deliverables:
   destroyed/reprovisioned after finalize-response loss, no provider-capacity
   reset/refund through partition/restart/identity churn, no unknown provider
   handle silently adopted or dropped, no journal suite selected by message bytes,
-  no arrival-order transition selection, and eventual convergence under
-  documented authority, availability, and partition assumptions;
+  no circular or alternate suite bridge, no expired/cancelled token refund while
+  execution is unknown, no unverifiable provider treated as hard capacity, no
+  arrival-order transition selection, and eventual convergence under documented
+  authority, availability, and partition assumptions;
 - counterexample corpus and deterministic bounded model-check command required
   by the v0.116.0 release gate;
 - immutable model-run manifest records model source digest, tool and solver
@@ -9317,11 +9482,11 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover, v0.111.8 admitted suite and v0.111.7/
-  v0.111.9 reconciled active store key/provider capacity; ambiguous/lost/
-  conflicting provisioning, unavailable keys or exhausted/unknown capacity
-  refuse transfer, preserve existing candidate presence/quota, and never trigger
-  automatic reprovisioning;
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.11 suite/capacity
+  closures plus the v0.111.7 reconciled active store key; ambiguous/lost/
+  conflicting provisioning, unavailable keys, cyclic rotation or exhausted/
+  unverifiable capacity refuse transfer, preserve existing candidate presence/
+  quota, and never trigger automatic reprovisioning;
 - transfer cancellation;
 - accepted response;
 - denied response;
@@ -10280,6 +10445,8 @@ Deliverables:
   store/daemon/provider operation/request/state transition target set;
 - daemon-journal MAC transcript/suite/key-epoch/rotation and provider-handle
   capacity reservation/state/inventory/destruction-release target set;
+- `NewChainGenesisDescriptor`/suite-bridge dependency and provider-capability
+  descriptor/token/atomic-operation/static-slot transition target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -10320,8 +10487,8 @@ Deliverables:
   charge conversion, daemon first-root reservation/provider reconciliation,
   authenticated complete-prefix cutover, store quarantine-key lifecycle/realm
   adoption, six-stage three-journal reconciliation, fixed HMAC-SHA3-256 journal
-  authentication/rotation, provider-capacity accounting, and atomic partial
-  cleanup;
+  authentication/rotation, acyclic old/new suite bridge, provider-capacity
+  accounting/capability modes, and atomic partial cleanup;
 - composition of the history-independent map algorithm/pages with authority
   active/covered-fence/exception/archive roots, a permanent low-sequence
   exception plus later archival, exact replay refusal, checkpoint rollback
@@ -10476,10 +10643,13 @@ Deliverables:
   commit response loss causing key destruction/reprovision, no cross-purpose key
   substitution, no journal-byte suite selection or decode-before-authentication,
   no provider execution without capacity charge, no churn-based charge reset, no
-  pre-destruction refund, no unknown-handle inventory drop, no opaque cleanup of
-  published data, no partial durable candidate after resource refusal, no abuse
-  digest or `ResourceLimit` as authority evidence, no arrival-order authority
-  selection, and eventual convergence under documented assumptions;
+  pre-destruction refund, no unknown-handle inventory drop, no suite-rotation
+  cycle/fixed-point/dual writer, no local/advisory counter as physical capacity,
+  no token cancellation refund under unknown execution, no unverifiable hard
+  provider claim, no opaque cleanup of published data, no partial durable
+  candidate after resource refusal, no abuse digest or `ResourceLimit` as
+  authority evidence, no arrival-order authority selection, and eventual
+  convergence under documented assumptions;
 - model execution instructions and CI smoke bounds.
 - model-run manifests inherit v0.115.1 exact bounds, assumptions, property
   classes, reductions, coverage counters, resources, seeds/configuration, and
@@ -10548,9 +10718,11 @@ Deliverables:
   v0.111.7 six-stage store/daemon/provider reconciliation and pending-finalize
   boundaries, v0.111.8 journal-key create/wrap/MAC/cutover/suite-transition
   boundaries, v0.111.9 provider-capacity reserve/inventory/abandon/destruction-
-  release boundaries, `ResourceLimit`, abuse-receipt rotation, cleanup, re-
-  admission, and final authority publication prove all-or-nothing durable
-  quarantine and no resource-refusal authority evidence;
+  release boundaries, v0.111.10 old-transition/genesis/new-activation boundaries,
+  v0.111.11 capability-discovery/token/atomic-quota/static-slot race boundaries,
+  `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
+  authority publication prove all-or-nothing durable quarantine and no resource-
+  refusal authority evidence;
 - secret-handle/provider-session cancellation, panic, agent-disconnect, cleanup,
   and process-boundary tests proving no partial authorization result;
 - generated-credential receiver-close, partial-delivery, possession-confirmation,
@@ -10691,11 +10863,13 @@ Deliverables:
   journal lost responses and concurrent recovery, store-commit/finalize loss,
   journal-suite/key-epoch/tag downgrade/substitution, provider-capacity exhaustion,
   thousands of orphan/store-incarnation loops, unknown inventory and destruction-
-  response loss, privacy-profile change, quota-refund, padding-budget, cross-
-  purpose key, and identifier/timing leakage probes, sender-held refusals,
-  bounded abuse-receipt rotation, expiry and restart accounting, partial-
-  candidate cleanup, and attempts to reinterpret `ResourceLimit` as signature/
-  policy/authority evidence;
+  response loss, suite-bridge cycle/substitution/concurrent rotation, provider-
+  capability spoof/downgrade, token expiry/execution races, atomic-quota refusal,
+  dedicated-slot rebind and shared-client exhaustion, privacy-profile change,
+  quota-refund, padding-budget, cross-purpose key, and identifier/timing leakage
+  probes, sender-held refusals, bounded abuse-receipt rotation, expiry and restart
+  accounting, partial-candidate cleanup, and attempts to reinterpret
+  `ResourceLimit` as signature/policy/authority evidence;
 - cloned/rolled-back pending-credential staging, provider/platform-key
   unavailability, copied staging outside its declared platform recovery context,
   cross-store/receiver possession-response replay, and concurrent delivery
@@ -10791,8 +10965,10 @@ Exit criteria:
   second root, active roots retain their complete bootstrap-prefix anchor, store/
   daemon/provider recovery cannot rebind or select conflicts, unavailable
   quarantine keys and provider orphans keep capacity charged, journal bytes
-  cannot choose/weaken authentication, fair capacity remains available to other
-  peers, and arrival order affects backpressure only.
+  cannot choose/weaken authentication, rotation bridges remain acyclic and
+  unique, hard provider capacity uses an authenticated enforceable capability,
+  fair capacity remains available to other peers, and arrival order affects
+  backpressure only.
 - Hostile peers cannot force unbounded recursive expansion or partial trust.
 
 ### v0.132.0 - Differential Vectors And Performance Budgets
@@ -10959,6 +11135,14 @@ Deliverables:
   daemon/store churn, bounded unknown/conflict inventory and overflow, shared-
   provider visibility limits, fair shares, pre-v0.122 abandonment without refund,
   destruction-response loss, and confirmed reconciled capacity release;
+- suite-rotation bridge vectors prove independent old-transition construction,
+  exact first-new-record attachment, acyclic dependency graph, no fixed-point
+  alternatives, old/bridged/new crash states and concurrent-rotation conflict;
+- provider-capability vectors cover authenticated mode discovery, holding-token
+  transcripts and expiry/cancel/execute races, atomic quota refusal with zero
+  artifacts and lost-response query, dedicated-slot bind/reset/rebind refusal,
+  advisory/unverifiable protected refusal, shared-client contention, degradation
+  and mode migration without charge reset;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - plaintext-to-encrypted authority-log cutover model/vectors and crash benchmarks
@@ -11322,6 +11506,15 @@ Deliverables:
   conflict/abandoned-destruction states; churn, unknown inventory, fair sharing,
   pre-destruction abandonment and confirmation-loss suites pass, and release
   occurs only after confirmed destruction plus complete journal reconciliation;
+- v0.111.10 suite rotation uses an acyclic `NewChainGenesisDescriptor`, old-
+  authenticated transition and first-new-record bridge; dependency-cycle,
+  fixed-point, wrong-transition/descriptor, concurrent rotation, old-chain
+  closure and every old/bridged/new crash-state fixture pass;
+- v0.111.11 authenticated provider capability profiles distinguish holding
+  reservation tokens, atomic quota-checked execution, dedicated static slots and
+  unverifiable capacity; token/execute races, zero-artifact quota refusal,
+  capability spoof/degradation, shared-client contention, static-slot binding,
+  advisory labeling and protected refusal suites pass;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -11386,6 +11579,13 @@ Deliverables:
   orphan flood, ambiguous/unknown inventory, daemon-state loss, migration/clone,
   fair-share, abandonment-no-refund and destruction-confirmation-loss fixtures
   pass against constrained provider profiles;
+- v0.111.10 construction-order/cycle detection, exact bridge attachment,
+  descriptor/tag/root substitution, no-multiple-fixed-point, concurrent rotation
+  and partial old/bridged/new publication fixtures pass;
+- v0.111.11 authenticated capability discovery, reservation-token binding/replay/
+  expiry/cancel race, atomic-quota refusal/lost response, static-slot CAS/rebind,
+  unverifiable/advisory refusal, provider degradation and mode-migration fixtures
+  pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -11642,6 +11842,11 @@ Deliverables:
   chain/incarnation context; verification is constant-time and precedes semantic
   decode, unknown/retired suites fail closed, and suite rotation binds old/new
   roots without reinterpreting prior records;
+- suite rotation is non-circular: the old authenticated transition binds a
+  `NewChainGenesisDescriptor` with no tag-derived value, the first new-suite
+  record binds that complete old transition/tag and descriptor, and subsequent
+  records chain normally; partial rotation preserves one closed-old/pending-
+  bridge/new-active state without fixed points or dual writable chains;
 - durable quarantine candidate metadata uses a purpose-separated
   `StoreQuarantineMetadataKey` active before first publication, wrapped to
   admitted daemon/provider and recovery recipients, bound to store/quarantine/
@@ -11660,6 +11865,12 @@ Deliverables:
   cannot reset it, unknown inventory fails closed within bounded resources, and
   only durable confirmed destruction plus journal/reference reconciliation
   releases physical capacity;
+- hard physical provider-capacity claims require an authenticated provider mode:
+  durable holding reservation token, atomic quota-checked idempotent execution,
+  or dedicated static slot; local/advisory counters never prove shared-provider
+  capacity, quota refusal creates no key/ambiguous handle, token/slot uncertainty
+  remains charged, and unverifiable/degraded modes are refused by protected
+  profiles;
 - privacy-preserving inner signatures, exact outer integrity/authenticity claim
   taxonomy, retained-handle preflight followed by integrity-bound capture and
   sealed/service/owned-memory/authenticated-page trusted reads, and durable
