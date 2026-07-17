@@ -8525,15 +8525,21 @@ Deliverables:
   result commitments, activated root handle/assurance evidence/key epoch,
   wrapped-root/header and active descriptor commitments, daemon journal format
   version, physical commitment algorithm, the v0.111.8 authentication suite/key
-  epoch, and domain-separated purpose;
-- the purpose-separated journal-authentication key is derived or wrapped only
-  after the provider-confirmed daemon root is available; cutover generation is
-  an idempotent bound provider/local operation and cannot request another root or
-  alter the already confirmed provider result;
+  epoch, the v0.111.14 confidentiality profile/encryption suite/key epoch, and
+  domain-separated purpose;
+- the purpose-separated journal-authentication and v0.111.14 encryption keys are
+  created or wrapped only after the provider-confirmed daemon root is available;
+  cutover encryption/authentication is an idempotent bound provider/local
+  operation and cannot request another root or alter the already confirmed
+  provider result;
 - cutover bytes and the matching active daemon-root descriptor are prepared,
   verified, synchronized, and published in one v0.23.3 daemon-domain transaction;
   a crash exposes the prior `ProviderReconciled` state or the exact cutover plus
   descriptor, never an active descriptor with an unauthenticated prefix;
+- under the protected v0.111.14 profile, the cutover's semantic payload is the
+  first encrypted daemon-journal payload and its active descriptor supplies the
+  independently trusted encryption suite/key epoch needed before open; the exact
+  outer ciphertext representation is authenticated by v0.111.8;
 - every authenticated successor commits to the cutover or preceding
   authenticated record/root and exact daemon identity/incarnation; no later
   chain may start from the active descriptor, provider handle, or a reconstructed
@@ -8692,6 +8698,11 @@ Deliverables:
   daemon identity, daemon-state incarnation, record kind, record format version,
   sequence, exact encoded record length, exact encoded payload bytes, previous
   record commitment, previous authenticated chain root, and previous tag;
+- for the protected v0.111.14 confidentiality profile, `record kind` is the
+  fixed outer encrypted-record kind, and `exact encoded payload bytes` are the
+  complete canonical encryption framing, associated-data commitment, ciphertext
+  and AEAD tag exactly as stored; plaintext semantic fields are never rebuilt to
+  compute or verify this HMAC;
 - the first cutover record uses explicit genesis sentinels for previous
   authenticated root/tag while its payload commits the complete plaintext prefix
   under v0.111.6; every successor uses the exact prior root/tag and checked
@@ -8704,8 +8715,9 @@ Deliverables:
   refusal before semantic record interpretation;
 - parser reads only the fixed bounded outer frame needed to locate exact bytes,
   applies cumulative size/work limits, verifies the full tag in constant time,
-  and only then semantically decodes payload fields or acts on record kind;
-  authentication failure has one bounded non-oracular result class;
+  and only then opens v0.111.14 ciphertext and semantically decodes payload fields
+  or acts on the inner record kind; HMAC or AEAD authentication failure has one
+  bounded non-oracular result class and releases no semantic plaintext;
 - unknown suites fail closed; retired suites remain available read-only while
   reachable records depend on them, cannot authorize new writes, and cannot be
   dropped while admitted history/rollback/recovery still references their keys
@@ -9057,17 +9069,22 @@ old-chain closure, then publish the bridge and authoritative descriptor together
 
 Deliverables:
 
-- one exclusive bounded rotation lease freezes the expected old root/sequence
-  while exact bridge bytes are prepared; ordinary old-chain writes wait during
-  preparation, but timeout, cancellation or any pre-publication failure releases
-  the lease and leaves the unchanged old chain authoritative and writable;
-- ordered preparation is: reserve/provision/reconcile the new key under
-  v0.111.9/v0.111.11, obtain v0.111.12 authorization for the exact descriptors,
-  verify provider availability with a purpose-bound non-state-changing test
-  operation where the admitted capability permits it, authenticate but do not
-  publish the old transition, authenticate and durably stage the exact new
-  genesis using that old transition tag, and independently reverify all bytes,
-  tags, descriptors, authorization and expected roots;
+- before writer exclusion, v0.111.15 verifies caller/policy eligibility, reserves
+  attempt/provider/prepared-byte budgets, provisions and reconciles the new key
+  under v0.111.9/v0.111.11, and performs every provider availability check that
+  does not depend on the final old frontier;
+- one exclusive bounded rotation lease then freezes the expected old root/
+  sequence only while final frontier-bound authorization, exact bridge-record
+  construction/staging/verification and atomic publication run; ordinary old-
+  chain writes wait during this critical section, but timeout, cancellation or
+  any pre-publication failure releases the lease and leaves the unchanged old
+  chain authoritative and writable;
+- ordered critical-section preparation is: capture and compare the expected old
+  frontier/descriptor, obtain or finalize v0.111.12 authorization for those exact
+  values, revalidate the reconciled new key, authenticate but do not publish the
+  old transition, authenticate and durably stage the exact new genesis using
+  that old transition tag, independently reverify all bytes/tags/descriptors/
+  authorization/roots, and publish under the same expected-frontier lease;
 - provider profiles without a safe test operation prove usability by the exact
   staged new-genesis MAC operation and reconcile its idempotent result; a probe,
   successful key creation or unauthenticated provider status alone never proves
@@ -9094,11 +9111,13 @@ Deliverables:
   irreversible old-close marker atomically commits that publication manifest,
   and recovery completes visibility using those bytes without another provider
   MAC, key creation, authorization or descriptor-selection operation;
-- rotation state machine is `OldWritable -> RotationLeaseHeld -> KeyReconciled
-  -> Authorized -> RecordsStaged -> PreparedDurable -> PublishedNewActive`, with
-  `Ambiguous`, `Conflict` and `AbortedBeforePublication`; only the final
-  publication changes authority, and there is no durable state whose only
-  authoritative chain is closed but lacks the exact staged new genesis;
+- rotation state machine advances through
+  `OldWritable -> AttemptPreflighted -> BudgetsReserved -> KeyReconciled`, then
+  `RotationLeaseHeld -> Authorized -> RecordsStaged -> PreparedDurable`, then
+  `PublishedNewActive`, with `Ambiguous`, `Conflict` and
+  `AbortedBeforePublication`; only final publication changes authority, and no
+  durable state has a closed sole authoritative chain without the exact staged
+  new genesis;
 - provider response ambiguity, including new-key success followed by response
   loss, staged-genesis MAC completion followed by response loss or prepared-
   manifest authentication followed by response loss, reconciles to the exact
@@ -9147,6 +9166,200 @@ Exit criteria:
 - Recovery after publication requires no new provider MAC operation and cannot
   choose, regenerate or rebase any component of the authorized staged bridge.
 
+### v0.111.14 - Confidential Daemon Journal And Rotation Staging
+
+Goal: protect post-root daemon operations and rotation staging from local or
+backup observers while preserving exact authenticated recovery.
+
+Deliverables:
+
+- named confidentiality profiles are `ProtectedEncrypted` and explicitly weaker
+  `AuthenticatedPlaintext`; protected deployments default to
+  `ProtectedEncrypted`, profile choice is authenticated in the active daemon-root
+  descriptor, and changing it requires an authorized forward transition rather
+  than a local flag or journal-controlled downgrade;
+- an independently random 256-bit `DaemonJournalEncryptionKey` is created through
+  the v0.23.0 OS-CSPRNG/provider boundary, purpose-separated from the daemon root,
+  journal HMAC key, store quarantine key, payload/realm/WAL keys, private-locator
+  keys and rotation-authorization capabilities, and wrapped or retained under the
+  admitted daemon-root/provider profile without direct root-key reuse;
+- before durable encrypted bytes exist, the milestone selects and freezes one
+  exact daemon-journal AEAD suite from the constructions admitted by v0.92.0/
+  v0.92.2, including numeric suite ID, key/nonce/tag lengths, whole-record or
+  chunked limits, nonce/subkey allocation, retry, clone/rollback, exhaustion and
+  provider behavior; unknown, unsupported or provider-selected substitutes fail
+  before write or semantic decode;
+- the v0.111.6 cutover payload and every successor daemon-journal payload,
+  v0.111.10 transition/genesis body, v0.111.12 authorization detail, v0.111.13
+  prepared/publication manifest and staging index are encrypted and authenticated
+  under the selected suite before persistence; bootstrap records that necessarily
+  precede root/key availability remain the minimal plaintext prefix committed by
+  that encrypted authenticated cutover;
+- visible record framing contains only fixed magic/version, confidentiality
+  profile, encryption suite/key epoch, HMAC suite/key epoch, checked sequence/
+  nonce allocation fields needed before open, padded ciphertext-length class and
+  one fixed outer encrypted-record kind/version; daemon/store/provider identities,
+  operation status, semantic record kind/version, exact lengths, generations,
+  paths, handles, assurance details, failure reasons and topology remain
+  ciphertext;
+- AEAD associated data binds domain/version, daemon identity/incarnation from the
+  trusted descriptor, fixed outer record kind/version, sequence, encryption
+  suite/key epoch, HMAC suite/key epoch, nonce/subkey domain, padded length class
+  and previous authenticated chain root; semantic record kind/version exists only
+  in the encrypted inner header and is validated after successful open;
+- v0.111.8 computes its full-length HMAC over the exact canonical outer framing,
+  associated-data commitment and ciphertext/tag bytes as stored; verification
+  authenticates those exact bytes before AEAD open, and neither side reconstructs
+  plaintext to determine the MAC transcript;
+- nonce/session behavior inherits v0.92.0 and v0.92.2: allocation is crash-safe,
+  clone/rollback-safe under the admitted profile, checked for exhaustion, bound
+  to daemon incarnation/record identity and never reused for changed plaintext/
+  AD; ambiguous encryption queries exact prior provider state or fences that
+  nonce/key domain and cannot blindly re-encrypt;
+- physical journal, staging, manifest and temporary filenames are independently
+  random or keyed opaque identifiers with bounded directory bucketing; plaintext
+  operation IDs, record kinds, generations, provider handles and exact descriptor
+  fields never appear in paths, lock names, cleanup journals, logs or diagnostics;
+- authenticated private indexes map opaque storage names to encrypted record/
+  manifest identity and remain encrypted under the operational metadata boundary;
+  missing indexes trigger bounded authenticated rebuild from outer frames without
+  exposing decrypted names or selecting authority by directory order;
+- encryption-key epoch/lifecycle is versioned independently from HMAC suite/key
+  epoch and daemon-root epoch; routine rewrap or encryption-key rotation does not
+  rotate the journal MAC key, change semantic chain roots, reinterpret old
+  ciphertext or silently force suite migration, and HMAC rotation does not reuse
+  or retire an encryption key;
+- old encryption keys/decoders remain available read-only while reachable journal
+  or staged history depends on them; rotation writes new ciphertext under a new
+  epoch through an authenticated descriptor transition, while physical re-
+  encryption is a separate copy-on-write migration preserving authenticated
+  logical record commitments and rollback evidence;
+- locked, revoked, unavailable, lost or wrong encryption keys produce typed
+  `JournalConfidentialityUnavailable` before payload decode, rotation recovery,
+  provider-handle use or authority mutation; there is no plaintext fallback,
+  empty-state interpretation, automatic key replacement or weaker-profile retry;
+- repositories created by v0.111.6-v0.111.13 migrate through an explicit signed/
+  authenticated plaintext-to-encrypted frontier that records prior leakage,
+  provisions the encryption key before activation and never relabels historical
+  plaintext as confidential; retained plaintext remains authenticated history or
+  moves through copy-on-write encrypted archival under declared retention rules;
+- status, audit and diagnostics expose only profile-approved coarse states and
+  opaque operation references; privileged decrypted inspection requires an
+  explicit capability and remains sanitized, while remote/public telemetry never
+  reveals rotation timing, provider changes, failure history or exact volumes;
+- documentation states that HMAC-only `AuthenticatedPlaintext` intentionally
+  exposes bounded operational payloads and that the pre-root bootstrap prefix and
+  observations made before encryption cannot be concealed retroactively;
+- vectors/tests cover outer-field/ciphertext/tag/AD mutation, wrong HMAC or AEAD
+  epoch, nonce replay, outer/inner-kind confusion, padded-length confusion,
+  ciphertext splicing, opaque-name correlation, plaintext remnants in paths/logs,
+  locked recovery, unavailable provider, independent HMAC/encryption rotation,
+  downgrade/profile rollback, earlier-store migration and bootstrap/prior-
+  plaintext leakage disclosure.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- independent encrypt-then-HMAC outer-frame and AEAD associated-data vectors;
+- nonce/retry/clone state-machine and process-kill recovery suite;
+- filesystem/log leakage scanner for journal and rotation staging fixtures.
+
+Exit criteria:
+
+- Protected post-root journal payloads and rotation manifests are never durable
+  as plaintext, and their exact ciphertext representation is HMAC-authenticated.
+- Visible bytes and names reveal only the declared bounded framing, epochs and
+  padded length class; provider, topology, operation and failure details remain
+  inside authenticated ciphertext.
+- Encryption-key unavailability refuses protected recovery or mutation without
+  fallback, while minimal bootstrap and weaker-profile leakage stay explicit.
+
+### v0.111.15 - Starvation-Resistant Journal Rotation Scheduling
+
+Goal: prevent unauthorized, slow or repeated rotation attempts from monopolizing
+the daemon-journal writer while retaining exact atomic-cutover guarantees.
+
+Deliverables:
+
+- a non-authoritative preflight verifies caller capability, principal, operation
+  class, requested suite/profile transition, coarse policy eligibility, provider
+  compatibility and daemon recovery state before an attempt may reserve resources
+  or enter the exclusive-writer queue; invalid/unauthorized requests never acquire
+  or delay the rotation lease;
+- before provider work or writer exclusion, one durable rotation-attempt record
+  reserves checked per-attempt and aggregate provider-work, cryptographic-work,
+  prepared-plaintext/ciphertext-byte, temporary-storage and elapsed-time budgets
+  under daemon/principal/provider/profile limits; identity, process, restart,
+  cancellation or operation-ID churn cannot reset or multiply those charges;
+- new journal HMAC/encryption keys and provider handles are provisioned and exact
+  ambiguous results reconciled before writer exclusion whenever their request
+  does not require the final old frontier; provider timeout/unavailability at this
+  stage consumes its charged attempt but cannot block ordinary journal writes;
+- preliminary authority and policy checks run before queueing, while the final
+  v0.111.12 authorization binds the exact old root/sequence and descriptor only
+  after the lease captures that frontier; slow/revoked/stale final authorization
+  is bounded by the critical-section deadline and never rebased;
+- fair writer queue gives already queued ordinary journal writes precedence after
+  any rotation lease releases; the same principal, operation family or equivalent
+  retried request cannot reacquire ahead of those writers, split into Sybil
+  attempts, or maintain effective exclusivity through timeout/requeue loops;
+- hard checked limits cover concurrent pending attempts, queued attempts per
+  principal/daemon, cumulative lease-hold time per rolling admitted window,
+  consecutive failed attempts, prepared bytes and unresolved provider operations;
+  exhaustion returns a typed refusal before lease acquisition and cannot evict
+  existing ordinary writes, active state or ambiguous provider evidence;
+- the exclusive critical section contains only expected-frontier/descriptor
+  capture, final authorization, exact old-transition/new-genesis construction,
+  v0.111.14 encryption/HMAC, bounded staging/reverification and v0.111.13 atomic
+  publication; key generation, unconstrained network discovery, interactive
+  approval and provider retry loops are prohibited inside it;
+- a maximum critical-section duration is enforced from a trusted monotonic clock
+  and is shorter than and independent of provider/network timeout; reaching it
+  aborts pre-publication authority, releases the writer lease and schedules queued
+  ordinary writes even when an external provider operation remains unresolved;
+- provider/key/MAC/encryption operations started inside the section use one
+  idempotent operation and bounded local wait; timeout becomes separately charged
+  `Ambiguous`, its later result is reconciled outside the lease and stale staged
+  output cannot publish or justify immediate lease reacquisition;
+- cancellation, caller disconnect, authorization refusal, stale frontier,
+  staging failure or deadline atomically releases the writer lease and unused
+  local work/prepared-byte reservations, then securely removes non-authoritative
+  plaintext staging; provider handles/operations remain charged under v0.111.9/
+  v0.111.11 until exact reconciliation/destruction, while uncertain staged
+  ciphertext retains its local attempt/storage charge until recovery proves it
+  non-published and completes authenticated cleanup;
+- successful publication transfers only the exact consumed attempt/provider/
+  staging charges into retained authoritative accounting; cleanup/refund is
+  journaled and cannot race provider completion, publication or recovery;
+- starvation and repeated-attempt audit events are stored under v0.111.14
+  confidentiality with exact privileged counters; ordinary/public status reports
+  only coarse pressure/refusal classes and cannot reveal rotation timing,
+  principal identity, provider latency or failure history;
+- deterministic scheduler/model tests cover unauthorized lease attempts, slow or
+  revoked final authorization, unavailable/slow HSM, provider response loss,
+  repeated timeout/reacquire, principal/operation-ID churn, queued-writer fairness,
+  cumulative hold/failure limit exhaustion, cancellation/resource release,
+  ambiguous-operation retention and successful rotation under sustained writes.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-crypto`
+- fair writer/rotation scheduler state-machine and bounded-starvation proof;
+- provider-timeout, cancellation and queued-writer concurrency integration suite;
+- encrypted audit/leakage and cumulative-budget persistence tests.
+
+Exit criteria:
+
+- Unauthorized or ineligible callers cannot acquire the rotation lease, and
+  provider provisioning/ambiguity outside the final frontier does not block
+  ordinary journal writes.
+- Every exclusive section has an independent hard duration and cumulative budget;
+  queued ordinary writers run before a failed requester can reacquire.
+- Failure releases local lease resources atomically while retaining every
+  ambiguous provider charge and confidential audit event for reconciliation.
+
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
 Goal: ensure untrusted remote data cannot influence trusted state before full
@@ -9176,10 +9389,11 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.13 daemon cutover, non-circular suite bridge,
-  independent rotation authorization, fully staged atomic publication, admitted
-  authentication suite/provider-capacity mode, and one reconciled active store
-  quarantine key, re-protects candidate metadata under that store/
+  requires the v0.111.4-v0.111.15 daemon cutover, non-circular suite bridge,
+  independent rotation authorization, fully staged atomic publication,
+  protected journal confidentiality and starvation-resistant scheduling,
+  admitted authentication suite/provider-capacity mode, and one reconciled
+  active store quarantine key, re-protects candidate metadata under that store/
   authorized-realm metadata key, and converts it into the candidate's durable
   quota charge while
   publishing either one complete `BoundedQuarantinedCandidate`/bundle generation
@@ -9191,7 +9405,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.13 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.15 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -9439,6 +9653,14 @@ Deliverables:
   prepared manifest and atomic old-transition/new-genesis/descriptor activation;
   provider modes model holding tokens, atomic quota-checked execution, dedicated
   slots, unverifiable refusal, capability degradation and reservation races;
+- daemon-journal confidentiality states model plaintext bootstrap, protected
+  encrypt-then-HMAC records/manifests, AEAD nonce/session allocation, independent
+  HMAC/encryption epochs, locked/unavailable keys, opaque names, padding classes
+  and explicit authenticated-plaintext leakage profile transitions;
+- rotation scheduler states model capability/policy preflight, attempt/provider/
+  byte budget reservation, pre-lease key reconciliation, fair writer queue,
+  cumulative lease-hold/failure limits, independent critical deadline,
+  cancellation/resource release and separately charged provider ambiguity;
 - checkpoint, policy epoch, evidence, and key-rotation interactions;
 - equivocation and bounded fork handling;
 - invariants for no lost heads, no lost duplicate identity, no locator-based
@@ -9462,7 +9684,11 @@ Deliverables:
   refund before confirmed destruction, no identity/store churn capacity reset,
   no suite-transition commitment cycle or multiple fixed point, no dual writable
   suite chain, no retiring MAC key authorizing its successor, no closed-old-only
-  publication state, no recovery-time provider MAC after activation, no local
+  publication state, no recovery-time provider MAC after activation, no protected
+  journal plaintext or unauthenticated ciphertext, no AEAD nonce reuse or HMAC/
+  encryption epoch coupling, no confidentiality fallback, no unauthorized lease
+  acquisition, no provider provisioning under writer exclusion when independent
+  of the final frontier, no repeated rotation starvation or budget reset, no local
   counter as physical provider reservation, no hard claim from unverifiable/non-
   holding capacity, no cross-purpose key use, no opaque
   cleanup deleting published state, no linear locator-proof requirement, no stale
@@ -9551,6 +9777,10 @@ Deliverables:
   authority/descriptor CAS, durable staged bytes, token/slot/atomic-operation
   ownership and capability assurance under message reorder, loss, partition,
   external capacity consumption and recovery;
+- confidential-journal and rotation-scheduler states preserve exact ciphertext/
+  HMAC chains, nonce and independent key epochs, opaque storage metadata,
+  preflight/budget charges, fair queued writers and cumulative hold limits under
+  restart, provider delay, cancellation, repeated requests and recovery;
 - model invariants for no lost encryption instance, no semantic/index
   completeness gap, no Byzantine manifest omission accepted, no hidden
   compartment disclosure, no endpoint-placement overwrite, no clock-derived
@@ -9572,8 +9802,11 @@ Deliverables:
   no circular or alternate suite bridge, no old-key-only rotation authority, no
   closed old chain before atomic new-genesis/descriptor publication, no expired/
   cancelled token refund while execution is unknown, no unverifiable provider
-  treated as hard capacity, no arrival-order transition selection, and eventual
-  convergence under documented authority, availability, and partition assumptions;
+  treated as hard capacity, no plaintext protected journal or profile downgrade,
+  no key-unavailable empty/fallback state, no unauthorized or repeated rotation
+  attempt starving ordinary writers, no ambiguous provider charge released with
+  the local lease, no arrival-order transition selection, and eventual convergence
+  under documented authority, availability, and partition assumptions;
 - counterexample corpus and deterministic bounded model-check command required
   by the v0.116.0 release gate;
 - immutable model-run manifest records model source digest, tool and solver
@@ -9667,12 +9900,14 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.13 suite,
-  capacity, independent-authorization and atomic-cutover closures plus the
-  v0.111.7 reconciled active store key; ambiguous/lost/conflicting provisioning,
-  unavailable keys, cyclic or retiring-key-only rotation, incomplete staging or
-  exhausted/unverifiable capacity refuse transfer, preserve existing candidate
-  presence/quota, and never trigger automatic reprovisioning;
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.15 suite,
+  capacity, independent-authorization, atomic-cutover, confidentiality and
+  rotation-scheduling closures plus the v0.111.7 reconciled active store key;
+  ambiguous/lost/conflicting provisioning, unavailable HMAC/encryption keys,
+  confidentiality downgrade, cyclic or retiring-key-only rotation, incomplete
+  staging, exhausted/unverifiable capacity or rotation starvation state refuse
+  transfer, preserve existing candidate presence/quota, and never trigger
+  automatic reprovisioning or plaintext fallback;
 - transfer cancellation;
 - accepted response;
 - denied response;
@@ -10636,6 +10871,13 @@ Deliverables:
 - `DaemonJournalRotationAuthorization`, authority/descriptor compare-and-swap,
   retiring-key compromise, prepared rotation manifest, staged bridge bytes and
   atomic publication/recovery target set;
+- encrypted daemon-journal outer frame/AD/ciphertext/HMAC transcript, fixed outer
+  and encrypted inner kind, opaque name/index, padded-length class, AEAD nonce/
+  epoch/rotation/locked state and
+  authenticated-plaintext profile transition target set;
+- rotation-attempt preflight/budget record, fair writer queue, cumulative hold/
+  failure accounting, critical deadline, cancellation/refund and ambiguous-
+  provider-charge separation target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -10678,8 +10920,10 @@ Deliverables:
   adoption, six-stage three-journal reconciliation, fixed HMAC-SHA3-256 journal
   authentication/rotation, acyclic old/new suite bridge, provider-capacity
   accounting/capability modes, retiring-key-independent rotation authorization,
-  fully staged genesis and atomic bridge/descriptor publication, and atomic
-  partial cleanup;
+  fully staged genesis and atomic bridge/descriptor publication, protected post-
+  root encrypt-then-HMAC journal/manifests with independent AEAD/HMAC epochs and
+  opaque storage names, preflighted/budgeted fair rotation scheduling with pre-
+  lease provider reconciliation, and atomic partial cleanup;
 - composition of the history-independent map algorithm/pages with authority
   active/covered-fence/exception/archive roots, a permanent low-sequence
   exception plus later archival, exact replay refusal, checkpoint rollback
@@ -10839,8 +11083,11 @@ Deliverables:
   successor, no closed old chain before a verified durable new genesis, no
   recovery-time provider MAC after atomic publication, no local/advisory counter
   as physical capacity, no token cancellation refund under unknown execution,
-  no unverifiable hard provider claim, no opaque cleanup of published data, no partial durable
-  candidate after resource refusal, no abuse digest or `ResourceLimit` as
+  no unverifiable hard provider claim, no protected journal plaintext, no AEAD
+  nonce reuse or encryption/HMAC epoch confusion, no confidentiality downgrade,
+  no unauthorized lease acquisition, cumulative-hold bypass or rotation-request
+  starvation, no opaque cleanup of published data, no partial durable candidate
+  after resource refusal, no abuse digest or `ResourceLimit` as
   authority evidence, no arrival-order authority selection, and eventual
   convergence under documented assumptions;
 - model execution instructions and CI smoke bounds.
@@ -10914,8 +11161,11 @@ Deliverables:
   release boundaries, v0.111.10 old-transition/genesis/new-activation boundaries,
   v0.111.11 capability-discovery/token/atomic-quota/static-slot race boundaries,
   v0.111.12 independent authorization/descriptor-CAS/compromise-recovery
-  boundaries, v0.111.13 rotation-lease/key-reconciliation/staged-record/
+  boundaries, v0.111.13 key-reconciliation/rotation-lease/staged-record/
   prepared-manifest/atomic-publication boundaries,
+  v0.111.14 encryption-key/nonce/outer-frame/ciphertext-HMAC/opaque-index/profile-
+  transition boundaries, v0.111.15 preflight/budget/key-before-lease/fair-queue/
+  critical-deadline/cancellation boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -11064,8 +11314,12 @@ Deliverables:
   dedicated-slot rebind and shared-client exhaustion, forged old-key-valid
   rotation, stale/cross-incarnation independent authorization, conflicting
   descriptor compare-and-swap, provider loss during staged genesis, prepared-
-  manifest corruption and old-close/descriptor-switch races, privacy-profile
-  change, quota-refund, padding-budget, cross-purpose key, and identifier/timing leakage
+  manifest corruption and old-close/descriptor-switch races, journal ciphertext/
+  AD/HMAC substitution, nonce/epoch replay, opaque-name correlation,
+  confidentiality downgrade/locked-key fallback, unauthorized lease attempts,
+  slow authorization/HSM, repeated timeout/reacquire, queued-writer starvation,
+  cumulative hold-limit exhaustion, privacy-profile change, quota-refund,
+  padding-budget, cross-purpose key, and identifier/timing leakage;
   probes, sender-held refusals, bounded abuse-receipt rotation, expiry and restart
   accounting, partial-candidate cleanup, and attempts to reinterpret
   `ResourceLimit` as signature/policy/authority evidence;
@@ -11167,9 +11421,11 @@ Exit criteria:
   cannot choose/weaken authentication, rotation bridges remain acyclic and
   unique, retiring MAC keys cannot authorize successors, no old chain closes
   before the exact new genesis and descriptor switch can publish atomically,
-  hard provider capacity uses an authenticated enforceable capability, fair
-  capacity remains available to other peers, and arrival order affects
-  backpressure only.
+  protected journal/staging data remains ciphertext with no locked-key fallback,
+  provider delay and repeated rotation requests cannot starve queued ordinary
+  writers or reset cumulative budgets, hard provider capacity uses an
+  authenticated enforceable capability, fair capacity remains available to other
+  peers, and arrival order affects backpressure only.
 - Hostile peers cannot force unbounded recursive expansion or partial trust.
 
 ### v0.132.0 - Differential Vectors And Performance Budgets
@@ -11353,6 +11609,15 @@ Deliverables:
   new-key and provider-MAC ambiguity reconciliation, exact prepared-manifest
   bytes/tags/durability, corruption and every sync/CAS boundary, atomic old-close/
   new-genesis/descriptor publication, and recovery without another provider MAC;
+- confidential-journal vectors and benchmarks cover exact AEAD suite/nonce/AD,
+  ciphertext-first HMAC transcript, fixed outer/encrypted inner kind, opaque name/
+  index encoding, padded-length leakage, independent encryption/HMAC epoch
+  rotation, locked recovery, profile downgrade refusal and plaintext-remnant
+  scanning;
+- rotation-scheduler vectors and benchmarks cover unauthorized preflight refusal,
+  durable aggregate attempt/provider/byte budgets, pre-lease key reconciliation,
+  maximum critical-section latency, fair queued-writer progress, cumulative hold/
+  failure exhaustion, cancellation cleanup and ambiguous-provider retention;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - plaintext-to-encrypted authority-log cutover model/vectors and crash benchmarks
@@ -11735,6 +12000,16 @@ Deliverables:
   manifest, then atomically publishes all three; every provider ambiguity,
   corruption, crash and old-write/descriptor race exposes the complete unchanged
   old state or complete new state and recovery performs no new provider MAC;
+- v0.111.14 protected daemon journals and rotation manifests use one admitted
+  AEAD construction with independent encryption/HMAC keys and epochs, exact
+  ciphertext HMAC, nonce-safe retry, fixed outer/encrypted inner kinds, opaque
+  names, padded lengths and no locked-key/plaintext fallback; weaker bootstrap/
+  plaintext leakage stays named;
+- v0.111.15 rotation attempts pass capability/policy preflight and durable
+  aggregate budgets, reconcile new keys before the fair writer queue, and obey an
+  independent critical deadline/cumulative hold limit; unauthorized, slow,
+  cancelled and repeated attempts cannot starve queued ordinary writes or erase
+  ambiguous provider charges;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -11812,6 +12087,14 @@ Deliverables:
 - v0.111.13 rotation-lease, key/MAC response ambiguity, bound usability check,
   staged-byte/tag corruption, prepared-manifest durability, atomic old-close/new-
   genesis/descriptor switch and every preparation/publication crash fixture pass;
+- v0.111.14 exact outer-frame/AEAD-AD/ciphertext-HMAC vectors, nonce/retry/clone,
+  opaque-name/index and padded-length leakage, independent epoch rotation,
+  locked/unavailable key, profile downgrade, earlier plaintext-store migration
+  and plaintext-remnant fixtures pass;
+- v0.111.15 unauthorized preflight, attempt/provider/byte budget persistence,
+  key-before-lease ordering, slow/revoked authorization, unavailable HSM,
+  timeout/reacquire, queued-writer fairness, cumulative hold/failure exhaustion,
+  cancellation cleanup and ambiguous-provider retention fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -12076,6 +12359,18 @@ Deliverables:
   manifest permits atomic old-close/new-genesis/descriptor publication without
   a closed-old-only state, fixed points, dual writable chains or recovery-time
   provider MAC operation;
+- protected post-root daemon-journal payloads, bridge records and prepared/
+  publication manifests use a purpose-separated admitted AEAD key/suite with
+  nonce-safe retry and independently versioned encryption/HMAC epochs; HMAC binds
+  exact ciphertext, names and kinds are opaque, lengths are padded, unavailable
+  keys refuse without plaintext fallback, and bootstrap/weaker-profile leakage is
+  explicit;
+- rotation scheduling rejects unauthorized/ineligible requests before lease
+  acquisition, durably budgets attempts/provider work/prepared bytes, reconciles
+  new keys before writer exclusion, and limits the final frontier-bound critical
+  section independently of provider timeout; fair queued ordinary writers and
+  cumulative hold/failure limits prevent repeated rotation starvation while
+  ambiguous provider work remains charged;
 - durable quarantine candidate metadata uses a purpose-separated
   `StoreQuarantineMetadataKey` active before first publication, wrapped to
   admitted daemon/provider and recovery recipients, bound to store/quarantine/
