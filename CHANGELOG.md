@@ -5,6 +5,9 @@ All notable Sagnir changes are recorded here.
 ## Unreleased
 
 - Updated the workspace and current documentation to Rust stable 1.97.1.
+- Made terminal-fence activation explicitly dormant until causal stability,
+  authenticated map proofs output-sensitive with subtree summaries, separated
+  transparency map/log roots, and added a production secret-input milestone.
 - Split authenticated-map algorithm admission from page implementation, changed
   terminal compaction to exact covered fences around permanent exceptions, and
   documented passphrase bootstrap's unavoidable offline-guessing boundary.

@@ -1316,6 +1316,10 @@ Deliverables:
 - immutable bounded-fanout page format with independent leaf/internal domain
   labels, exact algorithm/page version, level, entry/child count, canonical key
   range/boundary evidence, payload byte length, and child/page commitments;
+- every internal child descriptor authenticates canonical child key range or
+  boundary, subtree entry count, subtree reachable-page count, child level/
+  height, and child commitment; checked summary arithmetic rejects overflow and
+  parent/root totals are recomputed from child summaries rather than trusted;
 - page boundaries, underfull handling, neighboring-page rebalance, normalization,
   and deterministic bulk build are exactly the admitted v0.17.1 construction;
   equivalent key/value sets have one logical shape/root independent of operation
@@ -1326,8 +1330,16 @@ Deliverables:
 - protocol limits bound page bytes, entries, fanout, height, key/value lengths,
   proof nodes, update/normalization pages, and cumulative decode/hash/work
   budgets before allocation or cryptographic work;
-- logarithmic lookup, inclusion, absence, update, range, and page-set
-  completeness proof formats with independent reference verification;
+- point lookup, inclusion, absence, and bounded single-key update proofs are
+  `O(height)` plus normalization pages; range and page-set completeness proofs
+  are output-sensitive `O(height + emitted_entries_or_pages)` and never described
+  as logarithmic in result size;
+- separate protocol maxima bind requested/emitted entries, emitted pages, proof
+  nodes/bytes, subtree-summary work, and cumulative decode/hash/work so a valid
+  large result cannot bypass ordinary proof budgets;
+- incremental updates authenticate old path summaries and recompute affected
+  subtree/global entry and reachable-page counts in work proportional to height
+  plus changed/normalized pages, without traversing unaffected subtrees;
 - deterministic full rebuild streams bounded sorted entries and independently
   recomputes root/count/height/page-count without loading or trusting the whole
   map at once;
@@ -1340,8 +1352,10 @@ Deliverables:
   path before use;
 - malformed offset/range/boundary, page/level substitution, omitted or duplicate
   page, duplicate/out-of-order key, separator mismatch, non-canonical underfull
-  page/rebalance, count/height/page-count mismatch, deep tree, fanout violation,
-  cyclic reference, stale root, update omission, and budget exhaustion tests;
+  page/rebalance, child key-range/entry-count/page-count/height mismatch,
+  summary overflow, root count mismatch, deep tree, fanout violation, cyclic
+  reference, stale root, update omission, oversized result, and cumulative-
+  budget exhaustion tests;
 - every incremental mutation is differentially checked against canonical full
   rebuild in exhaustive small maps and randomized long histories, including
   delete/reinsert and adversarial boundary/key distributions;
@@ -1362,6 +1376,8 @@ Exit criteria:
   allocation to load, update, prove, or rebuild it.
 - Incremental roots equal canonical rebuild roots after every operation, while
   missing, substituted, mutable, or non-canonical pages fail before authority.
+- Root counts and output-sensitive proof limits are independently verifiable from
+  authenticated subtree summaries without whole-map traversal.
 
 ### v0.18.0 - Realm Genesis And Governance Schema
 
@@ -2226,14 +2242,24 @@ Exit criteria:
 
 ### v0.23.6 - Authority Terminal Fences And Epoch Archives
 
-Goal: bound active authority-state growth while preserving exact replay
-rejection, ambiguity evidence, and historical operation verification.
+Goal: admit bounded authority terminal-fence/archive formats, exact replay lookup,
+models, and inert transition machinery before later governance, retention, and
+causal-stability releases can activate production advancement.
 
 Deliverables:
 
 - model and canonical formats complete before terminal entries can leave the
   active map; the v0.23.3 composite `AuthorityStateRoot` schema is reused rather
   than replaced by an incompatible root;
+- production fence advancement, active-entry archival/removal, archive-body
+  retirement, and logical compaction are disabled in this release; production
+  APIs return an explicit unsupported/not-activated result and cannot accept
+  locally fabricated placeholder evidence;
+- v0.23.6 implements canonical parsing/verification, replay lookup against
+  already admitted fixtures, model/reference transitions, and crash-test-only
+  inert transition code; v0.52.0 is the sole activation milestone after its
+  verifier composes v0.27.0 checkpoints, v0.35.0 retention policy, and complete
+  all-active-replica stability/retirement evidence;
 - active map retains operations above the covered fence that are `Reserved`,
   `InProgress`, `Ambiguous`, `Disputed`, equivocation-bearing, sequence-gap, or
   policy-retained completed; at or below the fence, terminal entries live in an
@@ -2284,21 +2310,22 @@ Deliverables:
   legal hold, or configured audit policy remain authenticated and reachable;
   archival unavailability may block historical verification but never permits
   replay or fabricates successful verification;
-- one WAL transaction copy-on-write publishes archive pages, exception/fence
-  pages, active-map removals, new archive manifest, and resulting composite
-  `AuthorityStateRoot`; partial publication or recovery keeps the old root;
+- modeled/test-only transition uses one WAL transaction to copy-on-write publish
+  archive pages, exception/fence pages, active-map removals, new archive
+  manifest, and resulting composite `AuthorityStateRoot`; production cannot call
+  this transition until v0.52.0 activation, and partial publication/recovery in
+  fixtures keeps the old root;
 - full rebuild streams active, fence, exception, and archive manifests under
   cumulative limits and independently recomputes every component/count/root plus
   exact interval coverage/disjointness;
 - no Bloom filter, cuckoo filter, approximate set, cache hit/miss, wall clock,
   archive availability, or caller assertion may decide authoritative replay
   acceptance;
-- live deletion/retirement of replaced active pages or detailed archive bodies
-  remains unavailable until v0.27.0 signed checkpoints, v0.35.0 retention
-  policy, and v0.52.0 all-active-replica causal stability or governed replica
-  retirement authorize it; this release admits formats, state transitions,
-  exact replay checks, and model/tests without creating pre-governance or
-  quorum-in-place-of-missing-replica deletion authority;
+- live fence/root mutation and deletion/retirement of replaced active pages or
+  detailed archive bodies remain unavailable until v0.52.0 activates them using
+  v0.27.0 signed checkpoints, v0.35.0 retention policy, and all-active-replica
+  causal stability or governed replica retirement; this release creates no pre-
+  governance or quorum-in-place-of-missing-replica mutation authority;
 - fence advancement binds the acknowledged stable frontier, per-replica
   sequence watermark, required parent frontier, and replica incarnation from
   v0.52.0; hidden higher-sequence stale-lineage events, cloned replica state, or
@@ -2324,13 +2351,15 @@ Verification:
 
 Exit criteria:
 
-- Active authority state can remain proportional to unresolved work above the
-  fence plus exact covered exceptions/retention state rather than total lifetime
-  operations, without making any old sequence usable.
+- Formats and bounded models demonstrate that later active authority state can
+  become proportional to unresolved work above the fence plus exact covered
+  exceptions/retention state, but no production fence is advanced in this tag.
 - Every replay decision is exact and authenticated; missing archives or caches
   can reduce historical availability but cannot weaken replay refusal.
 - Terminal compaction cannot discard ambiguity, equivocation, gaps, governed
   retention evidence, or commitments needed to verify reachable history.
+- Production mutation remains visibly inactive until v0.52.0; v0.23.6 success
+  cannot be interpreted as live compaction availability.
 
 ### v0.24.0 - Key Lifecycle And Anti-Replay
 
@@ -3421,9 +3450,24 @@ Deliverables:
   matching v0.23.6 terminal-operation fence and archive eligibility; its replica
   set/frontiers/watermarks/incarnations must cover every affected operation
   scope, and a governance quorum cannot stand in for a missing acknowledgement;
+- activate the formerly inert v0.23.6 fence/archive transition only after one
+  typed admission result verifies the exact v0.27.0 checkpoint ancestry,
+  v0.35.0 canonical retention/legal-hold decision, membership epoch, every
+  active-replica acknowledgement or governed retirement cutoff, covered interval
+  proof, and expected old composite authority-state root;
+- absence, staleness, unsupported version, or ambiguity in any prerequisite
+  keeps production advancement disabled for that scope; local configuration,
+  operator privilege, resource pressure, or a governance quorum alone cannot
+  substitute for the typed activation evidence;
+- activated transition atomically publishes active/archive/exception/fence pages
+  and the new composite root through the v0.23.6 WAL contract, then records the
+  exact stability/checkpoint/retention evidence roots used for the decision;
 - terminal fence/archive transition records the exact stability or retirement
   evidence root so later restoration, stale-lineage submission, or hidden
   higher-sequence operation fails against both causal and replay boundaries;
+- activation tests prove v0.23.6-only binaries/fixtures refuse production
+  advancement, missing checkpoint/policy/replica evidence fails closed, and the
+  first admitted v0.52.0 transition preserves replay refusal across restart;
 - replica-creation quotas and governance-backed Sybil controls;
 - actor- and device-level aggregate replica and duplicate-creation budgets whose
   accounting survives new replica incarnations, device restoration, replica
@@ -3512,6 +3556,9 @@ Verification:
 Exit criteria:
 
 - Device churn does not make frontiers grow without bound.
+- Production authority active state can become proportional to unresolved work
+  above each covered fence plus exact exceptions/retention state rather than
+  total lifetime operations, without making an old sequence usable.
 - Compaction requires sufficient stability evidence and preserves every
   potentially concurrent admitted head.
 - "Sufficient" means acknowledgement from every active replica in the committed
@@ -6040,6 +6087,9 @@ Deliverables:
 - denial-of-service limits for untrusted KDF parameters;
 - domain-separated labeled context binding realm, compartment/scope, crypto
   epoch, slot purpose, KDF suite, and wrapper suite;
+- passphrase values enter only through internal test/provider APIs in this
+  release; production CLI/bootstrap/unlock ingestion remains unavailable until
+  v0.98.2 admits secret sources and cleanup behavior;
 - no passphrase in logs or debug output tests;
 - standards known-answer, malformed parameter, weak-parameter downgrade,
   over-budget, cancellation, and wrong-passphrase response-shape tests.
@@ -6051,6 +6101,8 @@ Verification:
 Exit criteria:
 
 - A passphrase can unlock a test realm key without becoming the realm key.
+- This cryptographic baseline does not yet provide a production passphrase input
+  channel.
 
 ### v0.98.1 - Bounded Unlock Target And Oracle Resistance
 
@@ -6116,6 +6168,84 @@ Exit criteria:
 - Failures do not turn unlock into a general decryption, key-validity,
   recipient-membership, slot-occupancy, or plaintext oracle.
 
+### v0.98.2 - Secret Input And Generated Credential Boundary
+
+Goal: admit production passphrase/bootstrap-secret ingestion without exposing
+secrets through process metadata, shell history, configuration, or diagnostics.
+
+Deliverables:
+
+- sealed non-convertible `SecretInputSource` classes are
+  `InteractiveNoEcho`, `OwnedSecretDescriptor`, `CredentialProvider`, and
+  `GeneratedSecret`; callers select a source but never pass secret bytes through
+  an ordinary string/argument/config API;
+- passphrase/bootstrap-secret values are rejected from command arguments,
+  environment variables, ordinary stdin/redirection, realm/local config,
+  response files, shell completion, logs, tracing, telemetry, panic text, error
+  context, diagnostic bundles, and debug/display serialization;
+- interactive input requires a controlling terminal/console, disables echo using
+  native platform APIs, applies exact bounded byte/character limits, confirms
+  newly created secrets through a second independent read, and restores terminal
+  state on success, mismatch, cancellation, handled signal, error, and unwind;
+- redirected/non-terminal input fails unless the user explicitly selects an
+  admitted owned descriptor/handle source; the CLI never silently treats a pipe
+  or redirected ordinary stdin as an interactive secret;
+- owned descriptor/handle source binds an explicitly supplied descriptor number
+  or inherited handle identity, validates admitted ownership/access/inheritance
+  properties where the OS exposes them, refuses path reopening and ambient file
+  lookup, reads one bounded framed secret, rejects truncation/trailing data, and
+  closes or relinquishes it under declared ownership semantics;
+- credential-provider source uses an admitted provider identifier and scoped
+  short-lived secret lease or provider-side derivation interface; provider
+  metadata is non-secret, raw secret output is unavailable unless the selected
+  provider contract explicitly requires a sanitized in-process lease, and
+  cancellation/retry cannot duplicate a lease indefinitely;
+- generated source uses the admitted OS-CSPRNG boundary and is the default where
+  an admitted credential provider can retain it or an explicit owner-only secret
+  output descriptor can receive it; generated bytes never go to ordinary stdout,
+  logs, diagnostics, clipboard, or an implicit file;
+- generating salts or generated secrets fails closed on OS-CSPRNG failure;
+  user-supplied password quality is policy input based only on observable rules
+  such as minimum length or a reviewed denylist, and Sagnir never claims to
+  measure the actual entropy of a human-selected password;
+- secret bytes are bounded opaque input with explicit interactive encoding and
+  no implicit Unicode normalization, trimming, NUL termination, locale
+  conversion, or lossy replacement; confirmation compares the exact admitted
+  byte sequence;
+- in-memory secret containers are non-`Clone`, non-`Copy`, redacted, and use the
+  sanitization crate for every owned buffer and temporary; documentation retains
+  the v0.63.1 limits for compiler/OS copies, crash dumps, swap, ptrace, provider
+  memory, and intentionally released/generated recovery material;
+- source selection, descriptor numbers, provider IDs, KDF profile, and controlled
+  status may be logged, but secret length/content, confirmation difference,
+  quality-test detail that leaks the value, and derived key material may not;
+- cancellation/panic/signal/confirmation-mismatch paths drop sanitized buffers,
+  revoke provider leases where supported, restore terminal mode, and return
+  stable non-secret errors; process abort/power loss limitations are explicit;
+- PTY/console, redirected input, descriptor ownership/framing, environment/
+  argument/config rejection, generated-secret destination, credential-provider,
+  confirmation mismatch, cancellation, panic/unwind, signal, terminal restore,
+  allocation failure, and sanitization instrumentation tests.
+
+Verification:
+
+- `cargo test -p sagnir-cli`
+- `cargo test -p sagnir-crypto`
+- secret-source API compile-fail/redaction suite;
+- Unix PTY and Windows console/input-handle integration suites where available;
+- cancellation/panic/sanitization fault injection.
+
+Exit criteria:
+
+- Production passphrases and generated bootstrap secrets enter only through one
+  admitted source boundary and never through argv, environment, ordinary config,
+  logs, diagnostics, or implicit redirected input.
+- Generated secrets depend on OS-CSPRNG health; human password entropy remains
+  an honest unknown constrained only by explicit policy and KDF cost.
+- Every recoverable exit restores terminal state and sanitizes owned secret
+  buffers without overstating protection against privileged/process-memory or
+  previously copied-secret attackers.
+
 ### v0.99.0 - Device Recipients And Recipient Slots
 
 Goal: define device access and recovery without one shared user secret.
@@ -6134,20 +6264,30 @@ Deliverables:
   randomly according to the privacy profile so raw slot count and stable order
   are not unintentionally public;
 - signed recipient authorization;
-- recipient and key-transparency records anchored in the v0.17.0 canonical
-  authenticated map and append-only event commitment;
-- canonical transparency-map key, leaf, empty value, inclusion, absence,
-  update, append-only consistency, and checkpoint encodings;
+- recipient/key-transparency current state is anchored in the exact v0.17.1
+  admitted history-independent algorithm and v0.17.2 persistent map-page format,
+  supporting canonical membership, absence, and update proofs;
+- transparency history is a separate v0.17.0 append-only event commitment,
+  supporting append inclusion and prefix/consistency proofs; map proofs cannot
+  be presented as log consistency and log proofs cannot prove current absence;
+- canonical transparency-map key, leaf, empty value, inclusion, absence, and
+  update encodings are distinct from canonical transparency-event, append,
+  inclusion, and consistency encodings with non-interchangeable domain labels;
 - each leaf binds actor, device or recipient identity, key material, algorithm,
   lifecycle state, governance epoch, sequence, authorization scope, and
   supersession or revocation reference;
 - historical key states remain provable, while current absence and revocation
   cannot be represented by silently deleting a leaf;
-- checkpoint anchoring, monitor replay, peer gossip, and split-view evidence for
-  key-map roots;
-- private-realm transparency leaves, inclusion/absence proofs, consistency
-  proofs, checkpoints, monitor gossip, and split-view evidence are encrypted and
-  authenticated only to governance-authorized monitors;
+- signed transparency checkpoint binds both map root/entry count/algorithm
+  version and event-log root/size/frontier/append version plus prior checkpoint;
+  omitting or substituting either root invalidates the checkpoint;
+- monitor replay derives the map state from the separately committed event-log
+  prefix and compares the resulting map root/count, while peer gossip and split-
+  view evidence compare the complete dual-root checkpoint;
+- private-realm transparency leaves, map inclusion/absence proofs, event-log
+  append/consistency proofs, dual-root checkpoints, monitor gossip, and split-
+  view evidence are encrypted and authenticated only to governance-authorized
+  monitors;
 - blind stores and unauthorized peers receive no actor, device, recipient, role,
   key, revocation, or monitor-membership metadata from private transparency
   traffic;
@@ -6162,6 +6302,9 @@ Deliverables:
 - backend-unavailable, duplicate slot, unauthorized recipient, ambiguous key,
   false absence, stale map root, split view, inconsistent append, rollback, and
   recovery threshold tests;
+- map/log root substitution, map-proof-as-consistency, log-proof-as-absence,
+  omitted dual-root checkpoint field, event replay/map-root mismatch, and
+  independent map/log version transition tests;
 - suite/context substitution, slot reorder/ordinal confusion, selector replay,
   cross-realm/compartment/epoch replay, stripping, padding, and recipient-count
   leakage tests.
@@ -6175,9 +6318,10 @@ Exit criteria:
 
 - The format supports device-specific access, revocation evidence, and offline
   recovery without embedding a mandatory platform backend.
-- Key transparency has one authenticated-map meaning for inclusion, absence,
-  update history, and consistency, and cannot silently hide or rewrite an
-  admitted key state.
+- Key transparency uses the admitted map only for current membership/absence/
+  update state and the append-only event structure only for history/consistency;
+  one signed dual-root checkpoint prevents either view from silently hiding or
+  rewriting an admitted key transition.
 - Private-realm key monitoring does not turn actor or recipient metadata into a
   public directory.
 
@@ -6662,11 +6806,14 @@ Deliverables:
   header containing retained new-store/ceremony binding, random salt, exact
   admitted KDF/suite parameters, key epoch/purpose, and header commitment before
   deriving a narrowly scoped initial WAL key and writing the first reservation;
-- passphrase-derived bootstrap uses v0.98.0/v0.98.1 KDF limits and anti-oracle
-  behavior, fails closed on entropy or KDF failure, changes no authority state
-  on wrong passphrase, and never uses the bootstrap key as or derives it from the
-  long-term realm master key, private-locator key, data-encryption key, or normal
-  realm WAL key;
+- passphrase-derived bootstrap uses v0.98.0/v0.98.1 KDF/anti-oracle contracts and
+  accepts secret material only from v0.98.2; it fails closed on OS-CSPRNG failure
+  for salt/generated-secret creation or on KDF failure, changes no authority
+  state on wrong input, and never claims a human passphrase failed an entropy
+  measurement that software cannot perform;
+- the bootstrap secret never becomes or derives the long-term realm master key,
+  private-locator key, data-encryption key, normal realm WAL key, recipient key,
+  or recovery secret;
 - the pre-log passphrase KDF is a narrow local bootstrap primitive over user
   input and the committed public header, not a provider/key-agent operation that
   requires an authority capability or reservation; deployments requiring remote
@@ -6710,6 +6857,10 @@ Deliverables:
 - profile selection is explicit in command/config output and dry-run; automation
   cannot silently choose a more revealing profile, while a user may explicitly
   select minimal plaintext after receiving its stable leakage warning;
+- generated high-entropy bootstrap input is preferred by default when v0.98.2
+  can place it in an admitted credential provider or explicit owner-only secret
+  output descriptor; otherwise interactive user input is explicit and no secret
+  value is accepted from argv/environment/config;
 - platform matrix records which HSM/keystore, passphrase, and durability profiles
   are supported on Linux, Windows, BSD, MacOS, Android, and iOS; unknown behavior
   is refused rather than inferred from a similar platform;
@@ -6755,6 +6906,10 @@ Deliverables:
 - `saga encrypt project`;
 - `saga init --encrypted --bootstrap-profile <profile>` requires an explicit
   admitted profile and never selects a more revealing fallback implicitly;
+- passphrase/generated-secret source options select only v0.98.2 interactive,
+  descriptor, credential-provider, or generated modes; no command option,
+  environment variable, response/config file, or ordinary redirected stdin can
+  contain the secret value;
 - sealed-private vault initialization transaction;
 - execute the v0.101.1 authority-log cutover for an existing plaintext realm;
 - new encrypted realms must select and complete one admitted v0.101.2 bootstrap
@@ -6766,6 +6921,9 @@ Deliverables:
 - refusal when sealed-private prerequisites or resource budgets are unmet;
 - refusal for already encrypted realms;
 - dry-run and interrupted migration tests.
+- argv/environment/config/redirection rejection, no-echo input, descriptor/
+  credential-provider/generated-secret, confirmation, cancellation, and
+  terminal-restoration tests.
 
 Verification:
 
@@ -6796,11 +6954,15 @@ Deliverables:
   substitute bootstrap, recovery, or authoritative capability classes;
 - use the v0.98.1 committed-header target selection, protected-state typestate,
   no-self-authorization, and bounded anti-oracle response contract;
+- acquire passphrase input only through v0.98.2 and expose source-selection
+  options without accepting secret values in argv/environment/config or ordinary
+  redirected stdin;
 - unlock session metadata;
 - monotonic time-to-live metadata;
 - compartment-aware partial unlock;
 - `--no-worktree` verification mode;
-- wrong-key, expired-session, compartment-overreach, and failed unlock tests.
+- wrong-key, expired-session, compartment-overreach, forbidden secret channel,
+  cancellation/terminal-restore, and failed unlock tests.
 
 Verification:
 
@@ -8816,11 +8978,20 @@ Deliverables:
   active/covered-fence/exception/archive roots, a permanent low-sequence
   exception plus later archival, exact replay refusal, checkpoint rollback
   detection, archive unavailability, exception resolution, and cutover carry;
+- composition distinguishes inert v0.23.6 fence transition machinery from
+  v0.52.0 production activation and proves checkpoint, retention, and all-active-
+  replica stability evidence cannot be omitted or replaced by local authority;
 - encrypted-genesis composition for minimal-plaintext, externally provisioned,
   and passphrase-derived bootstrap profiles, proving first-log key availability,
   no plaintext fallback, normal-key replacement, and crash recovery without a
   reservation/key provisioning cycle while making no modeled claim that local
   attempt limits constrain offline guesses against copied passphrase ciphertext;
+- secret-input composition covers interactive terminal state, owned descriptors,
+  credential leases, generated-secret destinations, cancellation/unwind, and the
+  prohibition on argv/environment/config/diagnostic secret channels;
+- transparency composition keeps history-independent current-state map proofs
+  separate from append-log consistency proofs and binds both roots in one signed
+  checkpoint without cross-structure substitution;
 - duplicate-equivalence representative CAS, conflict-head preservation,
   anti-grinding selection, replica/actor/device quota continuity, and persistent
   authenticated index union/split models;
@@ -9174,6 +9345,9 @@ Deliverables:
 - v0.17.1 algorithm-admission proof/model plus v0.17.2 page/root/proof vectors
   and million-entry bounded lookup, update, rebuild, malformed-page, and unique-
   representation benchmarks;
+- authenticated subtree range/entry-count/page-count/height summary vectors,
+  checked summary-overflow tests, logarithmic point-proof benchmarks, and output-
+  sensitive range/page-set proof budgets measured against emitted results;
 - cumulative decode-budget and atomic-encoder benchmarks across nested objects,
   packs, bundles, proofs, WAL, and encrypted envelopes;
 - minimal authority transaction-substrate model/vectors and crash benchmarks
@@ -9253,6 +9427,12 @@ Deliverables:
 - passphrase-bootstrap KDF cost/parameter benchmarks, offline-guess verifier
   fixture, permanent-header/ciphertext disclosure statement, assurance-label
   snapshots, reuse warnings, and high-assurance policy refusal tests;
+- v0.98.2 PTY/console, owned-descriptor, credential-provider, generated-secret,
+  forbidden-channel, cancellation/unwind, terminal-restore, and sanitization
+  vectors with stable redacted output snapshots;
+- transparency current-map and append-event-log independent vectors, monitor
+  replay, dual-root checkpoint, map/log proof-substitution, split-view, and
+  independent algorithm/version-transition tests;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - plaintext-to-encrypted authority-log cutover model/vectors and crash benchmarks
@@ -9465,7 +9645,8 @@ Deliverables:
 - shared store platform boundary is the only authoritative filesystem path used
   by CLI, daemon, migration, and recovery code, with no private frontend fork;
 - v0.17.1 history-independent algorithm admission and v0.17.2 bounded immutable
-  page format, unique representation, logarithmic proofs/updates, streaming full
+  page format, unique representation, authenticated subtree summaries,
+  logarithmic point proofs/updates, output-sensitive range/page proofs, streaming
   rebuild, cumulative budgets, and malformed/mutable/non-canonical page refusal
   pass independent vectors and release tests;
 - v0.23.3 minimal authority transaction model, base format, durability profile,
@@ -9479,7 +9660,11 @@ Deliverables:
 - v0.23.6 active/covered-fence/exception/archive model, exact interval coverage
   and disjointness, permanent low-sequence exceptions, exception resolution,
   replay rejection, reachable historical evidence, copy-on-write archival,
-  archive-unavailability behavior, and old-checkpoint restoration tests pass;
+  archive-unavailability behavior, old-checkpoint restoration, and explicit
+  production-inactive refusal tests pass;
+- v0.52.0 is the only production terminal-fence activation point; typed v0.27.0
+  checkpoint, v0.35.0 retention, all-active-replica stability/retirement, and
+  expected-root evidence gates pass with no local/quorum-only bypass;
 - cumulative decode budgets, atomic encoders, body-derived typed graph admission,
   graph-class DAG/SCC semantics, and optimized/reference differential results
   pass their first-admission and release profiles;
@@ -9533,6 +9718,12 @@ Deliverables:
 - v0.98.1 unlock target/slot/range/result-class binding, protected-state
   typestate, no-self-authorization, chosen-ciphertext/AD refusal, anti-oracle
   response shapes, and cleanup tests pass;
+- v0.98.2 secret-source API/compile-fail tests, forbidden argv/environment/
+  config/diagnostic channels, PTY/console restore, descriptor/provider/generated
+  input, CSPRNG failure, cancellation/unwind, and sanitization tests pass;
+- v0.99.0 transparency current-state map and append-only event log use separate
+  admitted structures/proofs and one signed dual-root checkpoint; monitor replay,
+  split view, and map/log substitution tests pass;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -9540,7 +9731,8 @@ Deliverables:
 - v0.101.2 all three encrypted-genesis bootstrap-profile models, vectors,
   platform refusal matrix, no-fallback tests, first-log key proof, normal-key
   replacement, passphrase offline-guess disclosure/labels/policy refusal, and
-  crash/recovery/bootstrap-key-retirement suites pass;
+  v0.98.2-only secret ingestion plus crash/recovery/bootstrap-key-retirement
+  suites pass;
 - deterministic fact-language stratification, typed parameterized obligation
   template/instance identity preimages, preallocated issuance-operation cycle
   break, self-inclusion refusal, evidence-consumption/independence and discharge
@@ -9604,8 +9796,9 @@ Deliverables:
 - typed body-derived graph admission with indexed lookup, duplicate-edge
   refusal, authority DAGs, dependency/impact SCCs, and independent differential
   verification;
-- bounded immutable uniquely represented authenticated-map pages, logarithmic
-  proofs/updates, streaming rebuild, append-only commitments, and complete
+- bounded immutable uniquely represented authenticated-map pages with verified
+  subtree summaries, logarithmic point proofs/updates, output-sensitive bounded
+  range/page proofs, streaming rebuild, append-only commitments, and complete
   checkpoints;
 - one formally modeled authority transaction substrate used from bootstrap
   capability reservations through the general WAL, with durable reservations
@@ -9617,6 +9810,9 @@ Deliverables:
   covered sequence fences, sparse exact permanent exceptions, predecessor-linked
   epoch archives, atomic exception resolution, and no probabilistic replay
   decision or whole-lifetime map record;
+- terminal-fence formats remain inert until typed checkpoint, retention, and
+  all-active-replica causal-stability/retirement evidence activates production
+  advancement at v0.52.0;
 - exact domain-separated SHA3-256 frame, transaction, logical authority-state,
   and physical log-checkpoint commitments anchored by genesis, signed realm
   checkpoints, or retained witnesses, with non-circular signing frontiers and
@@ -9630,7 +9826,12 @@ Deliverables:
   cycle, never silently fall back, and replace purpose-scoped bootstrap keys
   with a normal realm WAL key; passphrase protection is labeled separately,
   bounded by passphrase entropy/KDF cost, permanently offline-guessable from
-  retained header/ciphertext copies, and refuseable by high-assurance policy;
+  retained header/ciphertext copies, and refusable by high-assurance policy;
+- no-echo terminal, ownership-checked descriptor, admitted credential-provider,
+  and generated-secret input boundary with no secret values in argv, environment,
+  ordinary config/stdin, logs, diagnostics, or shell history; OS-CSPRNG failure
+  applies to salts/generated secrets and human password entropy is not claimed
+  measurable;
 - checkpoint-anchored chained WAL with exact CRC-32C, explicit log incarnations,
   exhaustion, encrypted-profile activation only after clone-safe nonce evidence,
   locked recovery, old-key retention, signed event DAG, and rollback/
@@ -9726,7 +9927,9 @@ Deliverables:
 - measurable sealed-private privacy profiles covering size/timing/frequency/
   access-pattern and filesystem leakage, malicious local storage observation,
   padding/batching overhead, and cover-traffic requirements;
-- authenticated key-transparency map semantics and split-view evidence;
+- separate authenticated key-transparency current-state map and append-only event
+  log semantics/proofs, signed dual-root checkpoints, monitor replay, gossip, and
+  split-view evidence;
 - no operational encryption mode before sealed-private prerequisites;
 - sealed-private migration and honest prior-leakage accounting;
 - forward-only plaintext-to-encrypted authority-log cutover with exclusive
