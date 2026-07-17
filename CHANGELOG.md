@@ -5,6 +5,9 @@ All notable Sagnir changes are recorded here.
 ## Unreleased
 
 - Updated the workspace and current documentation to Rust stable 1.97.1.
+- Anchored logical authority state and physical log checkpoints in genesis and
+  signed realm checkpoints, froze the base SHA3-256 commitment transcripts, and
+  added a dedicated forward-only authority-log encryption cutover milestone.
 - Moved capability reservations onto a formally modeled minimal authority
   transaction substrate, added a cross-domain bootstrap/genesis ceremony and a
   bounded unlock anti-oracle milestone, and made later WAL releases extend the

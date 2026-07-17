@@ -1762,6 +1762,36 @@ Deliverables:
 - versioned base frame freezes magic, format version, critical record kind,
   payload length, log/store incarnation, transaction/reservation ID, monotonic
   sequence, previous committed root/frame commitment, payload, and commit state;
+- authority commitment suite `sagnir-authority-sha3-256-v1` uses FIPS 202
+  SHA3-256 with one fixed suite ID; no frame, transaction, state entry, or
+  checkpoint can select an algorithm independently or infer it from digest
+  length;
+- exact canonical length framing, integer widths/endianness, absent/present
+  tags, and independent domain labels are frozen before implementation for
+  `sagnir:authority-payload:v1`, `sagnir:authority-frame:v1`,
+  `sagnir:authority-transaction:v1`, `sagnir:authority-state-entry:v1`,
+  `sagnir:authority-state:v1`, and `sagnir:authority-log-checkpoint:v1`;
+- `FrameCommitment` hashes suite/format version, store and log incarnation,
+  monotonic sequence, transaction ID, critical record kind, exact payload
+  length, payload digest, and predecessor frame commitment; the payload digest
+  is separately domain-separated and commits to the exact canonical payload;
+- transaction commit frames bind the ordered frame commitments, exact frame and
+  byte counts, transaction ID, first/final sequence, prior committed transaction
+  or log-checkpoint commitment, and resulting logical authority-state root;
+- canonical `AuthorityStateRoot` commits to a sorted operation-ID map whose
+  values bind capability class, request digest, reservation sequence, status,
+  provider-result commitment or explicit absence, and ambiguity/equivocation
+  state; duplicate IDs, non-canonical order, unknown status, or omitted terminal
+  evidence fail closed;
+- canonical `AuthorityLogCheckpoint` binds store/log incarnation, final
+  sequence, record count, physical chain root, `AuthorityStateRoot`, and
+  predecessor authority-log checkpoint; physical history and logical operation
+  state are distinct commitments and neither can substitute for the other;
+- an `AuthorityLogCheckpoint` describes a closed physical frontier ending
+  before its own record: final sequence, record count, and chain root cover that
+  predecessor frontier, while the checkpoint record commitment becomes the
+  authenticated predecessor of the successor segment/record; no checkpoint
+  hashes itself;
 - CRC-32C parameters/coverage inherit the exact Castagnoli reflected form,
   initial/final XOR, little-endian field, excluded checksum field, no-padding
   rule, and `123456789` vector later reused by v0.31.0;
@@ -1785,10 +1815,20 @@ Deliverables:
   commitments, while the agent journal commits execution/admission/result;
   reconciliation binds operation ID, request digest, provider/key/session,
   sequence, result commitment/status, and ambiguity evidence;
-- compaction creates a committed checkpoint binding complete prior log root,
-  final sequence, record count, reservation/status map root, retained ambiguous/
-  equivocation evidence, and predecessor checkpoint; `Consumed`, `Cancelled`,
-  or `Ambiguous` IDs can never become reusable;
+- compaction creates a predecessor-linked `AuthorityLogCheckpoint` and may
+  change segment layout, record count, and physical chain root only while
+  preserving the exact logical `AuthorityStateRoot`; retained ambiguous/
+  equivocation evidence remains committed and `Consumed`, `Cancelled`, or
+  `Ambiguous` IDs can never become reusable;
+- hash-suite transition requires a new critical format and signed transition
+  binding old/new suite IDs, complete old/new logical roots, old/new physical
+  checkpoints, and effective frontier; old history is never reinterpreted under
+  a new algorithm and remains verifiable while reachable;
+- known-answer vectors cover every commitment domain and empty/minimum/maximum
+  transcript; mock/truncated-digest fixtures exercise collision refusal where
+  complete canonical bytes are available and cross-domain substitutions are
+  rejected; an undetectable collision against SHA3-256 is explicitly outside
+  the suite's security claim and requires governed suite retirement;
 - legacy-free extension rule: v0.30.0 extends the model and v0.31.0/v0.32.0 add
   record kinds/commitments/recovery behavior on this same substrate; no pre-WAL-
   to-WAL authority migration or dual-writer state exists;
@@ -1805,6 +1845,7 @@ Verification:
 - bounded authority-log model check before implementation;
 - `cargo test -p sagnir-store`
 - hardware/software CRC-32C differential vectors;
+- independent SHA3-256 authority commitment and domain-separation vectors;
 - process-kill and deterministic repeated-recovery suite;
 - provider/store reconciliation state-machine fixtures.
 
@@ -1814,6 +1855,9 @@ Exit criteria:
   returned before the exact local/provider result is durably reconciled.
 - Torn data, races, exhaustion, repeated recovery, and compaction cannot mint,
   reuse, lose, or silently change an authority reservation.
+- CRC detects accidental corruption; cryptographic chain/state commitments
+  become tamper evidence only relative to genesis, a later signed checkpoint,
+  or an independently retained witness.
 - Later WAL work extends one modeled transaction substrate and never chooses
   authority between competing legacy/new logs.
 
@@ -1980,7 +2024,12 @@ Deliverables:
   operations;
 - `GenesisTranscriptFixed` freezes canonical genesis bytes/transcript including
   realm/genesis identity, first actor/device, key/handle commitment, bootstrap
-  operation IDs, suite, policy/bootstrap table, and store format before signing;
+  operation IDs, suite, policy/bootstrap table, store format, and the initial
+  closed `AuthorityStateRoot` plus `AuthorityLogCheckpoint` before signing;
+- the genesis authority anchor ends at the exact pre-sign frontier with the
+  genesis-signing operation durably reserved; a signed root never claims to
+  contain its own signature result, which is consumed into the next authority
+  frontier and can be anchored by a later checkpoint or witness;
 - `GenesisSigned` binds exact transcript digest, signature, signing operation ID,
   provider/key handle, and result commitment; a lost response is recovered by
   querying the provider journal for that exact operation rather than signing
@@ -2031,6 +2080,8 @@ Exit criteria:
   pending genesis.
 - One bootstrap capability authorizes one provider operation, and CLI success
   means both durability domains reached the exact final bound state.
+- Genesis authenticates the initial logical authority state and physical log
+  checkpoint without a circular claim that it contains its own signing result.
 
 ### v0.24.0 - Key Lifecycle And Anti-Replay
 
@@ -2142,7 +2193,21 @@ Deliverables:
 - signed per-replica sequence chains;
 - event DAG parent and frontier commitments;
 - checkpoint schema committing to object/state, alias/frontier, event, fact,
-  policy, key-registry, and crypto-epoch roots;
+  policy, key-registry, crypto-epoch, current logical `AuthorityStateRoot`, and
+  current physical `AuthorityLogCheckpoint` commitments;
+- checkpoint authority roots must descend from the genesis authority anchor and
+  every previously admitted checkpoint; missing committed suffixes, deleted
+  ambiguous/equivocation evidence, terminal-status rollback, or resurrection of
+  consumed/cancelled operation IDs fails against genesis, a later checkpoint,
+  or an independently retained witness;
+- checkpoint signing freezes a closed prior authority frontier; its preallocated
+  signing reservation is present there, while its execution/result transition
+  enters the next frontier, preventing signature self-inclusion without making
+  the signing operation disappear from authority history;
+- compaction after a signed checkpoint may publish a predecessor-linked physical
+  `AuthorityLogCheckpoint` with a different layout/chain root only when the
+  logical `AuthorityStateRoot` is identical; the next signed realm checkpoint
+  or witness anchors that physical transition;
 - exact v0.25.0 governance root anchored as part of the key-registry and policy
   interpretation state;
 - continuity check from genesis through the authenticated governance event
@@ -2162,6 +2227,9 @@ Verification:
 Exit criteria:
 
 - Every trusted realm checkpoint binds all roots required to interpret state.
+- Every trusted checkpoint authenticates both logical operation state and its
+  physical authority-log frontier without requiring a signature to contain its
+  own execution result.
 - A checkpoint cannot substitute, skip, or fork the previously authenticated
   governance root without producing an invalid continuity proof.
 - Rollback and tampering are detectable relative to an admitted later
@@ -2313,7 +2381,9 @@ records and chained transaction commitments before writing those new records.
 Deliverables:
 
 - inherit v0.23.3 WAL magic, base format/version, transaction/reservation IDs,
-  critical-kind refusal, CRC-32C parameters, and operation records unchanged;
+  critical-kind refusal, CRC-32C parameters, SHA3-256 commitment suite/domain
+  transcripts, logical authority-state root, physical log-checkpoint format, and
+  operation records unchanged;
 - versioned extension registry for object/fact/world/alias/checkpoint records;
 - segment/log identity and segment generation;
 - frame kind;
@@ -2362,6 +2432,8 @@ Exit criteria:
 - Adversarial tampering is claimed detectable only relative to an admitted
   signed checkpoint or trusted witness; a store controller can recompute
   unauthenticated local chains.
+- General WAL record kinds extend the v0.23.3 commitment transcripts; they do
+  not redefine or algorithm-negotiate the authority-log prefix.
 
 ### v0.31.1 - Clone-Safe Encrypted WAL Activation Contract
 
@@ -6202,6 +6274,87 @@ Exit criteria:
   public identifiers into the new external representation.
 - Sagnir states clearly that prior disclosure cannot be undone.
 
+### v0.101.1 - Authority Log Encryption Cutover
+
+Goal: move an existing plaintext authority/WAL history into encrypted operation
+without rewriting history, losing logical operation state, or pretending prior
+metadata disclosure can be recalled.
+
+Deliverables:
+
+- pre-implementation crash/concurrency model uses canonical states
+  `PlaintextOpen -> PlaintextFrontierFrozen -> CutoverAnchorSigned ->
+  PlaintextTailSealed -> EncryptedSegmentPrepared ->
+  EncryptedSegmentPublished -> EncryptedActive`, with explicit abort-before-
+  freeze, ambiguous, quarantine, and governed/manual-recovery outcomes;
+- one retained-store exclusive migration lease blocks new reservations and
+  ordinary WAL writers before the final plaintext frontier is selected; queued
+  operations receive retryable refusal and cannot race the cutover;
+- all ordinary plaintext transactions and parent-directory publication are
+  synced before freezing a closed authority frontier containing a separately
+  reserved cutover-signing operation;
+- signed `AuthorityLogCutoverAnchor` binds realm/genesis, old format and
+  commitment suite, plaintext store/log incarnation, frozen final sequence and
+  physical chain root, complete `AuthorityStateRoot`,
+  `AuthorityLogCheckpoint`, signing-operation ID, target crypto epoch/suite,
+  and intended encrypted successor-segment identity;
+- the cutover anchor follows the v0.27.0 non-self-inclusion rule: it signs the
+  frozen frontier where its signing operation is `Reserved`; the signing result
+  and terminal status are then committed in a final plaintext tail and exact
+  predecessor-linked `PlaintextTailSeal` rather than falsely claiming the anchor
+  signed its own result;
+- the first encrypted segment uses a fresh admitted v0.92.0 key/nonce domain and
+  commits to both the signed cutover anchor and terminal plaintext tail seal;
+  the next signed realm checkpoint or retained witness anchors the successor and
+  covers the cutover-signing result;
+- the encrypted segment begins with a canonical state-carry record preserving
+  the complete logical operation-ID/status map and prior `AuthorityStateRoot`;
+  consumed, cancelled, ambiguous, or equivocated IDs remain terminal and no
+  reservation sequence or operation ID becomes reusable;
+- encrypted segment bytes, authentication data, file metadata, directory entry,
+  and every required parent directory are durable before `EncryptedActive` is
+  published or any encrypted operation is accepted;
+- old plaintext segments receive a no-append seal and are never rewritten in
+  place; retention policy may retain, compact into predecessor-linked evidence,
+  archive, or delete eligible physical segments only after the encrypted
+  successor and required audit/witness anchors are durable;
+- retention and CLI output explicitly state that provider/key IDs, actors,
+  replicas, capability classes, purposes, frequencies, ambiguity/recovery
+  activity, and any copied plaintext log bytes observed before cutover cannot be
+  recalled by later encryption or deletion;
+- locked recovery exposes only admitted public framing, cutover state, required
+  key epoch, and quarantine reason; it cannot authenticate, replay, interpret,
+  or publish encrypted authority state until that WAL key epoch is available;
+- recovery selects state only through exact roots, segment identities, durable
+  publication markers, and predecessor commitments, never timestamps, filename
+  preference, partial directory presence, or whichever segment parses first;
+- crash/fault injection covers every final plaintext append/sync, signing request
+  and lost response, tail seal, encrypted segment creation/authentication/sync,
+  directory publication, old-segment seal, activation marker, retry, cleanup,
+  and locked/unlocked recovery boundary;
+- tests cover status-map omission/substitution, consumed-ID resurrection,
+  ambiguous-record deletion, wrong epoch/suite, predecessor substitution,
+  parallel writer/reservation race, stale clone, rollback to plaintext-active,
+  partial archive/delete, and inability to unlock the encrypted successor.
+
+Verification:
+
+- bounded authority-log cutover state-machine model;
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-vault`
+- `cargo test -p sagnir-crypto`
+- process-kill cutover and locked-recovery integration suite.
+
+Exit criteria:
+
+- Exactly one plaintext or encrypted authority-log generation accepts writes at
+  every recoverable state, and activation never depends on heuristics.
+- The encrypted successor preserves the complete logical authority state and
+  cryptographically descends from the sealed plaintext history without
+  rewriting historical transaction bytes.
+- Sagnir reports that encryption protects future WAL contents; it never claims
+  to erase metadata or bytes already observed before cutover.
+
 ### v0.102.0 - Encrypt Project Command
 
 Goal: enable sealed-private encrypted realm storage through `saga`.
@@ -6210,6 +6363,9 @@ Deliverables:
 
 - `saga encrypt project`;
 - sealed-private vault initialization transaction;
+- execute the v0.101.1 authority-log cutover for an existing plaintext realm;
+  new encrypted realms start directly with the admitted encrypted WAL profile
+  and do not synthesize a plaintext migration history;
 - encryption-enabled canonical event and compiled fact;
 - required migration/repack for an existing open realm;
 - irreversible-disclosure warning for previously exposed metadata;
@@ -8612,6 +8768,11 @@ Deliverables:
   covering reservation/result durability, provider/store reconciliation, torn
   records, races, compaction, parent sync, repeated recovery, and later in-place
   record-kind extension;
+- independent `sagnir-authority-sha3-256-v1` frame, transaction, logical-state,
+  and physical-checkpoint vectors, including genesis/checkpoint anchoring,
+  non-circular signing frontiers, compaction root preservation, cross-domain
+  substitution, available-byte mock-collision refusal, and declared hash-suite
+  collision assumptions;
 - parallel budget-lease stress and schedule benchmarks proving child
   reservations cannot mint capacity and cancellation/panic accounting remains
   deterministic under maximum admitted parallelism;
@@ -8671,6 +8832,9 @@ Deliverables:
   ambiguity, exact-key usability confirmation, and final CLI success;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
+- plaintext-to-encrypted authority-log cutover model/vectors and crash benchmarks
+  covering writer exclusion, terminal tail sealing, complete status-map carry,
+  encrypted successor publication, locked recovery, rollback, and retention;
 - unlock committed-target/range/slot/result-class validation, protected-state
   typestate, chosen-ciphertext/AD rejection, response-shape, rate/resource, and
   staging-cleanup benchmarks;
@@ -8880,6 +9044,10 @@ Deliverables:
   torn-record/race/compaction/recovery suites, provider/store reconciliation,
   and in-place later record-kind extension pass; no legacy/new log authority
   selection or dual writer exists;
+- exact SHA3-256 authority frame/transaction/state/checkpoint transcripts,
+  independent vectors, genesis and signed-checkpoint anchors, non-circular
+  signing frontiers, algorithm-transition refusal/migration, and logical-root-
+  preserving compaction pass;
 - cumulative decode budgets, atomic encoders, body-derived typed graph admission,
   graph-class DAG/SCC semantics, and optimized/reference differential results
   pass their first-admission and release profiles;
@@ -8933,6 +9101,10 @@ Deliverables:
 - v0.98.1 unlock target/slot/range/result-class binding, protected-state
   typestate, no-self-authorization, chosen-ciphertext/AD refusal, anti-oracle
   response shapes, and cleanup tests pass;
+- v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
+  anchor, terminal tail seal, encrypted predecessor, complete logical-state
+  carry, single-writer activation, locked recovery, prior-leakage disclosure,
+  and crash/rollback/retention suites pass;
 - deterministic fact-language stratification, typed parameterized obligation
   template/instance identity preimages, preallocated issuance-operation cycle
   break, self-inclusion refusal, evidence-consumption/independence and discharge
@@ -9003,6 +9175,10 @@ Deliverables:
   provider-side journal separation, deterministic crash recovery, and no
   temporary authorization log, migration, dual writer, or authority-source
   selection;
+- exact domain-separated SHA3-256 frame, transaction, logical authority-state,
+  and physical log-checkpoint commitments anchored by genesis, signed realm
+  checkpoints, or retained witnesses, with non-circular signing frontiers and
+  logical-root-preserving compaction;
 - a staged cross-domain bootstrap/genesis ceremony that keeps pending genesis
   non-authoritative until the exact provider key, signature result, and store
   publication are durably reconciled, including explicit orphan, lost-response,
@@ -9105,6 +9281,10 @@ Deliverables:
 - authenticated key-transparency map semantics and split-view evidence;
 - no operational encryption mode before sealed-private prerequisites;
 - sealed-private migration and honest prior-leakage accounting;
+- forward-only plaintext-to-encrypted authority-log cutover with exclusive
+  writer fencing, signed closed-frontier anchor, terminal plaintext tail seal,
+  complete status-map carry, durably published encrypted successor, locked
+  recovery, and no claim that previously observed metadata can be recalled;
 - crash-safe nonce and live-key session handling;
 - independently wrapped erasure-unit data keys separated from private-locator
   keys and immutable semantic commitments;
