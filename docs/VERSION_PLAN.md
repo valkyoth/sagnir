@@ -8371,10 +8371,11 @@ Deliverables:
   descriptor commitment, transition sequence, previous record/root, result
   class, and recovery status; it never stores an unwrapped root or credential;
 - initial bootstrap journal frames are explicitly minimal-plaintext integrity/
-  crash-detection records under the platform threat boundary; after root
-  activation, a forward-only transition authenticates later daemon journal
-  records under a purpose-separated journal key without rewriting or claiming
-  confidentiality for previously observable bootstrap bytes;
+  crash-detection records under the platform threat boundary; v0.111.6 admits a
+  forward-only cutover that authenticates the complete plaintext prefix and all
+  later daemon journal records under a purpose-separated journal key without
+  rewriting or claiming confidentiality for previously observable bootstrap
+  bytes;
 - provider/key-agent admission consumes the exact reservation through v0.23.4
   authenticated IPC, records a queryable provider-side operation journal entry,
   and returns or later resolves exactly one provider handle/result for the
@@ -8441,7 +8442,8 @@ Deliverables:
   separation forbids conversion or cross-purpose provider handles;
 - store/quarantine initialization provisions an independently random key before
   the first durable candidate through a staged v0.23.3/v0.23.4 transaction
-  reconciled with the v0.111.4 daemon journal; states cover `Reserved`,
+  reconciled across store, v0.111.4 daemon, and provider journals by v0.111.7;
+  states cover `Reserved`,
   `ProviderPending`, `ProviderReconciled`, `WrappedKeyDurable`,
   `DescriptorDurable`, `Active`, `Rotating`, `Unavailable`, and `Compromised`;
 - key/descriptor and every encrypted candidate metadata record bind purpose and
@@ -8507,6 +8509,155 @@ Exit criteria:
   metadata/accounting atomically without retaining an accidental daemon lease-
   key dependency or permitting cross-purpose key use.
 
+### v0.111.6 - Daemon Journal Authenticated Prefix Cutover
+
+Goal: bind every plaintext daemon-bootstrap record into the first authenticated
+journal anchor so activation cannot hide prefix truncation or substitution.
+
+Deliverables:
+
+- versioned `DaemonJournalAuthenticatedCutover` is the first authenticated
+  daemon-journal record and binds the final plaintext sequence, record count,
+  exact encoded byte length, physical chain/root commitment over the complete
+  header and record prefix, and previous plaintext record commitment;
+- cutover also binds daemon/service identity, daemon-state incarnation,
+  provisioning operation ID/request digest, provider operation/idempotency and
+  result commitments, activated root handle/assurance evidence/key epoch,
+  wrapped-root/header and active descriptor commitments, daemon journal format
+  version, physical commitment algorithm, authentication suite/parameters, and
+  domain-separated purpose;
+- the purpose-separated journal-authentication key is derived or wrapped only
+  after the provider-confirmed daemon root is available; cutover generation is
+  an idempotent bound provider/local operation and cannot request another root or
+  alter the already confirmed provider result;
+- cutover bytes and the matching active daemon-root descriptor are prepared,
+  verified, synchronized, and published in one v0.23.3 daemon-domain transaction;
+  a crash exposes the prior `ProviderReconciled` state or the exact cutover plus
+  descriptor, never an active descriptor with an unauthenticated prefix;
+- every authenticated successor commits to the cutover or preceding
+  authenticated record/root and exact daemon identity/incarnation; no later
+  chain may start from the active descriptor, provider handle, or a reconstructed
+  summary while omitting the original cutover;
+- after activation, recovery recomputes the complete plaintext-prefix chain/root
+  from retained exact bytes and rejects modified, truncated, extended, reordered,
+  duplicated, or substituted prefixes, a cutover bound to another daemon/
+  incarnation/result, missing cutover, cutover rollback, and authenticated-
+  successor substitution;
+- plaintext bootstrap records remain reachable for verification while any
+  active descriptor or successor depends on their cutover; compaction may move
+  exact bytes to authenticated archival storage but cannot replace them with an
+  unverified summary or drop the decoder/commitment suite;
+- the cutover provides post-cutover detection when an authentic cutover or
+  successor is available; it does not encrypt prior bytes, recall observations,
+  or claim prevention/detection of an attacker modification made before the
+  first authenticated anchor was created;
+- independent vectors cover empty/minimal and maximum bounded prefixes, prefix
+  truncation/extension, record replacement/reorder/duplicate, alternate prefix
+  yielding the same descriptor claim, wrong count/length/root, cutover omission/
+  rollback/substitution, daemon/incarnation/provider-result substitution,
+  authenticated-successor substitution, archival restore, and every crash
+  boundary around cutover/descriptor publication.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-crypto`
+- independent plaintext-prefix/cutover vector validator;
+- daemon cutover crash/recovery state-machine suite.
+
+Exit criteria:
+
+- No active daemon root or authenticated successor is accepted unless the exact
+  complete preceding plaintext journal prefix verifies against its cutover.
+- Activation publishes the cutover and descriptor together or remains in the
+  prior recoverable state; rollback cannot reopen an unanchored bootstrap chain.
+- Documentation distinguishes post-cutover tamper evidence from confidentiality
+  and from any guarantee about modifications before the first anchor existed.
+
+### v0.111.7 - Store Quarantine Key Three-Journal Reconciliation
+
+Goal: reconcile store authority, daemon operations, and provider/key-agent state
+without assuming an impossible atomic commit across the three journals.
+
+Deliverables:
+
+- one random provisioning operation ID and domain-separated request digest bind
+  store identity/incarnation, expected absent quarantine-key epoch, requested
+  purpose/suite/provider/assurance, wrapping recipients, daemon identity/
+  incarnation, and provider idempotency key across all three journals;
+- exact protocol stage 1: under store writer exclusion, the store authority WAL
+  durably reserves the operation against the expected absent key epoch and
+  records request digest, daemon recipient, allowed provider, recovery recipients,
+  and prior store root before any daemon or provider contact;
+- stage 2: the daemon verifies the exact store reservation proof/root and accepts
+  it once into the v0.111.4 journal, recording its daemon operation, expected
+  store root/incarnation, request digest, and one provider idempotency key; a
+  different or already-consumed reservation is refused before provider contact;
+- stage 3: provider/key agent creates or wraps exactly one key under the bound
+  operation/idempotency key and durably journals handle/wrap/result/evidence so
+  an exact retry returns the prior result or remains explicitly ambiguous;
+- stage 4: daemon records and authenticates the provider-confirmed handle, wrap,
+  assurance evidence, result commitment, and provider journal locator before
+  releasing a store-publication capability for the same request digest;
+- stage 5: store verifies the reservation, daemon capability, provider result,
+  wrap/descriptor, purpose/bindings and expected absent epoch, then one store WAL
+  transaction publishes wrapped key, descriptor, active epoch and resulting root
+  or leaves the reservation pending/conflicted without partial activation;
+- stage 6: daemon queries/verifies the exact store commit/root and records
+  `StoreCommitObserved` then `Finalized`; loss of the store-to-daemon response
+  reconciles by querying store operation status and never destroys, rewraps,
+  reprovisions, or changes the already active key;
+- domain states distinguish store `Reserved`/`ExternalPending`/`Active`/
+  `Conflict`, daemon `StoreAccepted`/`ProviderPending`/`ProviderReconciled`/
+  `StoreCommitObserved`/`Finalized`/`Ambiguous`/`Conflict`, and provider
+  `Absent`/`Pending`/`Completed`/`Unknown`/`Destroyed`; mappings and allowed
+  recovery transitions are executable rather than inferred from filenames;
+- provider success followed by daemon/store failure remains an explicit orphan
+  bound permanently to the original operation, store identity/incarnation,
+  request digest and expected epoch; it cannot be rebound, imported, or treated
+  as a candidate for another store/provisioning attempt;
+- abandonment requires authenticated evidence that no matching store commit
+  exists at or after the reserved root and that no concurrent recovery can still
+  publish it; provider-key destruction is a separate durable idempotent
+  destruction operation under v0.121.1/v0.122.0, never a cleanup side effect;
+- conflicting provider handles/results, daemon result commitments, store roots,
+  active descriptors, epochs, or request digests enter `Conflict`; quorum,
+  retry order, arrival time, local preference, or a second daemon cannot select
+  one result or overwrite evidence;
+- two daemon instances may race to recover only under the same daemon/store
+  writer leases and operation ID; compare-and-swap makes exact duplicate recovery
+  idempotent and conflicting recovery explicit without a second provider call;
+- CLI/API provisioning success requires the store descriptor/epoch to be active
+  and either all three domains `Finalized`/`Completed` or a durable authenticated
+  `StoreCommittedPendingDaemonFinalize` checkpoint binding the exact active
+  store root and daemon/provider results so finalization is query-only and cannot
+  alter authority; status reports the recoverable lag rather than full closure;
+- crash, cancellation, provider timeout, and lost-response model covers every
+  boundary between six stages, especially provider success/store failure, store
+  commit/daemon-finalize loss, daemon result/local response loss, conflicting
+  recovery observations, store rollback/clone, and concurrent recovery by two
+  daemon instances.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-crypto`
+- three-journal PlusCal/TLA+ or equivalent state-machine model;
+- provider/daemon/store process-kill and lost-response integration matrix;
+- independent request-digest and cross-journal transition vectors.
+
+Exit criteria:
+
+- Provider contact is reachable only from one exact durable store reservation
+  accepted by one daemon operation, and all domains bind the same operation and
+  request digest.
+- Store activation is atomic and authoritative; delayed daemon finalization is
+  query-only, durably checkpointed, visible, and cannot destroy or reprovision
+  the active key.
+- Orphans, ambiguity, and conflicts remain explicitly bound evidence until safe
+  reconciliation or separately authorized destruction; arrival order never
+  chooses authority.
+
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
 Goal: ensure untrusted remote data cannot influence trusted state before full
@@ -8536,9 +8687,10 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4 daemon root ceremony and active v0.111.5 store quarantine
-  key, re-protects candidate metadata under that store/authorized-realm metadata
-  key, and converts it into the candidate's durable quota charge while
+  requires the v0.111.4-v0.111.7 daemon cutover and reconciled active store
+  quarantine key, re-protects candidate metadata under that store/authorized-
+  realm metadata key, and converts it into the candidate's durable quota charge
+  while
   publishing either one complete `BoundedQuarantinedCandidate`/bundle generation
   or no durable quarantine object; expiry, short writes, crashes, cancellation,
   and `ResourceLimit` clean partial bytes, resume state, and accounting without
@@ -8548,7 +8700,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.5 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.7 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -8586,6 +8738,9 @@ Exit criteria:
   privacy buckets never replace its exact authenticated quota charge.
 - Missing daemon-root or store-quarantine-key authority blocks durable candidate
   publication; key unavailability preserves candidate presence and holds quota.
+- Store/daemon/provider provisioning ambiguity or conflict blocks candidate
+  publication, and an active daemon descriptor requires the complete verified
+  bootstrap-prefix cutover.
 
 ### v0.113.0 - Bundle Import
 
@@ -8772,6 +8927,11 @@ Deliverables:
   generation binding, wrapping recipients and portability, candidate conversion,
   rotation/reachability, unavailable-key conservative quota hold, daemon move/
   rewrap, quarantine-to-realm adoption, and compromise disclosure;
+- daemon cutover states bind the complete plaintext prefix, provider result and
+  active descriptor before authenticated successors; three-journal provisioning
+  states model the six store/daemon/provider stages, one operation/request digest,
+  ambiguous/orphan/conflict outcomes, store-commit/finalize lag, query-only
+  reconciliation, and separately authorized abandonment/destruction;
 - checkpoint, policy epoch, evidence, and key-rotation interactions;
 - equivocation and bounded fork handling;
 - invariants for no lost heads, no lost duplicate identity, no locator-based
@@ -8787,9 +8947,12 @@ Deliverables:
   no key-unavailable state interpreted as empty, no coarse counter controlling
   exact admission/recovery, no duplicate daemon root after provider ambiguity,
   no candidate before an active store quarantine key, no unavailable quarantine
-  key releasing quota, no cross-purpose key use, no opaque cleanup deleting
-  published state, no linear locator-proof requirement, no stale admission, no
-  partial trust, and eventual convergence under documented assumptions;
+  key releasing quota, no active descriptor over a substituted/truncated
+  plaintext prefix, no cross-journal operation/request mismatch, no provider
+  orphan rebound, no store-commit response loss causing reprovision/destruction,
+  no cross-purpose key use, no opaque cleanup deleting published state, no
+  linear locator-proof requirement, no stale admission, no partial trust, and
+  eventual convergence under documented assumptions;
 - bounded model-check command required by the release gate.
 
 Verification:
@@ -8862,6 +9025,9 @@ Deliverables:
   counters remain authoritative beneath coarse observable representations;
   daemon-root ambiguity and store-quarantine-key provisioning/rotation/movement/
   realm-adoption states retain exact operation and key epochs across partitions;
+  authenticated-prefix and store/daemon/provider reconciliation states preserve
+  the same bootstrap prefix, request digest, store root and provider result under
+  lost responses, concurrent recovery and partitioned observations;
 - model invariants for no lost encryption instance, no semantic/index
   completeness gap, no Byzantine manifest omission accepted, no hidden
   compartment disclosure, no endpoint-placement overwrite, no clock-derived
@@ -8875,9 +9041,11 @@ Deliverables:
   profile contract, no key loss or store move interpreted as absent state, no
   privacy-bucket quota reset/refund, no ambiguous daemon provisioning duplicated,
   no quarantine-key unavailability releasing candidate quota, no cross-purpose
-  key substitution, no arrival-order transition selection, and eventual
-  convergence under documented authority, availability, and partition
-  assumptions;
+  key substitution, no accepted cutover over a replaced plaintext prefix, no
+  three-journal conflict or orphan selected by arrival order, no active store key
+  destroyed/reprovisioned after finalize-response loss, no arrival-order
+  transition selection, and eventual convergence under documented authority,
+  availability, and partition assumptions;
 - counterexample corpus and deterministic bounded model-check command required
   by the v0.116.0 release gate;
 - immutable model-run manifest records model source digest, tool and solver
@@ -8971,9 +9139,10 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor and v0.111.5 store quarantine key; ambiguous/lost root provisioning
-  or unavailable quarantine keys refuse transfer, preserve existing candidate
-  presence/quota, and never trigger automatic reprovisioning;
+  descriptor with v0.111.6 prefix cutover and v0.111.7 reconciled active store
+  quarantine key; ambiguous/lost/conflicting provisioning or unavailable keys
+  refuse transfer, preserve existing candidate presence/quota, and never trigger
+  automatic reprovisioning;
 - transfer cancellation;
 - accepted response;
 - denied response;
@@ -9919,6 +10088,8 @@ Deliverables:
   descriptor/wrap/rotation/adoption state target set, including ambiguous
   provider results, orphan handles, key-unavailable quota holds, and purpose-
   substitution refusal;
+- daemon plaintext-prefix/cutover/authenticated-successor and three-journal
+  store/daemon/provider operation/request/state transition target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -9957,7 +10128,8 @@ Deliverables:
   metadata, provisioned per-store keys, transactional rotation/loss/migration,
   exact-versus-coarse accounting, candidate reprotection, atomic candidate-
   charge conversion, daemon first-root reservation/provider reconciliation,
-  store quarantine-key lifecycle/realm adoption, and atomic partial cleanup;
+  authenticated complete-prefix cutover, store quarantine-key lifecycle/realm
+  adoption, six-stage three-journal reconciliation, and atomic partial cleanup;
 - composition of the history-independent map algorithm/pages with authority
   active/covered-fence/exception/archive roots, a permanent low-sequence
   exception plus later archival, exact replay refusal, checkpoint rollback
@@ -10107,10 +10279,13 @@ Deliverables:
   empty state, no cross-store key correlation, no coarse bucket driving exact
   accounting, no duplicate daemon root under provider ambiguity, no candidate
   without a store quarantine key, no unavailable quarantine key releasing quota,
-  no cross-purpose key substitution, no opaque cleanup of published data, no
-  partial durable candidate after resource refusal, no abuse digest or
-  `ResourceLimit` as authority evidence, no arrival-order authority selection,
-  and eventual convergence under documented assumptions;
+  no accepted cutover over a modified/truncated/substituted plaintext prefix, no
+  cross-journal request/result mismatch, no provider orphan rebound, no store-
+  commit response loss causing key destruction/reprovision, no cross-purpose key
+  substitution, no opaque cleanup of published data, no partial durable candidate
+  after resource refusal, no abuse digest or `ResourceLimit` as authority
+  evidence, no arrival-order authority selection, and eventual convergence under
+  documented assumptions;
 - model execution instructions and CI smoke bounds.
 - model-run manifests inherit v0.115.1 exact bounds, assumptions, property
   classes, reductions, coverage counters, resources, seeds/configuration, and
@@ -10175,6 +10350,8 @@ Deliverables:
   refusal, store migration, candidate reprotection, opaque cleanup, exact/coarse
   counter separation, v0.111.4 daemon-journal reserve/provider/result/descriptor
   boundaries, v0.111.5 quarantine-key provisioning/rotation/rewrap/realm-adoption
+  boundaries, v0.111.6 plaintext-prefix/cutover/descriptor publication boundaries,
+  v0.111.7 six-stage store/daemon/provider reconciliation and pending-finalize
   boundaries, `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and
   final authority publication prove all-or-nothing durable quarantine and no
   resource-refusal authority evidence;
@@ -10314,6 +10491,8 @@ Deliverables:
   key unavailability, wrong-store key, simultaneous daemon, rotation/migration,
   ambiguous daemon-root provisioning, orphan/conflicting provider results,
   quarantine-key unavailability/conservative hold, daemon rewrap, realm adoption,
+  plaintext-prefix truncation/substitution, cutover/successor rollback, three-
+  journal lost responses and concurrent recovery, store-commit/finalize loss,
   privacy-profile change, quota-refund, padding-budget, cross-purpose key, and
   identifier/timing leakage probes, sender-held refusals, bounded abuse-receipt
   rotation, expiry and restart accounting, partial-candidate cleanup, and
@@ -10410,8 +10589,10 @@ Exit criteria:
   lifetime or process epoch, protected lease metadata stays within its declared
   leakage profile, key loss/migration remains explicit, exact counters cannot be
   replaced or refunded by privacy buckets, daemon-root ambiguity cannot create a
-  second root, unavailable quarantine keys keep quota held, fair capacity remains
-  available to other peers, and arrival order affects backpressure only.
+  second root, active roots retain their complete bootstrap-prefix anchor, store/
+  daemon/provider recovery cannot rebind or select conflicts, unavailable
+  quarantine keys keep quota held, fair capacity remains available to other
+  peers, and arrival order affects backpressure only.
 - Hostile peers cannot force unbounded recursive expansion or partial trust.
 
 ### v0.132.0 - Differential Vectors And Performance Budgets
@@ -10561,6 +10742,13 @@ Deliverables:
   binding, recovery recipients, mixed-epoch rotation, unavailable-key quota hold,
   expiry refusal, movement/rewrap, candidate conversion, realm-key adoption,
   compromise, and every prohibited cross-purpose handle;
+- daemon cutover vectors cover exact plaintext sequence/count/length/root,
+  daemon/incarnation/provisioning/provider/result/descriptor/suite binding,
+  prefix mutation/truncation/extension/replacement, alternate prefix, cutover
+  omission/rollback, successor substitution and archival restore; three-journal
+  vectors cover all six stages, one operation/request digest, every lost response
+  and crash pair, provider orphan non-rebinding, store-commit/finalize recovery,
+  conflict preservation, two-daemon recovery, and destruction separation;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - plaintext-to-encrypted authority-log cutover model/vectors and crash benchmarks
@@ -10904,6 +11092,16 @@ Deliverables:
   reachability, unavailable-key conservative quota hold, expiry/cleanup refusal,
   daemon/store movement, realm-key adoption, compromise, and cross-purpose
   substitution suites;
+- v0.111.6 first authenticated daemon-journal cutover commits the complete exact
+  plaintext prefix sequence/count/length/root, daemon identity/incarnation,
+  provisioning/provider result, active descriptor and format/suite; prefix/
+  cutover/successor mutation, truncation, extension, substitution, rollback,
+  archival and every publication-crash fixture pass with honest pre-anchor
+  confidentiality/tamper limitations;
+- v0.111.7 all six store/daemon/provider provisioning stages bind one operation
+  and request digest; provider-orphan, ambiguity/conflict, every lost response,
+  store-commit/pending-finalize recovery, non-rebinding, two-daemon recovery,
+  store rollback/clone, and separately authorized destruction fixtures pass;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -10954,6 +11152,13 @@ Deliverables:
   mixed-epoch rotation, early retirement, unavailable/lost key quota hold,
   expiry refusal, move/partial rewrap, backup recovery, candidate conversion,
   realm adoption, compromise, and purpose-separation fixtures pass;
+- v0.111.6 prefix truncation/extension/replacement/reorder, alternate-prefix,
+  wrong count/length/root, cutover omission/rollback/substitution, wrong daemon/
+  provider result, authenticated-successor substitution, and cutover/descriptor
+  crash fixtures pass;
+- v0.111.7 stage-by-stage crash/lost-response, store-commit/daemon-finalize loss,
+  provider-success/store-failure orphan, request mismatch, conflict, abandonment/
+  destruction separation, and concurrent daemon recovery fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -11199,12 +11404,23 @@ Deliverables:
   provider idempotency key, and handle/evidence/epoch/descriptor activate
   atomically before protected work; root or journal loss requires explicit
   recovery/migration/data-loss handling rather than automatic reprovisioning;
+- daemon-root activation atomically publishes a first authenticated cutover that
+  commits the complete exact plaintext bootstrap-journal prefix, daemon identity/
+  incarnation, provider result, active descriptor, format and commitment suite;
+  every successor descends from it, and post-cutover tamper evidence is not
+  misrepresented as prior confidentiality or pre-anchor modification prevention;
 - durable quarantine candidate metadata uses a purpose-separated
   `StoreQuarantineMetadataKey` active before first publication, wrapped to
   admitted daemon/provider and recovery recipients, bound to store/quarantine/
   suite/epoch, crash-safely rotatable and movable, conservatively quota-holding
   when unavailable, and atomically adopted under an authorized realm metadata
   key without payload/WAL/signing/locator/erasure key reuse;
+- store quarantine-key provisioning reconciles the store authority WAL, daemon
+  operational journal and provider/key-agent journal through six explicit stages
+  bound by one operation ID/request digest; store activation is atomic, daemon
+  finalization lag is authenticated and query-only, provider orphans cannot be
+  rebound, conflicts remain explicit, and destruction requires its own admitted
+  durable operation;
 - privacy-preserving inner signatures, exact outer integrity/authenticity claim
   taxonomy, retained-handle preflight followed by integrity-bound capture and
   sealed/service/owned-memory/authenticated-page trusted reads, and durable
