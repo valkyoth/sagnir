@@ -12129,7 +12129,7 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.100 are complete and their provider/fence/effect/
+  v0.111.50 and v0.111.54-v0.111.103 are complete and their provider/fence/effect/
   custody/anchor/evidence/admission/privacy capabilities are admitted; earlier
   binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
@@ -14117,11 +14117,15 @@ identity unambiguous across every plan generation.
 
 Deliverables:
 
-- original admission commits an immutable `AcceptedEffectEnvelope` binding operation,
-  acceptance/eligibility, receipt/witness roots, authorizing signatures, policy and
-  provider epochs, maximum effect count, allowed effect types, target/recipient/
-  provider domains, capability classes, budgets, dependency depth and disclosure/
-  custody classes;
+- v0.111.103 derives a stable lineage identity from the durably reserved operation ID,
+  proposed-envelope root and plan-genesis commitment before receipt preparation and
+  admits the envelope through explicit non-authorizing typed stages;
+- final active `AcceptedEffectEnvelope` binds operation/lineage, proposal and validated-
+  plan roots, receipt/witness roots, policy/signature admission, committed acceptance
+  evidence, provider epoch, maximum effect count, allowed effect types, target/
+  recipient/provider domains, capability classes, budgets, dependency depth and
+  disclosure/custody classes; eligibility and `Started` consume this finalized root
+  rather than being inputs needed to construct it;
 - the initial `CommittedEffectPlan` and every same-operation amendment must be a
   mechanically proven subset of that envelope; admitted mutations are only narrowing,
   cancellation or deterministic target instantiation inside a preaccepted bounded
@@ -14135,7 +14139,8 @@ Deliverables:
   parse a future critical format but must refuse authority rather than approximating
   fresh acceptance inside an already started lineage;
 - canonical `EffectPermitId { lineage_id, birth_generation, permit_index }` is stable
-  for the permit's lifetime; `lineage_id` is fixed at original acceptance,
+  for the permit's lifetime; `lineage_id` is fixed by v0.111.103 before receipts and is
+  authenticated, not created or replaced, by acceptance;
   `birth_generation` names the generation that first created the permit, and the index
   is unique within that generation;
 - carried permits retain their birth identity through amendments, compaction, sync and
@@ -14219,9 +14224,11 @@ Deliverables:
   `ResolutionOutcomeUnknown { consequence_id, query_root }`,
   `ResolutionCommitted { evidence_root }`, `ResolutionProvenNoEffect {
   evidence_root }` and `ResolutionConflicting { evidence_root }`;
-- bounded `ConsequenceExecutionKnowledgeMap` keys each entry by operation/lineage,
-  stable permit identity, consequence kind and consequence ID and is committed by
-  `EffectEmergencyStateRoot` beside effect knowledge and requested resolution maps;
+- append-only `ConsequenceExecutionKnowledgeMap` retains detailed history keyed by
+  operation/lineage, stable permit identity, consequence kind and consequence ID;
+  v0.111.102 adds the authoritative one-active-consequence slot/index, and both roots
+  are committed by `EffectEmergencyStateRoot` beside effect knowledge and requested
+  resolution maps with exact projection verification;
 - a requested `Adopted`, `Compensated`, `Normalized`, `Abandoned` or
   `EffectConflictAbandoned` transition exists only in the consequence-knowledge map
   while prepared or unknown; the `EffectAuthorityResolutionMap` keeps its exact prior
@@ -14326,9 +14333,10 @@ Deliverables:
 - provider/key/protocol rotation while a request is outstanding carries the old epoch
   closure and replay fence into the successor before final proof; retirement cannot
   destroy query/verification authority needed by unresolved dispatches;
-- only a valid complete `DeliveryClosureProof` may refine dispatch-authorized
-  `OutcomeUnknown` to permit-level `ProvenNoEffect`; positive terminal effect evidence
-  still projects to committed/conflicting knowledge as appropriate;
+- `DeliveryClosureProof` is necessary but not sufficient for no-effect finality;
+  v0.111.101 composes it with typed provider historical-outcome evidence and complete
+  effect-boundary coverage, and closure verification alone cannot refine
+  `OutcomeUnknown` or select between no-effect, committed, conflicting and unknown;
 - closure proof creation, query and verification are bounded, privacy-profile aware and
   domain separated; public status cannot reveal queue topology, request membership,
   timing or stable cross-provider identifiers beyond the admitted observer claim;
@@ -14349,7 +14357,166 @@ Exit criteria:
 
 - Provider non-inclusion alone never proves no effect for a dispatched request.
 - Every delayed delivery path is drained, fenced or permanently deduplicated.
-- No-effect finality survives partition healing, restore and provider-epoch rotation.
+- Delivery closure survives partition healing, restore and provider-epoch rotation
+  without making a historical outcome claim by itself.
+
+### v0.111.101 - Historical No-Effect Finality Proof
+
+Goal: prove both that no delayed request can execute and that no historical effect was
+already produced before projecting an unknown dispatch to no-effect.
+
+Deliverables:
+
+- canonical `ProviderHistoricalEffectOutcome` is a typed evidence result with
+  `NeverAccepted`, `AcceptedNeverStarted`, `StartedNoEffect`, `Committed`,
+  `Conflicting` and `Unknown`; each variant binds operation/lineage, stable permit and
+  request identities, provider namespace/incarnation/epoch, acceptance/start/result/
+  fence roots and exact evidence frontier;
+- canonical `CompleteEffectBoundaryCoverage` commits the provider capability profile,
+  every in-process/downstream effect boundary, client/proxy/queue/provider path,
+  version/epoch and coverage evidence proving the historical-outcome statement applies
+  to the complete declared effect surface;
+- authoritative `NoEffectFinalityProof` is the domain-separated composition of one
+  verified v0.111.100 `DeliveryClosureProof`, one matching
+  `ProviderHistoricalEffectOutcome` and one `CompleteEffectBoundaryCoverage`, all for
+  the same operation, permit, request, provider epoch and replay-fence lineage;
+- delivery closure proves only that no future delayed copy can newly execute; a replay
+  fence, deduplication tombstone, drained queue, provider `not found` or closed epoch is
+  never interpreted as evidence about whether an earlier request committed;
+- historical-outcome verification returns its typed variant rather than a boolean;
+  `NeverAccepted`, `AcceptedNeverStarted` and `StartedNoEffect` may produce the exact
+  no-effect kind only after complete closure/coverage, `Committed` projects committed
+  evidence, `Conflicting` projects conflict, and `Unknown` remains blocking unknown;
+- a deduplication record that proves a prior commit is positive committed evidence even
+  when it also serves as a replay fence; outcome/closure joins are monotonic and cannot
+  discard that fact or prefer a no-effect source by arrival order;
+- provider profiles unable to attest historical outcome or complete boundary coverage
+  may still close future delivery but cannot advertise no-effect finality; cleanup,
+  retry, compensation, dependency and custody decisions remain blocked accordingly;
+- proof formats, status and sync keep closure, historical outcome and coverage roots
+  independently inspectable under the active privacy profile and reject root/epoch/
+  request/profile substitution or kind erasure;
+- tests cover every typed outcome, successful-commit tombstones, never-accepted and
+  started-no-effect paths, incomplete boundaries, provider non-inclusion, late positive
+  evidence, root/epoch splice, mixed providers, compaction and mixed-version refusal.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-store`
+- historical-outcome/closure/coverage composition state-machine model;
+- canonical typed-outcome and no-effect-finality proof vectors.
+
+Exit criteria:
+
+- Delivery closure alone never produces `ProvenNoEffect`.
+- No-effect finality proves both historical absence of effect and future non-delivery.
+- Committed, conflicting and unknown provider outcomes remain their exact typed states.
+
+### v0.111.102 - Consequence Slot Uniqueness And Occurrence Policy
+
+Goal: prevent distinct consequence IDs from creating concurrent compensation or other
+resolution attempts for the same permit and resolution generation.
+
+Deliverables:
+
+- canonical `ConsequenceSlotKey` is `(lineage_id, effect_permit_id,
+  consequence_kind, resolution_generation)`; its authenticated leaf is `Vacant`,
+  `Active { consequence_id, knowledge_root }` or `Terminal { consequence_id,
+  knowledge_root, terminal_kind }`;
+- before minting any consequence capability or reserving provider work, admission
+  performs an expected-`Vacant` or policy-authorized expected-`Terminal` CAS on the
+  exact slot and durably publishes the chosen consequence ID/request commitment;
+  different IDs therefore contend on one authority leaf rather than separate history
+  keys;
+- `EffectEmergencyStateRoot` commits the slot-map root and append-only v0.111.98
+  detailed consequence-history root; deterministic exact projection proves every
+  active/terminal slot names one matching history entry and no history entry can become
+  executable without its slot;
+- pending, `ResolutionOutcomeUnknown` or `ResolutionConflicting` leaves keep the slot
+  active and query-only across restart, sync, compaction, clone and restore; response
+  loss cannot free the slot or let another ID mint authority;
+- retry after `ResolutionProvenNoEffect` requires an explicit policy transition to a
+  new resolution generation, a fresh budget/capability and a causal link to the closed
+  prior slot; it is never an in-place replacement or ID-only retry;
+- consequence kinds are non-repeatable by default; deliberately repeatable kinds such
+  as notification require a signed bounded `ConsequenceOccurrencePolicy` with maximum
+  count, monotonic sequence, recipient/target domain, rate/work budget and terminal/
+  ambiguity behavior, and each occurrence owns a distinct sequence slot;
+- compaction retains active slots and permanent terminal/tombstone summaries needed to
+  prevent replay; provider/key migration and backup restore preserve slot-map
+  continuity before consequence writes resume;
+- tests race distinct consequence IDs across replicas/processes, duplicate and
+  reordered CAS, response loss, retry after proven no-effect, repeatable-notification
+  bounds, sequence rollback, compaction, migration, stale restore and map projection.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- consequence-slot/history-projection state-machine model;
+- multi-replica CAS, restore and bounded-occurrence integration suite;
+- canonical slot, occurrence-policy and projection vectors.
+
+Exit criteria:
+
+- At most one active non-repeatable consequence exists per permit/kind/generation.
+- Distinct consequence IDs cannot bypass ambiguity or terminal state.
+- Repeatable consequences are explicit, bounded and monotonically sequenced.
+
+### v0.111.103 - Non-Circular Effect Envelope Admission Pipeline
+
+Goal: fix lineage identity before receipts and admit effect authority through explicit
+typed stages without requiring acceptance or eligibility to validate their own inputs.
+
+Deliverables:
+
+- canonical pipeline is `DecodedPlanCandidate -> ResourceValidatedPlan ->
+  ProposedEffectEnvelope -> EnvelopeSubsetValidatedPlan -> ReceiptPrepared ->
+  PolicySignatureAdmitted -> AcceptedEffectEnvelopePrepared -> AcceptanceCommitted ->
+  AcceptedEffectEnvelopeActive -> ExecutionEligible -> Started`;
+- `DecodedPlanCandidate` and `ResourceValidatedPlan` carry no receipt, policy,
+  acceptance, provider or effect authority; resource validation applies canonical
+  decode, envelope limits, v0.111.99 full DAG/topological checks and hard work budgets
+  before any provider reservation or receipt preparation;
+- `ProposedEffectEnvelope` is immutable and non-authorizing and binds the durably
+  reserved single-use operation ID, plan-genesis root, proposed effect/count/type/
+  target/provider/capability/budget/dependency bounds and policy/provider context;
+- stable `lineage_id` is a domain-separated commitment over the reserved operation ID,
+  proposed-envelope root and plan-genesis commitment; it is fixed before receipt
+  preparation and cannot depend on signatures, receipt randomness, acceptance result,
+  eligibility, `Started` or later amendment bytes;
+- `EnvelopeSubsetValidatedPlan` proves the decoded/resource-validated plan is inside
+  the proposal and binds its canonical DAG/order root; `ReceiptPrepared` binds this
+  validated-plan root, proposal root and pre-fixed lineage identity under the admitted
+  receipt/witness capacity and privacy contracts;
+- `PolicySignatureAdmitted` binds exact receipt/witness roots and policy/signature
+  evidence; `AcceptedEffectEnvelopePrepared` commits proposal, validated plan,
+  lineage, receipts, witnesses, signatures and policy but remains non-executable;
+- provider `AcceptanceCommitted` authenticates the already-fixed lineage and prepared
+  envelope under immutable acceptance roots; `AcceptedEffectEnvelopeActive` then
+  commits that exact acceptance evidence before eligibility can be produced;
+- `ExecutionEligible` consumes the active accepted envelope, provider completeness and
+  receipt/witness eligibility proofs; `Started` consumes that exact eligibility and
+  cannot be inherited, synthesized or used to repair an earlier failed stage;
+- each stage has one canonical predecessor, expected-root transition, durability point,
+  bounded expiry/cleanup and restart behavior; failure/refusal cannot skip forward,
+  retain orphan provider authority or reinterpret a non-authorizing type;
+- tests cover every stage transition, lineage stability before/after receipt,
+  acceptance/eligibility cycles, receipt substitution, reordered signatures, provider
+  response loss, concurrent admission, stage skipping, restart cleanup and rollback.
+
+Verification:
+
+- `cargo test -p sagnir-core`
+- `cargo test -p sagnir-store`
+- effect-envelope admission/lineage state-machine model;
+- typed-stage compile-fail, crash and canonical commitment vectors.
+
+Exit criteria:
+
+- Receipt preparation never depends on acceptance or eligibility not yet produced.
+- Acceptance authenticates a lineage identity fixed before receipt preparation.
+- No non-authorizing admission stage can reach `Started` or effect authority.
 
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
@@ -14380,7 +14547,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.100 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.103 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -14416,7 +14583,8 @@ Deliverables:
   plan-amendment lineage, conflict-observation consequences, provider replay fences
   and conservative pre-handoff dispatch authorization, accepted authority envelopes,
   stable permit identities, permit-scoped conflict abandonment, consequence-outcome
-  knowledge, acyclic dependency admission and delivery-closure proofs,
+  knowledge, acyclic dependency admission, delivery-closure proofs, historical no-
+  effect finality, authoritative consequence slots and non-circular envelope admission,
   admitted authentication suite/provider-capacity mode,
   and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
@@ -14431,7 +14599,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.100 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.103 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -14748,8 +14916,10 @@ Deliverables:
   fences, and uncertainty is durable before handoff; accepted envelopes prohibit
   amendment widening, stable permit identities span generations, permit-scoped
   conflict abandonment proves isolation, consequence execution knowledge preserves
-  resolution ambiguity, dependency graphs are admitted DAGs, and no-effect requires
-  complete delivery closure; panic accounting charges
+  resolution ambiguity, dependency graphs are admitted DAGs, delivery closure is
+  combined with typed historical outcome and boundary coverage for no-effect,
+  consequence slots enforce one active ID per kind/generation, and a non-authorizing
+  staged envelope pipeline fixes lineage before receipts; panic accounting charges
   ambiguity conservatively, and conflict evidence uses independent emergency keys/
   retention;
   retrievability states bind private tags/keys to exact ciphertext generations
@@ -14827,7 +14997,11 @@ Deliverables:
   identity collision, permit-wide abandonment destroying shared state, ambiguous
   compensation recorded terminal/repeated/releasing custody, cyclic dependency graph,
   cycle introduced by amendment, provider non-inclusion used without queue/proxy/
-  replay-fence delivery closure, unknown-effect
+  replay-fence delivery closure, closure/dedup tombstone mistaken for historical no-
+  effect, committed outcome entering no-effect projection, two consequence IDs racing
+  around ambiguity, slot/history projection mismatch, unbounded repeatable consequence,
+  acceptance/receipt/eligibility cycle, lineage identity changed by receipt randomness
+  or skipped non-authorizing envelope stage, unknown-effect
   compensation unsafe in either possible world, mutable fence root from late result,
   result-log/status-map splice, provider-collusion completeness claimed without
   independent observation, execution before retained receipt/witness co-commit,
@@ -14978,7 +15152,8 @@ Deliverables:
   executor lineage, conflict-observation consequence authority, replay-fenced provider
   deduplication, conservative pre-handoff uncertainty, non-widening accepted envelopes,
   stable lineage permit identities, isolated permit conflict abandonment, explicit
-  consequence ambiguity, acyclic dependency admission and composed delivery closure,
+  consequence ambiguity, acyclic dependency admission, typed historical no-effect
+  finality, single-active consequence slots and non-circular staged envelope admission,
   fail-closed post-start
   recovery with distinct started-no-effect knowledge, non-equivocating static-slot
   allocation,
@@ -15154,7 +15329,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.100 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.103 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -15176,7 +15351,7 @@ Deliverables:
   custody/abandonment, immutable acceptance/current-result evidence,
   pre-execution receipt/witness admission, exact feature-witness/operation authority
   composition and externally anchored composite emergency-head publication through
-  v0.111.100, and the
+  v0.111.103, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -16117,7 +16292,9 @@ Deliverables:
   conflict-observation witness/consequence, deduplication-contract/replay-fence and
   dispatch-authorization ordering, accepted-effect-envelope/stable-permit-ID, permit-
   scoped conflict abandonment, consequence-execution-knowledge, dependency-DAG/
-  canonical topological order and delivery-closure-proof corpus;
+  canonical topological order, delivery-closure-proof, provider-historical-outcome/
+  effect-boundary-coverage/no-effect-finality, consequence-slot/occurrence-policy/
+  history-projection and staged-envelope-admission/lineage-derivation corpus;
 - deterministic fact rule/query-plan, snapshot cursor, immutable-index offset,
   exact cryptographic suite/hybrid transcript, opaque bundle outer/inner
   manifest, and blind-claim corpus;
@@ -16235,7 +16412,9 @@ Deliverables:
   lineage/executor-fence/conflict-observation-consequence/deduplication-horizon/replay-
   fence/dispatch-authorization-order/accepted-effect-envelope/stable-permit-identity/
   effect-conflict-abandonment/consequence-execution-knowledge/dependency-DAG/
-  topological-order/delivery-closure-proof/debt target set;
+  topological-order/delivery-closure-proof/provider-historical-outcome/boundary-
+  coverage/no-effect-finality/consequence-slot/occurrence-policy/history-projection/
+  staged-envelope-admission/lineage-derivation/debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -16315,9 +16494,10 @@ Deliverables:
   lineage, separate conflict-observation consequences, provider deduplication/replay-
   fence horizons, conservative pre-handoff uncertainty, non-widening accepted effect
   envelopes with stable lineage permit identity, permit-scoped conflict abandonment,
-  explicit consequence execution knowledge, acyclic dependency admission, delivery-
-  closure no-effect proofs and anchored irreducible-conflict abandonment under
-  independent evidence keys/retention,
+  explicit consequence execution knowledge, acyclic dependency admission, delivery
+  closure composed with typed historical outcome/boundary coverage, single-active
+  consequence slots and staged non-circular envelope admission, plus anchored
+  irreducible-conflict abandonment under independent evidence keys/retention,
   append-only classification, two-world-safe compensation/normalization, bounded
   authoritative-time emergency custody/anchored abandonment, governed bridge
   blocking, normalized/terminal staged-material retirement, and non-authorizing
@@ -16535,7 +16715,10 @@ Deliverables:
   narrow conflict abandonment over shared custody/dependencies, ambiguous consequence
   labeled terminal or repeated, cyclic/self/duplicate dependency admission, amendment-
   created cycle, noncanonical topological order or incomplete delivery closure used as
-  no-effect evidence,
+  no-effect evidence, replay fence/tombstone selecting historical no-effect, outcome-
+  kind erasure, distinct consequence IDs bypassing one-active authority, slot/history
+  projection mismatch, repeatable occurrence overflow, circular envelope/receipt/
+  acceptance dependency, lineage derived after receipt or typed-stage authority skip,
   unanchored conflict abandonment, conflict evidence erasure/cross-purpose key use,
   unbounded/uncharged prepared receipts, local-only provider capacity, static-slot
   clone replay, rollbackable provider checkpoint, partitioned double allocation,
@@ -16712,6 +16895,10 @@ Deliverables:
   v0.111.98 consequence-prepare/unknown/query/terminal/conflict boundaries,
   v0.111.99 decode/validate/toposort/reserve/start boundaries and
   v0.111.100 layer-close/compose/prove/project-no-effect boundaries,
+  v0.111.101 outcome-attest/cover/compose/project-typed boundaries,
+  v0.111.102 slot-CAS/activate/query/close/retry-generation boundaries and
+  v0.111.103 decode/resource/propose/validate/receipt/admit/accept/eligible/start
+  boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -16921,7 +17108,12 @@ Deliverables:
   evidence conflict, self/duplicate/deep dependency cycle, amendment-created cycle,
   order-dependent topological admission, query-before-delayed-delivery, queue partition
   healing, dead-letter/retry-buffer restore or provider rotation without full delivery
-  closure,
+  closure, replay/dedup tombstone falsely proving historical no-effect, committed or
+  conflicting provider outcome coerced to no-effect, incomplete effect-boundary
+  coverage, distinct consequence IDs racing one permit/kind slot, response loss then
+  alternate-ID compensation, occurrence-sequence rollback, slot/history-root splice,
+  lineage derived after receipt, receipt/acceptance/eligibility dependency cycle,
+  proposed-envelope authority use or typed admission-stage skipping,
   unanchored
   conflict abandonment/cleanup, provider/writer collusion under each completeness
   profile,
@@ -17328,7 +17520,10 @@ Deliverables:
   result overhead plus accepted-envelope subset checks, stable permit-ID lookup,
   permit-scoped conflict-abandonment isolation, consequence-knowledge transitions,
   dependency-DAG/topological validation and delivery-closure proof composition/
-  verification; delivery-profile benchmarks distinguish prepared/authorized/
+  verification plus provider historical-outcome/complete-boundary composition,
+  no-effect-finality projection, consequence slot/history CAS/projection, bounded
+  occurrence sequencing and every staged envelope-admission/lineage-derivation step;
+  delivery-profile benchmarks distinguish prepared/authorized/
   handed-off states, local dispatch, provider idempotency, remote invocation, semantic-
   effect and deduplication-detail/replay-fence retention/compaction/migration costs;
   no-effect projection/policy benchmarks retain kind costs;
@@ -17913,7 +18108,10 @@ Deliverables:
 - v0.111.96 prevents amendment widening and stabilizes permit identity, v0.111.97
   separates permit-scoped conflict abandonment, v0.111.98 records consequence
   ambiguity, v0.111.99 admits only bounded dependency DAGs, and v0.111.100 requires
-  complete delivery closure before no-effect finality;
+  complete delivery closure without claiming historical no-effect;
+- v0.111.101 composes historical outcome, delivery closure and boundary coverage,
+  v0.111.102 enforces one active consequence slot per permit/kind/generation, and
+  v0.111.103 makes envelope admission non-circular with pre-receipt lineage identity;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -18223,7 +18421,13 @@ Deliverables:
 - v0.111.99 self/duplicate/cyclic edge, canonical topological order, depth/work bound,
   amendment-created cycle and pre-reservation refusal fixtures pass;
 - v0.111.100 delayed queue/proxy/retry/dead-letter, partition healing, epoch rotation,
-  replay-fence loss, omitted layer and no-effect projection fixtures pass;
+  replay-fence loss, omitted layer and closure-only no-effect refusal fixtures pass;
+- v0.111.101 all typed provider outcomes, successful-commit tombstone, boundary-
+  coverage omission, root/epoch splice and exact no-effect-finality fixtures pass;
+- v0.111.102 distinct-ID replica race, slot/history projection, response loss, retry-
+  generation, occurrence bound/sequence, compaction and stale-restore fixtures pass;
+- v0.111.103 typed admission-stage order, pre-receipt lineage stability, receipt/
+  signature/acceptance substitution, cycle, stage skip and crash recovery fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -18662,7 +18866,11 @@ Deliverables:
   rather than scalar operation summaries; governed plan amendments exclusively fence
   and account for every old permit, validate executor generation on each dispatch and
   publish one append-only plan lineage before minting successor permits; the immutable
-  accepted envelope permits only narrowing, cancellation or target instantiation,
+  accepted envelope is reached only through typed decoded/resource/proposed/subset-
+  validated/receipt/policy-signature/prepared/accepted/active/eligible stages; lineage
+  identity derives from the reserved operation/proposal/plan genesis before receipts,
+  acceptance authenticates that identity, and no non-authorizing stage can execute;
+  the active envelope permits only narrowing, cancellation or target instantiation,
   while widening creates a fresh causally linked operation with full admission and no
   inherited `Started`; every record uses stable lineage/birth-generation/permit
   identity, and the complete carried-plus-new dependency graph is a bounded validated
@@ -18672,15 +18880,20 @@ Deliverables:
   `EffectConflictAbandoned` proves exact dependency/custody isolation or refuses in
   favor of operation-wide abandonment; consequence execution knowledge records
   prepared, unknown, terminal and conflicting compensation/normalization/abandonment,
-  and no terminal resolution, cleanup, reopening or release precedes terminal evidence;
+  while one expected-root consequence slot permits at most one active ID per stable
+  permit/kind/resolution generation and bounded occurrence policies govern repeatable
+  actions; no terminal resolution, cleanup, reopening or release precedes terminal evidence;
   every permit is durable
   `DispatchPrepared`, then durable `OutcomeUnknown`, before external handoff,
   and delivery profiles distinguish one local dispatch, provider idempotency,
   at-most-once remote invocation and exactly-once semantic effect while binding the
   claim to provider/key epoch, deduplication lifetime, compaction/migration behavior
   and a permanent replay fence for delayed queues, backups and offline clones;
-  `ProvenNoEffect` after dispatch requires one `DeliveryClosureProof` covering every
-  admitted proxy, queue, retry/dead-letter layer, provider epoch and replay fence; each
+  `ProvenNoEffect` after dispatch requires one `NoEffectFinalityProof` combining a
+  `DeliveryClosureProof` over every admitted proxy, queue, retry/dead-letter layer,
+  provider epoch and replay fence with typed provider historical no-effect evidence and
+  complete effect-boundary coverage; committed/conflicting/unknown historical outcomes
+  remain those states, and closure or a deduplication tombstone alone selects none; each
   dependency
   consumes or borrows its declared typed outcome witness, while data-dependent targets
   remain within a precommitted bounded derivation domain, and wider targets require a
