@@ -12129,7 +12129,7 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.141 are complete and their provider/fence/effect/
+  v0.111.50 and v0.111.54-v0.111.145 are complete and their provider/fence/effect/
   custody/anchor/evidence/admission/privacy capabilities are admitted; earlier
   binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
@@ -15688,6 +15688,8 @@ Deliverables:
   and cryptographically gate external activation on the durable local decision;
   v0.111.138-v0.111.140 additionally order activation through the current-head anchor,
   make recipient migration lifecycle-safe and prevent threshold decision equivocation;
+  v0.111.142-v0.111.145 make recipient-set changes enforceable, bound/fence anchor
+  revalidation, permit safe post-non-admission abort and fix exact threshold assumptions;
 - tests cover two restored clones consuming one grant, disjoint/overlapping ranges,
   hardware-counter rollback, provider deduplication expiry, permanent replay fencing,
   threshold double-spend, process/device identity churn, double local quota release,
@@ -16006,7 +16008,8 @@ Deliverables:
   remain `WritePrepared` until v0.111.134 binds recipient authority and v0.111.135
   defines the authenticated authorization receipt and competing abort fence, and cannot
   authorize protected activation until v0.111.138 and v0.111.140 close anchor ordering
-  and threshold non-equivocation;
+  and threshold non-equivocation; revalidation and threshold profiles remain inactive
+  until v0.111.143-v0.111.145 close negative fencing, abort and exact quorum semantics;
 - `GrantTemplateCommitted` contains only domain-separated grant fields/commitment and
   sealed construction inputs under independently provisioned protected pending storage;
   no bearer bytes, provider signature, threshold share set or hardware authorization
@@ -16044,7 +16047,8 @@ Deliverables:
   `GrantActivationAuthorizedUnknown` only exact query/reconciliation or governed
   permanent retirement is allowed; v0.111.138 may create a successor authorization
   generation only from authenticated final anchor non-admission, preserving the same
-  grant/reservation/capacity and permanently fencing the old attempt;
+  grant/reservation/capacity and permanently fencing the old attempt; v0.111.143 bounds
+  that revalidation and v0.111.144 adds its mutually exclusive safe abort branch;
 - no activated bytes leave protected pending storage before v0.111.131 creates a durable
   delivery attempt; logs, status, diagnostics and blind-store metadata expose no grant,
   slot occupancy, recipient or activation-membership oracle;
@@ -16289,7 +16293,8 @@ Deliverables:
   retires the old grant authority under the lifecycle-state-specific v0.111.139
   transition; no separately identified successor may allocate fresh slot, quota or
   effect authority while the old grant may remain usable, and rewrapping, alias mutation
-  or delivery retry cannot bypass that rule;
+  or delivery retry cannot bypass that rule; v0.111.142 requires an enforceable
+  recipient-set authority transition for any same-lineage handoff;
 - already possessed authority is not retroactively revoked by recipient/key rotation;
   policy declares expiry and reconciliation behavior, while ambiguous old possession
   remains charged and cannot yield a replacement grant;
@@ -16520,7 +16525,9 @@ Deliverables:
   after exact query closes the old anchor attempt, `GrantActivationRevalidationFenced`
   permanently consumes that local authorization generation and may prepare a successor
   against the new head without rebasing, changing grant/reservation/capacity or reusing
-  the consumed request/idempotency identity;
+  the consumed request/idempotency identity; v0.111.143 requires permanent negative
+  replay fencing, complete old-path closure and cumulative generation bounds, while
+  v0.111.144 permits abort instead of another generation;
 - once anchor admission succeeds, later heads cannot retroactively revoke that admitted
   activation: every successor head accounts for the in-flight/terminal consequence, and
   a head transition omitting it is invalid rather than a reason to replay activation;
@@ -16587,10 +16594,12 @@ Deliverables:
 - a delivered or possessed unexpired grant defaults to migration refusal; an explicitly
   governed recipient handoff may issue a new recipient envelope only over the same exact
   external slot, effect/idempotency identity, charge, activation lineage and expiry, so
-  old and new copies still compete for one externally enforced semantic effect;
+  old and new copies still compete for one externally enforced semantic effect; this
+  remains `WritePrepared` until v0.111.142 defines the recipient-set authority CAS;
 - such same-authority handoff records immutable old/new envelope and recipient roots,
   does not refund or duplicate quota and does not claim old bytes were revoked; profiles
   requiring recipient exclusivity must wait for enforceable old-recipient retirement;
+  v0.111.142 also bounds recipient-set fanout, transition depth, bytes and proof work;
 - consumed, terminally retired or authoritatively expired grants cannot be migrated into
   renewed effect authority; any later effect is a new operation admitted from a current
   head with independent policy, budget and consequence identity;
@@ -16633,7 +16642,9 @@ Deliverables:
 - this milestone inherits v0.111.89 non-equivocation in addition to participant-local
   durability: every activation and abort quorum intersects every conflicting decision
   quorum in more than `f` participants, expressed for symmetric thresholds as
-  `2q > N + f` and verified from the committed configuration;
+  `2q > N + f` and verified from the committed configuration; v0.111.145 defines the
+  exact supported symmetric/asymmetric forms, reconfiguration and v0.111.85 rollback
+  resistance, and protected threshold operation remains inactive until it completes;
 - an honest participant verifies all local/anchor receipts and atomically records one
   append-only decision successor before releasing a share; it never signs both decision
   kinds or two roots/configurations for one grant-authority lineage;
@@ -16728,6 +16739,234 @@ Exit criteria:
 - The final provider atomically replay-fences the exact effect before execution.
 - Any authorization reusable outside that boundary is a terminal exportable release.
 
+### v0.111.142 - Enforceable Grant Recipient-Set Transition
+
+Goal: make same-authority recipient handoff an authenticated transition enforced by the
+terminal consumption mechanism rather than an envelope-only rewrap.
+
+Deliverables:
+
+- every recipient-bound grant authority has an immutable lineage ID and a canonical
+  `GrantRecipientAuthorityState` whose initial generation/root contains the original
+  recipient/key epoch committed by v0.111.134, plus exact transfer mode and bounds;
+- canonical `GrantRecipientSetTransition` binds lineage, unchanged grant/activation/
+  external slot/effect/idempotency/charge/expiry identities, old/new recipient-set roots,
+  generation, transition class, issuer and policy/anchor authorization, expected
+  provider/hardware/threshold predecessor and resulting authority-state root;
+- admitted transition classes are `ReplaceExclusive` and `AddConcurrent`:
+  `ReplaceExclusive` atomically removes old recipients and adds the new set, while
+  `AddConcurrent` explicitly preserves named old recipients alongside the new set;
+  omission or an ambiguous transfer mode refuses;
+- current policy, the grant issuer/key epoch and a v0.111.121 current-head anchor
+  admission authorize the transition; recipient possession, local rewrap, delivery
+  metadata, key rotation or an old grant signature cannot authorize it alone;
+- the terminal provider atomically compares the old recipient-set root and updates to
+  exactly one successor before accepting a new-recipient use; hardware or threshold
+  consumers provide equivalent rollback-resistant single-successor enforcement and
+  exact query, or the transition is unsupported and refused;
+- every use presents the immutable grant commitment plus an authenticated current-set
+  inclusion/transition proof; an old envelope remains usable only when its recipient is
+  intentionally retained by `AddConcurrent`, and is rejected after enforceable
+  `ReplaceExclusive` removal;
+- a transition changes recipient authority only: it cannot create another activation,
+  slot, effect identity, idempotency domain, quota/custody charge, expiry horizon or
+  terminal result, and exact replay returns the original set successor;
+- profiles whose offline token, hardware slot or external consumer cannot consult and
+  atomically enforce the current recipient-set generation refuse handoff; wrapping new
+  bytes around the old grant remains delivery data with no new recipient authority;
+- protocol bounds cap cumulative transitions per lineage, simultaneously authorized
+  recipients/envelopes, transition depth, canonical bytes, retained proofs/receipts and
+  verification work; limit exhaustion leaves the existing set authoritative and cannot
+  be bypassed by aliases, key epochs, batching or compaction;
+- compaction, sync, archive and provider migration preserve the initial recipient root,
+  every active/removal transition needed to verify current authority, conflict evidence
+  and bounded historical proofs without resurrecting removed recipients;
+- private profiles encrypt/pad recipient-set transitions and expose no set size, churn,
+  old/new relation or membership oracle beyond the authorized participant/provider;
+- tests cover envelope-only rewrap, missing issuer/anchor authority, concurrent CAS,
+  exclusive removal, intentional concurrent recipients, old-envelope replay, provider/
+  hardware/threshold refusal, fresh-slot substitution, transition-limit exhaustion,
+  compaction, migration, restore and mixed-version refusal.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- authorize/compare-set/replace-or-add/query/consume state-machine model;
+- provider, hardware and threshold recipient-set enforcement integration suite.
+
+Exit criteria:
+
+- A new recipient gains authority only through an enforced recipient-set transition.
+- Transition mode states exactly whether old recipients remain authorized.
+- Recipient fanout and transition history remain bounded without multiplying effects.
+
+### v0.111.143 - Bounded Anchor Revalidation And Negative Closure
+
+Goal: prevent delayed failed activation requests and repeated head churn from creating
+ambiguous authority or unbounded grant/anchor state.
+
+Deliverables:
+
+- canonical `GrantAnchorNonAdmissionFence` binds grant/activation lineage, authorization
+  generation, anchor request/idempotency identity, expected head/policy, exact final
+  non-admission result/reason, anchor namespace/epoch, predecessor and permanent
+  v0.111.94 replay-fence entry;
+- authenticated final non-admission becomes reusable authority only after the anchor
+  durably records that negative fence and exact query proves the request can never
+  transition to admitted under any current or migrated anchor/provider epoch;
+- every proxy, queue, retry buffer, dead-letter path, failover endpoint and migration
+  route that could carry the old request satisfies v0.111.100 complete delivery closure
+  before `GrantActivationRevalidationFenced` can authorize a successor or abort branch;
+- closure binds the complete route inventory, final no-dispatch/non-admission evidence,
+  replay-fence retention horizon and provider migration roots; timeout, local absence,
+  a negative cache or one endpoint's non-inclusion response is insufficient;
+- `GrantActivationAttemptLineage` is append-only and binds original grant budget,
+  generation count, cumulative request/receipt bytes, verification/work charge, anchor
+  attempts, retained negative/ambiguous receipts and expected predecessor/successor;
+- protocol-fixed maxima apply to generations, anchor attempts, cumulative bytes/work,
+  route-closure entries and retained receipts under the original grant capacity;
+  every attempt reserves from that budget before local authorization or network output;
+- head churn, denial or response loss beyond any bound leaves the grant inert and
+  query-only; no permissive mode, restart, clone, recipient change, anchor migration or
+  governance override silently resets counters or drops retained ambiguity;
+- a successor generation uses a fresh authorization/request identity, preserves the
+  grant/reservation/slot/effect/recipient-set/capacity/expiry lineage and references the
+  permanent negative fence and closure root of every prior generation;
+- compaction may summarize a closed prefix under an authenticated root but retains
+  enough permanent negative-fence and route-closure evidence to reject every delayed
+  old request; anchor/provider retirement imports those refusal roots first;
+- tests delay old requests in each route layer, advance heads repeatedly, lose negative
+  responses, restore old anchor/provider state, exhaust each bound, attempt counter reset,
+  compact/migrate refusal state and race old/new generations.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- request/negative-fence/close-routes/bound/revalidate state-machine model;
+- proxy, queue, failover, anchor migration and head-churn fault-injection suite.
+
+Exit criteria:
+
+- Every superseded activation request has permanent negative replay fencing and closure.
+- Revalidation consumes one bounded lineage budget that clones and head churn cannot reset.
+- Exhausted revalidation remains inert rather than growing authority or retained state.
+
+### v0.111.144 - Post-Non-Admission Grant Abort Fence
+
+Goal: allow an unwanted grant to terminate safely after final anchor non-admission
+without racing another revalidation generation or leaking reserved authority.
+
+Deliverables:
+
+- after v0.111.143 closes one generation, the only local successors are
+  `GrantActivationRevalidationFenced -> NextActivationPrepared | GrantAbortFenced`;
+  both contend on the same expected lineage/head state CAS and exactly one consumes all
+  remaining revalidation-or-abort authority;
+- `NextActivationPrepared` preserves the same grant/reservation/recipient-set/slot/
+  effect/capacity/expiry lineage, charges the next bounded generation and references the
+  complete negative-fence/route-closure chain before any anchor byte;
+- the post-non-admission `GrantAbortFenced` variant binds the complete attempt lineage,
+  all permanent negative fences/closure roots, inert external reservation, remaining
+  budget disposition, current policy/head, abort reason and expected external predecessor;
+- the abort fence is durably flushed before any provider, hardware or threshold
+  cancellation request and permanently rejects every successor authorization generation,
+  delayed old anchor request and external activation for the grant lineage;
+- terminal external cancellation atomically proves the exact reservation remains inert
+  and can never activate; response loss is query-only, and no local cleanup, charge
+  release or slot reuse occurs from timeout, absence or partial threshold cancellation;
+- if any anchor admission, provider activation, delivery ambiguity, possession or
+  consumption evidence exists, this abort branch refuses and the corresponding active/
+  ambiguous lifecycle reconciliation remains authoritative;
+- successful cancellation permits only policy-defined capacity disposition after its
+  receipt is durably reconciled; immutable issue, authorization, negative-fence and abort
+  history remains verifiable and never becomes a no-issuance claim;
+- provider/threshold reconfiguration and migration carry the abort fence, old-request
+  refusal roots and cancellation result before successor activation; unavailable
+  continuity keeps the grant charged and inert;
+- tests race abort versus next generation, send abort before durable fence, delay every
+  old request, lose cancellation responses, inject late admission/activation evidence,
+  restore clones, mix threshold epochs, migrate providers and retry after cleanup.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- revalidation-fence/prepare-or-abort/cancel/query/close state-machine model;
+- anchor/provider/threshold abort-race and response-loss integration suite.
+
+Exit criteria:
+
+- Abort and next revalidation are mutually exclusive durable successors.
+- External cancellation occurs only after all activation/revalidation authority is fenced.
+- Final non-admission can end an unwanted inert grant without fabricating capacity release.
+
+### v0.111.145 - Exact Rollback-Resistant Threshold Quorum Profiles
+
+Goal: make every supported activation/abort threshold configuration prove honest
+intersection and remember prior decisions across rollback and reconfiguration.
+
+Deliverables:
+
+- protected grant decisions support only equal-weight participant identities in one
+  closed form: `UnweightedSymmetric { N, f, q }` or
+  `UnweightedAsymmetric { N, f, q_activation, q_abort }`; weighted thresholds and
+  unknown/custom quorum predicates are parse-only/advisory and cannot authorize effects;
+- every configuration validates `N > 0`, `f < N`, threshold bounds and honest-intersection
+  equations for every conflicting pair: symmetric `2q > N + f`; asymmetric
+  `2q_activation > N + f`, `2q_abort > N + f` and
+  `q_activation + q_abort > N + f`;
+- participant-set root, exact quorum form/parameters, configuration epoch, fault model,
+  decision kind and grant/predecessor roots are included in each share and certificate;
+  duplicate identities, weights, aliases or cross-configuration shares never count;
+- this milestone inherits both v0.111.85 rollback-resistant checkpoint continuity and
+  v0.111.89 non-equivocating allocation: participant decision state, signed-share map,
+  predecessor/configuration root and conflict evidence share one rollback-resistant
+  checkpoint before any share leaves the participant;
+- restored, stale, forked or checkpoint-unverifiable participants are query-only and
+  cannot forget a signed activation/abort decision, re-sign another root or rejoin under
+  a new identity without governed retirement and state transfer;
+- reconfiguration uses either externally fenced stop-and-transfer or joint consensus;
+  joint decisions satisfy complete quorums under both old and new configurations and
+  each configuration's own `N/f/q` equations, while the transition imports all pending,
+  decided and conflicting grant lineages before retiring old signers;
+- arbitrary claims of old/new set overlap are insufficient; if rollback continuity,
+  both configuration certificates, state transfer or external fencing cannot be proved,
+  threshold grant decisions freeze and no local/newest/majority preference selects one;
+- provider/hardware verification recomputes all quorum equations and configuration roots,
+  verifies rollback/finality evidence and accepts only one exact decision successor;
+  unsupported weighted/custom certificates are refused before reservation mutation;
+- capability negotiation reports quorum form, fault bound, rollback mechanism,
+  reconfiguration mode and availability assumptions separately, with no downgrade from
+  protected to advisory during an in-flight grant;
+- tests cover every parameter boundary, symmetric/asymmetric conflicting pairs, weighted
+  input refusal, duplicate/aliased identities, participant rollback, lost checkpoints,
+  old/new joint decisions, fenced transfer, partition, Byzantine equivocation, restore,
+  provider verification and mixed-version refusal.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- configure/check-equations/checkpoint/decide/reconfigure state-machine model;
+- Byzantine quorum, participant rollback and joint-consensus integration suite.
+
+Exit criteria:
+
+- Every admitted quorum form proves honest intersection for every conflicting pair.
+- Participant rollback cannot erase a prior signed decision.
+- Weighted/custom or unsafe reconfiguration remains non-authorizing.
+
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
 Goal: ensure untrusted remote data cannot influence trusted state before full
@@ -16757,7 +16996,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.141 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.145 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -16809,7 +17048,9 @@ Deliverables:
   qualified closure, clone-aggregated anchor admission capacity, clone-safe endpoint
   consumption, failure-atomic grant issuance, inert grant activation, crash-safe grant
   delivery, recipient-bound activation/abort authority, classified terminal hardware
-  paths and bounded semantic-projection N-way batch independence through v0.111.141,
+  paths, bounded semantic-projection N-way batch independence, enforceable recipient-set
+  transitions, bounded negative-fenced revalidation/post-non-admission abort and exact
+  rollback-resistant threshold profiles through v0.111.145,
   admitted authentication suite/provider-capacity mode,
   and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
@@ -16824,7 +17065,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.141 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.145 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -17257,7 +17498,11 @@ Deliverables:
   receipt roots, local-check/provider-use head races without anchor admission, activation
   after abort or current-head advancement, recipient migration that duplicates a slot/
   quota/effect, disjoint activation/abort threshold certificates or unsafe reconfiguration,
-  scoped authorization without named-provider replay fencing, exportable hardware output
+  envelope-only recipient authority or unbounded recipient fanout, revalidation without
+  permanent negative fencing/complete route closure, unbounded head-churn generations,
+  missing abort after final non-admission, participant rollback, unsafe asymmetric or
+  weighted quorum, scoped authorization without named-provider replay fencing,
+  exportable hardware output
   misclassified as inert, downstream hardware-token replay, unbounded/escaped
   dynamic batch footprints, physical-root equality substituted for semantic equivalence,
   unverified serialized batch assertions, pairwise-safe/N-way-invalid batch members, or
@@ -17618,7 +17863,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.141 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.145 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -17646,8 +17891,10 @@ Deliverables:
   offline issuance, inert activation, crash-safe grant delivery, terminal hardware
   paths, recipient-bound activation authority, classified hardware outputs and bounded
   semantic-projection batches, anchor-ordered activation, lifecycle-safe recipient
-  migration, threshold non-equivocation and scoped final-provider authorization through
-  v0.111.141, and the
+  migration, threshold non-equivocation, scoped final-provider authorization,
+  enforceable recipient-set transitions, bounded negative-fenced revalidation,
+  post-non-admission abort and exact rollback-resistant threshold profiles through
+  v0.111.145, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -18609,7 +18856,8 @@ Deliverables:
   activation-authorization/abort-fence receipt, hardware-output authority taxonomy,
   dynamic-resource footprint, batch-semantic-projection, anchor-ordered grant admission,
   lifecycle-safe recipient migration, threshold decision certificate/configuration and
-  scoped-authorization final-provider corpus;
+  scoped-authorization final-provider, recipient-set transition, anchor-negative-fence/
+  revalidation lineage, post-non-admission abort and exact threshold-profile corpus;
 - deterministic fact rule/query-plan, snapshot cursor, immutable-index offset,
   exact cryptographic suite/hybrid transcript, opaque bundle outer/inner
   manifest, and blind-claim corpus;
@@ -18744,7 +18992,9 @@ Deliverables:
   N-way-batch-footprint-proof/recipient-bound-grant/activation-authorization-receipt/
   grant-abort-fence/hardware-output-authority-class/dynamic-footprint/semantic-
   projection/evaluator-proof-or-attestation/grant-anchor-admission/recipient-migration/
-  threshold-decision-certificate/scoped-authorization-contract/debt target set;
+  threshold-decision-certificate/scoped-authorization-contract/recipient-set-transition/
+  anchor-negative-fence/revalidation-lineage/post-non-admission-abort/exact-threshold-
+  profile/debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -18845,7 +19095,9 @@ Deliverables:
   authority, terminal hardware effect paths and evaluator-derived N-way batch
   independence over bounded dynamic footprints and semantic projections, anchor-ordered
   grant activation, lifecycle-state-safe recipient migration, Byzantine-intersecting
-  threshold decisions and final-provider-consumed scoped authorization, plus anchored
+  threshold decisions, final-provider-consumed scoped authorization, enforced bounded
+  recipient sets, permanently closed/bounded anchor revalidation, safe post-non-admission
+  abort and exact rollback-resistant threshold profiles, plus anchored
   irreducible-conflict abandonment under independent evidence keys/retention,
   append-only classification, two-world-safe compensation/normalization, bounded
   authoritative-time emergency custody/anchored abandonment, governed bridge
@@ -19094,7 +19346,11 @@ Deliverables:
   preparation without anchor expected-head admission, no recipient migration that adds
   consumption capacity while old authority may survive, no threshold decision quorums
   lacking honest intersection or fenced reconfiguration, and no scoped authorization
-  deferred without exact final-provider atomic replay consumption,
+  deferred without exact final-provider atomic replay consumption, no envelope-only
+  recipient-set change or unbounded recipient fanout, no revalidation before permanent
+  old-request negative fencing and complete route closure, no unbounded revalidation
+  lineage, no abort racing a successor generation, and no threshold share from unsafe/
+  weighted/custom or rollbackable participant state,
   unanchored conflict abandonment, conflict evidence erasure/cross-purpose key use,
   unbounded/uncharged prepared receipts, local-only provider capacity, static-slot
   clone replay, rollbackable provider checkpoint, partitioned double allocation,
@@ -19313,6 +19569,10 @@ Deliverables:
   v0.111.139 classify-lifecycle/cancel-or-retire/rewrap-or-refuse boundaries,
   v0.111.140 threshold-decide/certify/reconfigure/conflict boundaries and
   v0.111.141 release-or-provider-consume/query/migrate boundaries,
+  v0.111.142 authorize/compare-set/replace-or-add/query/consume boundaries,
+  v0.111.143 request/negative-fence/close-routes/bound/revalidate boundaries,
+  v0.111.144 revalidation-fence/prepare-or-abort/cancel/query boundaries and
+  v0.111.145 configure/checkpoint/decide/reconfigure/refuse boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -19485,6 +19745,15 @@ Deliverables:
 - recipient migration races inert cancellation, activated retirement, unknown delivery,
   possession, consumption and authoritative expiry; attempts to gain a fresh slot, quota
   or effect identity while an old grant may survive are refused;
+- same-lineage handoff attempts envelope-only authorization, recipient-set CAS races,
+  exclusive versus concurrent membership, old-envelope replay, unsupported terminal
+  consumers and transition/fanout/lineage-work exhaustion without multiplying effects;
+- repeated head churn delays old activation requests through every proxy/queue/failover
+  route and exhausts generation/byte/work/receipt bounds; no successor or abort proceeds
+  before permanent negative fencing and complete old-route closure;
+- after closure, abort races `NextActivationPrepared`, cancellation responses are lost
+  and late admission/activation evidence arrives; exactly one branch survives and no
+  capacity is released without terminal inert-reservation cancellation;
 - one hardware output is replayed through proxy, queue, retry/dead-letter restore,
   failover and downstream services; terminal hardware effects or final-provider replay
   fences permit one semantic result and incomplete paths remain ambiguous;
@@ -19494,6 +19763,9 @@ Deliverables:
 - partitioned threshold members attempt disjoint activation/abort decisions and old/new
   configuration share mixing; insufficient honest intersection freezes authority, while
   scoped authorizations execute only through their named atomic replay-fenced provider;
+- threshold tests cover every symmetric/asymmetric equation boundary, participant-state
+  rollback, duplicate aliases, weighted/custom refusal, old/new joint consensus and
+  externally fenced transfer under both configurations' fault bounds;
 - three-plus-member batches exercise pairwise-compatible but N-way-invalid quota,
   threshold, policy, dependency and authority sets across every success/ambiguity/abort/
   compensation/cleanup/reconciliation permutation and reject caller footprint lies;
@@ -19847,6 +20119,17 @@ Deliverables:
 - scoped-authorization vectors and benchmarks measure bound-field verification, final-
   provider atomic consumption/query, copied-presentation contention, expiry, replay-state
   retention and failover migration;
+- recipient-set vectors and benchmarks measure authorization/CAS/inclusion proofs,
+  exclusive versus concurrent sets, maximum transition depth/fanout/bytes/work and
+  terminal-consumer enforcement/refusal;
+- anchor-revalidation vectors and benchmarks measure permanent negative-fence writes,
+  complete route closure, bounded generation/attempt/receipt/work accounting, head churn,
+  prefix summarization and delayed-request rejection;
+- post-non-admission abort vectors and benchmarks measure branch CAS, durable abort fence,
+  external cancellation/query, ambiguity retention and terminal capacity disposition;
+- exact-threshold-profile vectors and benchmarks measure symmetric/asymmetric equation
+  checks, rollback-resistant participant checkpoints, certificate verification, joint
+  consensus, fenced transfer and unsafe/weighted refusal at maximum supported bounds;
 - independent `sagnir-authority-sha3-256-v1` frame, transaction, logical-state,
   and physical-checkpoint vectors, including genesis/checkpoint anchoring,
   non-circular signing frontiers, physical-compaction logical-root preservation,
@@ -20729,6 +21012,10 @@ Deliverables:
   recipient migration from duplicating non-revocable authority, v0.111.140 requires
   intersecting threshold decision quorums, and v0.111.141 admits scoped authorization
   only through one named replay-fenced final provider;
+- v0.111.142 makes recipient-set changes terminal-consumer authority transitions,
+  v0.111.143 permanently closes and bounds anchor revalidation, v0.111.144 adds the
+  mutually exclusive post-non-admission abort branch, and v0.111.145 fixes exact
+  rollback-resistant symmetric/asymmetric threshold profiles;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -21146,6 +21433,18 @@ Deliverables:
 - v0.111.141 copied scoped signatures, every bound-field/endpoint/API substitution,
   provider replay/result query, expiry, compaction, failover, generic-signature relabeling
   and closed activation-matrix fixtures pass;
+- v0.111.142 envelope-only handoff, replace/add recipient-set CAS, concurrent recipient
+  use, unsupported consumer, transition/fanout bound, privacy, compaction and migration
+  fixtures pass;
+- v0.111.143 delayed old route, permanent negative fence, complete delivery closure,
+  response loss, head churn, generation/byte/work/receipt bound, counter-reset, compaction
+  and anchor/provider migration fixtures pass;
+- v0.111.144 abort-versus-next-generation CAS, abort-before-fence, cancellation response
+  loss, late admission/activation, stale clone, threshold/provider migration and capacity-
+  release refusal fixtures pass;
+- v0.111.145 symmetric/asymmetric equation boundaries, weighted/custom refusal,
+  participant rollback, duplicate identity, old/new joint consensus, fenced transfer,
+  Byzantine partition and provider-verification fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -21710,7 +22009,10 @@ Deliverables:
   before activation; the grant commits its recipient/key epoch, activation requires the
   durable issue and authorization roots plus an anchor-side current-head admission CAS,
   and a local abort fence is the mutually exclusive successor; threshold activation/
-  abort certificates require honest quorum intersection and fenced reconfiguration;
+  abort certificates use exact rollback-resistant symmetric/asymmetric equal-weight
+  quorum profiles with honest intersection and joint or externally fenced reconfiguration;
+  final anchor non-admission is permanently replay-fenced and every old request route is
+  closed before a bounded successor generation or mutually exclusive abort may proceed;
   delivery separately moves
   through prepared, durably unknown before the first output byte, delivered and
   possession-confirmed states, uses protected pending storage/admitted explicit channels
@@ -21720,6 +22022,9 @@ Deliverables:
   query without replacement; recipient migration follows lifecycle-state-specific
   cancellation/retirement/refusal and can rewrap possessed authority only while keeping
   the exact external slot, effect, charge and expiry, never fresh consumption capacity;
+  new recipients require an issuer/policy/anchor-authorized recipient-set transition
+  atomically recognized by the terminal consumer, with explicit exclusive/concurrent
+  membership and bounded transitions, fanout, retained bytes and verification work;
   cloneable local tokens grant no protected authority, and
   pure-local irreversible effects require independently proven exclusive idempotent
   ownership or wait for reconnection; the later-revocation limitation is declared; each
