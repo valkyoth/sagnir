@@ -12129,7 +12129,7 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.162 are complete and their provider/fence/effect/
+  v0.111.50 and v0.111.54-v0.111.163 are complete and their provider/fence/effect/
   custody/anchor/evidence/admission/privacy capabilities are admitted; earlier
   binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
@@ -15692,13 +15692,14 @@ Deliverables:
   revalidation, permit safe post-non-admission abort and fix exact threshold assumptions;
   v0.111.146-v0.111.148 atomically order recipient validation with effect consumption,
   reserve revalidation recovery capacity and separate threshold safety from availability;
-  v0.111.149-v0.111.162 fence pending-effect executors, close/refund recovery reserves,
+  v0.111.149-v0.111.163 fence pending-effect executors, close/refund recovery reserves,
   require complete reserve-slice disposition, define total-nonresponsive fault sets and
   make eventual progress conditional on explicit temporal/resource assumptions plus one
   affine worst-case capacity reservation per admitted request, permanent negative
   reservation closure, separate capability/request state axes, bounded retry closure
   reserves, request-local pause/execution eligibility, atomic pause/dispatch authority,
-  bounded pause-lineage closure capacity and non-widening resume compatibility;
+  bounded pause-lineage closure capacity, non-widening resume compatibility and fresh
+  dispatch authorization separation;
 - tests cover two restored clones consuming one grant, disjoint/overlapping ranges,
   hardware-counter rollback, provider deduplication expiry, permanent replay fencing,
   threshold double-spend, process/device identity churn, double local quota release,
@@ -17817,7 +17818,7 @@ Deliverables:
   it does not require free aggregate capacity for another admission; v0.111.161 bounds
   cumulative pause/revalidation churn and preserves final query/closure capacity, while
   v0.111.162 proves that changed eligibility remains inside the original resource and
-  authority envelope before resume;
+  authority envelope before resume and v0.111.163 keeps that proof non-authorizing;
 - once any downstream handoff is authorized/unknown, request-local failure moves the
   request to monotonic `ActiveQueryOnly`; it can advance only by exact query/reconciliation
   to `Terminal`/`ClosedUnavailable` and can never return to `Active`, `ReservedPaused` or
@@ -17877,6 +17878,8 @@ Deliverables:
   `DispatchAuthorizedUnknown` before any provider/client/queue/device handle, downstream
   byte, queue visibility or semantic output exists; once dispatch wins, pause/resume is
   illegal and later failure can produce only monotonic `ActiveQueryOnly`/terminal query;
+  v0.111.163 additionally requires fresh policy and protected-consequence admission at
+  dispatch rather than treating compatible `Reserved` state as execution authority;
 - a dispatch-capable handle is an affine, generation-bound result of the successful
   dispatch transition and is materialized only after required state and directory/
   provider durability; no prepared, cached, speculative or hidden handle is reachable
@@ -17989,11 +17992,17 @@ Deliverables:
   coordinator/retry generations, provider routes, delivery/reconciliation paths,
   retained evidence, bytes, verification/cryptographic work and final-closure needs;
   cached connectivity health or a partial policy/provider check is insufficient;
-- widened checked componentwise comparison proves every current count, byte, work,
-  route, participant, evidence and closure dimension is less than or equal to the
-  request's remaining typed reservation before the resume CAS can mint a new executor;
-  omitted dimensions, incomparable premise revisions, overflow and coarse local-resource
-  estimates fail closed;
+- canonical `ProgressReservationPartialOrder` defines compatibility over typed,
+  non-fungible dimensions: surplus bytes cannot satisfy missing verification work,
+  routes, evidence, participants or closure capacity, and provider-, route-, epoch- and
+  consequence-specific slices retain their namespaces; a current requirement is less
+  than or equal to remaining reservation only when every required namespaced dimension
+  has a same-schema reserved counterpart with sufficient checked capacity;
+- coupled constraints such as quorum/fault equations, participant/route reachability and
+  route/evidence/closure dependencies are revalidated as one typed predicate rather than
+  independent numeric totals; omitted or unknown dimensions, namespace/schema/version
+  mismatch, incomparable premise revisions, overflow and coarse local-resource estimates
+  fail closed before the resume CAS can mint a new executor;
 - ordinary resume preserves the exact request/effect identity, participant scope, quorum
   semantics, provider path, result domain and maximum progress claim admitted originally;
   increased retry/coordinator bounds, added/fallback routes, larger evidence retention,
@@ -18002,7 +18011,7 @@ Deliverables:
 - the v0.111.160 shared request-authority CAS commits the old and new premise/
   configuration roots plus the typed compatibility proof in the same transition that
   consumes `ReservedPaused` and mints the fresh bounded executor generation; stale,
-  substituted or separately published proof/configuration roots cannot authorize work;
+  substituted or separately published proof/configuration roots cannot satisfy resume;
 - ordinary resume cannot top up, refill, borrow, transfer or replace any reservation
   slice from aggregate capacity, recovery reserves, another request or a new provider;
   policy/configuration migration uses a separately admitted authenticated transition and
@@ -18041,6 +18050,67 @@ Exit criteria:
 - Ordinary revalidation cannot widen request semantics, authority or progress claims.
 - Connectivity recovery is never represented as proof of protocol stabilization.
 
+### v0.111.163 - Fresh Dispatch Authorization After Compatible Resume
+
+Goal: ensure resource-compatible resume never substitutes for current policy and
+consequence authorization at dispatch.
+
+Deliverables:
+
+- `ProgressResumeCompatibilityProof` is explicitly non-authorizing and can be consumed
+  only by the exact `ReservedPaused -> Reserved` state transition; `Reserved` remains a
+  non-bearer eligibility state and the proof cannot be converted, wrapped, cached or
+  projected into a dispatch handle, provider request, operation token or effect authority;
+- non-widening compatibility is necessary but never sufficient for execution: every
+  dispatch re-evaluates current policy against the exact principal/key epoch, request/
+  effect, scope, result domain, configuration root and request-authority predecessor, and
+  requires an explicit positive decision under the still-current policy root;
+- protected consequences independently acquire or revalidate the exact v0.111.121
+  `CurrentCompositeHeadAuthorityWitness` and consume it through the anchor-side
+  `AuthorizeCurrentConsequence` expected-head CAS at the established consequence
+  linearization point; compatibility state/proofs are not inputs that can satisfy,
+  weaken, refresh or bypass that authority requirement;
+- the v0.111.160 dispatch transition binds the fresh policy decision and, where required,
+  exact anchor admission receipt/current composite-head root before durable
+  `DispatchAuthorizedUnknown`, handle materialization or first output; policy denial,
+  principal/key revocation, head advancement, saturation or authority-epoch change after
+  compatibility calculation invalidates dispatch even when every resource dimension fits;
+- compatibility CAS and dispatch admission contend with policy/head/revocation/saturation
+  transitions through authenticated expected roots or a composed atomic transaction;
+  there is no check-then-dispatch interval in which stale authorization can cross the
+  effect boundary;
+- resume does not refresh issuance time, expiry, freshness, principal/key validity,
+  policy epoch, head witness, authorization generation or historical operation token;
+  stale but historically verifiable authority remains non-authorizing and cannot be
+  rehabilitated by a compatible current resource premise;
+- current authorization failure leaves the request charged `Reserved` or returns it to
+  a bounded `ReservedPaused` successor through the shared authority CAS without output;
+  repeated denial/revocation/head churn consumes the v0.111.161 lineage and cannot mint
+  additional reservation, compatibility, policy-query or anchor-admission capacity;
+- status/audit output distinguishes resource-compatible, current-policy-denied, revoked,
+  stale-head, saturated and dispatch-authorized states without presenting compatibility
+  as approval or leaking private principal, policy or consequence membership;
+- tests cover allow-to-deny policy changes while paused, principal/key revocation before
+  dispatch, anchor-head advancement and evidence saturation between compatibility and
+  dispatch, compatibility races with policy/anchor admission, historical-token replay and
+  compile-fail/API proof that compatible resume yields no bearer execution capability.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- compatibility/reserved/current-policy/current-head/dispatch authority-composition model;
+- deny, revoke, head-advance, saturate, stale-authority, race and non-bearer API suite.
+
+Exit criteria:
+
+- A compatible resume proof can change request state but cannot authorize execution.
+- Dispatch requires fresh positive policy and protected-consequence authority.
+- Resume cannot refresh or rehabilitate stale, revoked or superseded authority.
+
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
 Goal: ensure untrusted remote data cannot influence trusted state before full
@@ -18070,7 +18140,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.162 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.163 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -18130,8 +18200,8 @@ Deliverables:
   nonresponsive fault semantics, resource-sound temporal progress and affine per-request
   progress capacity, permanent reservation non-admission fencing and split capability/
   request states, bounded retry closure reserves, request-local eligibility, atomic pause/
-  dispatch authority, bounded pause-lineage closure capacity and non-widening resume
-  compatibility through v0.111.162,
+  dispatch authority, bounded pause-lineage closure capacity, non-widening resume
+  compatibility and fresh dispatch authorization through v0.111.163,
   admitted authentication suite/provider-capacity mode,
   and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
@@ -18146,7 +18216,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.162 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.163 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -18948,7 +19018,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.162 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.163 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -18984,7 +19054,8 @@ Deliverables:
   semantics, resource-sound temporal progress, affine progress reservations, permanent
   reservation non-admission closure, split capability/request states, bounded attempt-
   closure reserves, request-local pause/eligibility, atomic pause/dispatch authority and
-  bounded pause closure and non-widening resume through v0.111.162, and the
+  bounded pause closure, non-widening resume and fresh dispatch authorization through
+  v0.111.163, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -19954,7 +20025,7 @@ Deliverables:
   progress, affine per-request progress reservation, permanent reservation non-admission
   closure, capability/request dual-state, bounded attempt/closure reserve, request-local
   pause/eligibility, atomic pause/dispatch authority, bounded pause-lineage and non-
-  widening resume-compatibility corpus;
+  widening resume-compatibility plus fresh-dispatch-authorization separation corpus;
 - deterministic fact rule/query-plan, snapshot cursor, immutable-index offset,
   exact cryptographic suite/hybrid transcript, opaque bundle outer/inner
   manifest, and blind-claim corpus;
@@ -20098,7 +20169,8 @@ Deliverables:
   progress-delivery-closure/progress-capability-request-state/progress-attempt-lineage/
   progress-closure-reserve/progress-reserved-pause/progress-local-eligibility/progress-
   pause-dispatch-CAS/progress-handle-materialization/progress-pause-lineage/progress-pause-
-  closure-reserve/progress-resume-compatibility/progress-premise-vector/debt target set;
+  closure-reserve/progress-resume-compatibility/progress-premise-vector/progress-resume-
+  current-authorization/debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -20205,8 +20277,11 @@ Deliverables:
   consumption, protected recovery capacity, checked threshold safety/reachability,
   fenced pending-effect execution, exactly-once reserve refund and explicit eventual-
   synchrony progress with bounded pause lineage, one shared pause/dispatch authority and
-  complete non-widening resume-premise compatibility against the remaining affine vector,
-  while connectivity observations do not discharge the modeled stabilization assumption,
+  complete non-widening resume-premise compatibility under a typed non-fungible,
+  namespace-preserving partial order against the remaining affine vector, while
+  connectivity observations do not discharge the modeled stabilization assumption and
+  compatible resume remains non-authorizing until fresh current-policy and anchor-side
+  consequence admission succeeds at dispatch,
   plus anchored
   irreducible-conflict abandonment under independent evidence keys/retention,
   append-only classification, two-world-safe compensation/normalization, bounded
@@ -20475,10 +20550,14 @@ Deliverables:
   dispatch transition from different authority roots, no dispatch-capable handle before
   dispatch CAS/durability, no unbounded/resettable pause lineage or ordinary consumption
   of its final closure reserve, no resume without complete old/current premise roots and
-  componentwise proof against the remaining reserved vector, no ordinary top-up or
+  typed non-fungible namespace-preserving partial-order proof against the remaining
+  reserved vector, no cross-dimension surplus substitution, no ordinary top-up or
   request/effect/participant/quorum/provider/result/progress-claim widening, no
-  connectivity observation represented as a stabilization proof, and no post-handoff
-  query-only request returning to dispatch-capable state,
+  connectivity observation represented as a stabilization proof, no compatibility proof
+  or `Reserved` state used as bearer/current dispatch authority, no stale policy/principal/
+  key/head/saturation authority refreshed by resume, no protected consequence without
+  fresh anchor-side admission, and no post-handoff query-only request returning to
+  dispatch-capable state,
   unanchored conflict abandonment, conflict evidence erasure/cross-purpose key use,
   unbounded/uncharged prepared receipts, local-only provider capacity, static-slot
   clone replay, rollbackable provider checkpoint, partitioned double allocation,
@@ -20718,6 +20797,8 @@ Deliverables:
   v0.111.160 shared-root/pause-or-dispatch/fence/handle/resume boundaries, v0.111.161
   pause-lineage/charge/exhaust/query/fence/final-close boundaries and v0.111.162
   original-premise/current-premise/vector-compatibility/resume-CAS/refuse boundaries,
+  plus v0.111.163 compatibility/current-policy/revocation/current-head/saturation/
+  dispatch-admission boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -20961,6 +21042,10 @@ Deliverables:
   retries, evidence, routes or result authority; complete premise recomputation refuses
   every dimension beyond the remaining vector, ordinary top-up fails, incompatible state
   stays charged/query-only and a successful connectivity probe never certifies stabilization;
+- compatible resume races allow-to-deny policy changes, principal/key revocation, anchor-
+  head advancement, saturation and protected-consequence admission; compatibility yields
+  no bearer handle, every stale authority loses before dispatch and only fresh policy plus
+  exact anchor-side consequence admission can cross the effect boundary;
 - three-plus-member batches exercise pairwise-compatible but N-way-invalid quota,
   threshold, policy, dependency and authority sets across every success/ambiguity/abort/
   compensation/cleanup/reconciliation permutation and reject caller footprint lies;
@@ -21368,9 +21453,14 @@ Deliverables:
   evidence/epoch counters, request-slice charging, protected final closure and compacted-
   lineage verification at maximum bounds;
 - resume-compatibility vectors and benchmarks measure complete current-premise
-  recomputation, checked componentwise comparison against every remaining reservation
-  dimension, old/new premise proof and shared-CAS overhead, configuration/quorum/route/
-  evidence/result widening refusal and attempted top-up at maximum supported bounds;
+  recomputation, typed partial-order comparison across every non-fungible namespaced
+  reservation dimension, coupled-constraint checks, old/new premise proof and shared-CAS
+  overhead, configuration/quorum/route/evidence/result widening refusal and attempted
+  top-up at maximum supported bounds;
+- fresh-dispatch-authorization vectors and benchmarks measure current policy/principal/key
+  evaluation, current-head witness and anchor admission, compatibility-to-dispatch races,
+  revocation/head/saturation invalidation, non-bearer API enforcement and refusal latency
+  at maximum supported policy, participant and consequence scopes;
 - independent `sagnir-authority-sha3-256-v1` frame, transaction, logical-state,
   and physical-checkpoint vectors, including genesis/checkpoint anchoring,
   non-circular signing frontiers, physical-compaction logical-root preservation,
@@ -22276,7 +22366,8 @@ Deliverables:
 - v0.111.160 makes pause, dispatch and resume consume one request-authority predecessor,
   v0.111.161 bounds pause churn while preserving final query/fence/closure capacity, and
   v0.111.162 makes resume prove complete non-widening premise compatibility without
-  treating connectivity recovery as stabilization evidence;
+  treating connectivity recovery as stabilization evidence; v0.111.163 keeps that proof
+  non-authorizing and requires fresh current policy and consequence admission at dispatch;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -22757,6 +22848,9 @@ Deliverables:
   binding, policy/configuration drift, quorum/participant/retry/evidence/route/result-
   domain widening, top-up refusal, charged incompatible pause and connectivity-without-
   stabilization fixtures pass;
+- v0.111.163 compatible-resume non-bearer API, allow-to-deny policy, principal/key
+  revocation, head advancement, saturation, current-witness/anchor admission, stale-
+  authority no-refresh and compatibility-versus-dispatch race fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -23344,9 +23438,13 @@ Deliverables:
   materialized only after durable dispatch victory, and each pause lineage has cumulative
   checked bounds plus protected final query/fence/closure capacity; paused resume
   recomputes the complete current progress premise, proves every required dimension fits
-  the remaining affine vector and preserves the original request/effect/participant/
-  quorum/provider/result/progress-claim envelope in the same CAS, with no ordinary top-up;
-  connectivity recovery alone never proves the unknown stabilization point occurred;
+  the remaining affine vector under a typed non-fungible, namespace-preserving partial
+  order and preserves the original request/effect/participant/quorum/provider/result/
+  progress-claim envelope in the same CAS, with no ordinary top-up; compatibility remains
+  non-authorizing, and dispatch independently requires fresh positive current policy plus
+  current-head anchor admission for protected consequences; policy denial, revocation,
+  head advancement or saturation still blocks dispatch, while connectivity recovery alone
+  never proves the unknown stabilization point occurred;
   final anchor non-admission is permanently replay-fenced and every old request route is
   closed before a bounded successor generation or mutually exclusive abort may proceed;
   non-borrowable clone-aggregated recovery capacity remains reserved for exact query,
