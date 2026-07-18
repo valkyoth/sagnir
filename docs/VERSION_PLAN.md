@@ -12129,7 +12129,7 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.164 are complete and their provider/fence/effect/
+  v0.111.50 and v0.111.54-v0.111.166 are complete and their provider/fence/effect/
   custody/anchor/evidence/admission/privacy capabilities are admitted; earlier
   binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
@@ -15692,14 +15692,15 @@ Deliverables:
   revalidation, permit safe post-non-admission abort and fix exact threshold assumptions;
   v0.111.146-v0.111.148 atomically order recipient validation with effect consumption,
   reserve revalidation recovery capacity and separate threshold safety from availability;
-  v0.111.149-v0.111.164 fence pending-effect executors, close/refund recovery reserves,
+  v0.111.149-v0.111.166 fence pending-effect executors, close/refund recovery reserves,
   require complete reserve-slice disposition, define total-nonresponsive fault sets and
   make eventual progress conditional on explicit temporal/resource assumptions plus one
   affine worst-case capacity reservation per admitted request, permanent negative
   reservation closure, separate capability/request state axes, bounded retry closure
   reserves, request-local pause/execution eligibility, atomic pause/dispatch authority,
   bounded pause-lineage closure capacity, non-widening resume compatibility, fresh
-  dispatch authorization separation and durable anchor-admission reconciliation;
+  dispatch authorization separation, durable anchor-admission reconciliation, immutable
+  semantic dispatch and persistent fail-closed anchor lifecycle handling;
 - tests cover two restored clones consuming one grant, disjoint/overlapping ranges,
   hardware-counter rollback, provider deduplication expiry, permanent replay fencing,
   threshold double-spend, process/device identity churn, double local quota release,
@@ -18134,10 +18135,12 @@ Deliverables:
   v0.111.160 request-authority predecessor and dispatch generation, publishes
   `DispatchAnchorAdmissionUnknown` and binds operation/request/reservation, principal/key,
   policy/configuration/current-head roots, consequence/scope/result domain, remaining
-  charge, attempt generation, anchor namespace/epoch/route and unique idempotency identity;
+  charge, attempt generation, anchor namespace/epoch/route, unique idempotency identity
+  and the immutable v0.111.165 semantic-dispatch root;
 - durability of the unknown state and required parent directory/provider metadata is
-  confirmed before request construction, handle acquisition, connection write, queue
-  visibility or callback registration; a crash before durability sends no anchor request;
+  confirmed before anchor transport-envelope/frame construction, handle acquisition,
+  connection write, queue visibility or callback registration; v0.111.165 semantic
+  provider-request bytes are already frozen, and a crash before durability sends nothing;
 - while anchor admission is unknown, the request is charged and only exact authenticated
   idempotent query/reconciliation under the same admission identity and route is allowed;
   pause, resume, ordinary revalidation, new dispatch generation, alternate anchor route/
@@ -18170,7 +18173,8 @@ Deliverables:
 - migration/failover transfers the complete unknown/admitted record, anchor idempotency
   identity, receipt/query route, current-head accounting and local executor fences before
   reconciliation; stale providers and restored clones remain query-only and cannot fork
-  dispatch;
+  dispatch; v0.111.166 makes these states durable across every store lifecycle and defines
+  fail-closed handling when their original anchor can never be queried again;
 - tests crash and race immediately before/after local unknown-state CAS/flush, first anchor
   byte, anchor commit, lost response, local admitted-receipt publication, dispatch-unknown
   publication and first provider output; pause/resume, restart, clone, migration, final
@@ -18191,6 +18195,148 @@ Exit criteria:
 - No external anchor admission can exist while local state remains dispatchable `Reserved`.
 - Unknown admission permits exact reconciliation only and never a replacement attempt.
 - Admitted consequences always reconcile forward; final non-admission is permanently fenced.
+
+### v0.111.165 - Immutable Semantic Dispatch Commitment
+
+Goal: freeze the exact protected consequence before anchor admission so later mutable
+state or encoding changes cannot alter what the anchor admitted.
+
+Deliverables:
+
+- canonical `SemanticDispatchCommitment` binds operation/request/reservation and
+  consequence/effect identity, canonical effect commitment, canonical provider-request
+  digest, staged immutable input/object roots, endpoint/provider/hardware namespace and
+  epoch, downstream idempotency key, result schema/decoder identity and permitted result
+  domain, codec/cryptographic suite revision, policy/current-head roots, resource charge
+  and protected-storage/custody generation required to reconstruct the exact request;
+- a domain-separated canonical transcript and independent vectors define every included
+  field, digest algorithm, ordering and absent/optional value; semantically different
+  effects, requests, decoders, endpoints, suites or custody generations cannot share a
+  commitment even if their current transport bytes happen to match;
+- before `Reserved -> DispatchAnchorAdmissionUnknown`, all semantic inputs and exact
+  provider-request bytes are built from admitted immutable objects, written to protected
+  staging, durably flushed, re-read/verified and pinned under one non-authorizing staging
+  root; the anchor-unknown CAS consumes that root and no mutable worktree/configuration/
+  cache/provider callback can supply semantic bytes afterward;
+- only transport-level connection setup, authenticated channel establishment and frame
+  materialization over the already frozen provider-request bytes may occur after anchor-
+  unknown; re-encoding under a newer codec, selecting defaults, resolving paths, adding
+  headers with semantic meaning or rebuilding from current worktree state is prohibited;
+- missing, corrupt, unavailable or wrong-generation staging/custody material refuses
+  before the first anchor byte and leaves the request charged/pre-dispatch; recovery may
+  restore only byte-identical authenticated material under the same commitment and cannot
+  silently regenerate it from newer source/configuration;
+- `AuthorizeCurrentConsequence`, its anchor admission receipt,
+  `DispatchAnchorAdmissionUnknown`, `DispatchAnchorAdmitted`,
+  `DispatchAuthorizedUnknown` and v0.111.127 `ConsequenceExecutionConsumption` all bind
+  the identical semantic-dispatch root; mismatch is permanent conflict/query-only and
+  cannot be repaired by substituting a receipt, endpoint, decoder or downstream key;
+- successful anchor admission pins the exact semantic material, decoder and suite for
+  query/result verification through terminal reconciliation; key/codec/schema retirement,
+  compaction or cleanup cannot remove them while any unknown/admitted/active/result-
+  ambiguous state remains reachable;
+- endpoint/provider migration after admission cannot rewrite endpoint namespace/epoch,
+  request bytes or downstream idempotency identity; migration transfers the exact bound
+  execution/query capability or remains query-only. A different endpoint/request requires
+  authenticated final non-admission fencing before a new operation, or governed permanent
+  scope abandonment under v0.111.166 when non-admission can never be established;
+- privacy profiles expose only admitted coarse semantic-dispatch state while roots,
+  endpoint identity, staged object membership, decoder/suite and custody generation remain
+  encrypted and absent from blind-store names, public logs and untrusted diagnostics;
+- tests mutate worktree/configuration/input objects, re-encode provider requests, change
+  codec/decoder/schema/result domain, delete/substitute staged material, migrate endpoint/
+  epoch and replace downstream idempotency keys before/after anchor admission; every
+  changed semantic root refuses and exact frozen bytes reconcile successfully.
+
+Verification:
+
+- `cargo test -p sagnir-codec`
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- stage/freeze/anchor-admit/consume/query/result semantic-root composition model;
+- independent vectors plus mutation, re-encoding, migration and staged-loss suite.
+
+Exit criteria:
+
+- Anchor admission, local states and endpoint consumption name one immutable consequence.
+- Post-freeze mutable state or encoding changes cannot alter admitted semantic dispatch.
+- Exact reconstruction never depends on unpinned current worktree or configuration state.
+
+### v0.111.166 - Persistent Anchor Admission Lifecycle And Scope Abandonment
+
+Goal: preserve anchor admission ambiguity across every durable-store lifecycle and fail
+closed when the original idempotency namespace becomes permanently unreachable.
+
+Deliverables:
+
+- `DispatchAnchorAdmissionUnknown` and `DispatchAnchorAdmitted`, their semantic-dispatch/
+  receipt/idempotency roots, charges, query routes, staging/custody generations and
+  predecessor/successor fences are authoritative reachable state in WAL checkpoints,
+  signed roots, compaction summaries, archive manifests, backup/restore, replica transfer,
+  provider migration and repository-format migration;
+- compaction and archive may relocate or summarize only with exact inclusion/query proofs;
+  restore/rebuild reproduces the same state and charge before dispatch/query authority,
+  and no checkpoint, GC, partial clone or archive-unavailable path treats omitted bodies,
+  receipts, staging material or decoder state as non-admission;
+- format compatibility assigns critical tags and minimum reader/verifier/writer floors;
+  older or mixed-version peers unable to preserve both states and their semantic roots are
+  read-only/refuse for affected authority, unknown critical fields fail closed, downgrade
+  is refused and transactional migration cannot map either state to `Reserved`/missing;
+- retention pins every canonical decoder, codec/suite revision, semantic transcript,
+  protected staging/custody key and anchor-query verifier needed by reachable unknown/
+  admitted history; decoder/key retirement requires terminal reconciliation or governed
+  abandonment evidence that preserves historical verification and permanent disablement;
+- privacy-preserving status/audit output distinguishes anchor-admission unknown, admitted-
+  pending-local-publication, query-unavailable and scope-abandoned states using configured
+  buckets without exposing consequence membership, exact endpoint/anchor, roots, attempts,
+  charges, retention age or abandonment participant identity;
+- anchor timeout, retention expiry, query-budget exhaustion, route loss, provider/anchor
+  retirement, migration failure or local administrative action never proves non-admission,
+  authorizes refund/release, permits a replacement identity or returns the request to
+  `Reserved`; ordinary state remains charged indefinitely while exact query is impossible;
+- optional `DispatchAnchorScopeAbandoned` is a separately governed, externally anchored
+  fail-closed transition that binds the unknown admission/semantic root, possible in-flight
+  consequence, complete affected authority/dependency/custody scope, reason, unavailable
+  idempotency namespace, retained evidence, permanent disablement fence and governance
+  authorization; it explicitly does not claim non-admission, no-effect or safe refund;
+- scope abandonment permanently blocks execution, retry, replacement admission,
+  compensation selection, dependency reopening, key/custody/quota release and authority
+  reuse for every affected scope; physical custody may follow existing independently
+  anchored abandonment/destruction policy, but accounting remains non-refundable and
+  historical possible-admission evidence remains verifiable;
+- if the anchor/idempotency namespace later returns or a delayed receipt appears, exact
+  reconciliation records admitted/non-admitted evidence for audit and conflict handling
+  but cannot reverse scope abandonment, execute the consequence, restore authority or
+  refund the old charge; a new operation requires explicitly new authority outside the
+  permanently disabled dependency scope;
+- abandonment authority cannot come solely from the unreachable anchor, local operator or
+  stale governance snapshot; policy names an independent threshold/current-head mechanism,
+  bounded preparation/custody/query reserve and response-loss reconciliation path before
+  enabling this option, otherwise indefinite charged unknown is the only valid outcome;
+- tests checkpoint, compact, archive, migrate, partially clone, restore and downgrade at
+  every unknown/admitted/abandoned boundary; mixed-version writers refuse, decoder/key
+  retirement is blocked, and anchor-retirement fixtures cover exhausted query budgets,
+  permanently lost idempotency namespaces, abandonment response loss and late receipts.
+
+Verification:
+
+- `cargo test -p sagnir-codec`
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- unknown/admitted/checkpoint/compact/restore/abandon/late-evidence lifecycle model;
+- format migration, mixed-version, retention, privacy and anchor-retirement fixture suite.
+
+Exit criteria:
+
+- Store lifecycle operations never erase or downgrade anchor admission ambiguity.
+- Permanent unreachability means indefinite charge or governed permanent disablement.
+- Timeout, expiry, migration and budget exhaustion never imply non-admission or refund.
 
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
@@ -18221,7 +18367,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.164 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.166 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -18282,7 +18428,8 @@ Deliverables:
   progress capacity, permanent reservation non-admission fencing and split capability/
   request states, bounded retry closure reserves, request-local eligibility, atomic pause/
   dispatch authority, bounded pause-lineage closure capacity, non-widening resume,
-  fresh dispatch authorization and durable anchor reconciliation through v0.111.164,
+  fresh dispatch authorization, durable anchor reconciliation, immutable semantic
+  dispatch and persistent anchor lifecycle through v0.111.166,
   admitted authentication suite/provider-capacity mode,
   and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
@@ -18297,7 +18444,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.164 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.166 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -19099,7 +19246,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.164 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.166 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -19135,8 +19282,9 @@ Deliverables:
   semantics, resource-sound temporal progress, affine progress reservations, permanent
   reservation non-admission closure, split capability/request states, bounded attempt-
   closure reserves, request-local pause/eligibility, atomic pause/dispatch authority and
-  bounded pause closure, non-widening resume, fresh dispatch authorization and durable
-  anchor reconciliation through v0.111.164, and the
+  bounded pause closure, non-widening resume, fresh dispatch authorization, durable
+  anchor reconciliation, immutable semantic dispatch and persistent anchor lifecycle
+  through v0.111.166, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -20107,7 +20255,8 @@ Deliverables:
   closure, capability/request dual-state, bounded attempt/closure reserve, request-local
   pause/eligibility, atomic pause/dispatch authority, bounded pause-lineage and non-
   widening resume-compatibility, fresh-dispatch-authorization separation and durable
-  dispatch-anchor-admission reconciliation corpus;
+  dispatch-anchor-admission reconciliation, immutable semantic-dispatch and persistent
+  anchor-lifecycle/scope-abandonment corpus;
 - deterministic fact rule/query-plan, snapshot cursor, immutable-index offset,
   exact cryptographic suite/hybrid transcript, opaque bundle outer/inner
   manifest, and blind-claim corpus;
@@ -20253,7 +20402,8 @@ Deliverables:
   pause-dispatch-CAS/progress-handle-materialization/progress-pause-lineage/progress-pause-
   closure-reserve/progress-resume-compatibility/progress-premise-vector/progress-resume-
   current-authorization/progress-dispatch-anchor-unknown/progress-dispatch-anchor-admitted/
-  progress-anchor-negative-fence/debt target set;
+  progress-anchor-negative-fence/progress-semantic-dispatch-commitment/progress-anchor-
+  lifecycle/progress-anchor-scope-abandonment/debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -20367,7 +20517,10 @@ Deliverables:
   consequence admission succeeds at dispatch; protected admission first durably consumes
   the local predecessor as anchor-unknown, reconciles exact idempotent external outcome
   into anchor-admitted or permanently fenced non-admission and never models local/external
-  CAS operations as atomic across distinct failure domains,
+  CAS operations as atomic across distinct failure domains; one immutable staged semantic-
+  dispatch root binds admission through endpoint consumption, and checkpoint/compaction/
+  migration/restore retain unknown/admitted ambiguity until exact reconciliation or
+  governed permanent scope disablement without non-admission/refund inference,
   plus anchored
   irreducible-conflict abandonment under independent evidence keys/retention,
   append-only classification, two-world-safe compensation/normalization, bounded
@@ -20646,8 +20799,12 @@ Deliverables:
   no pause/resume/replacement identity while admission is unknown, no successful anchor
   admission returning to `Reserved`, no later policy/head transition erasing an already
   admitted in-flight consequence, no cross-system atomicity assumption without one proven
-  transactional failure domain, and no post-handoff query-only request returning to
-  dispatch-capable state,
+  transactional failure domain, no mutable input/configuration/codec/endpoint/idempotency
+  substitution after semantic freeze, no receipt/state/consumption semantic-root mismatch,
+  no checkpoint/compaction/archive/restore/migration dropping unknown/admitted state, no
+  timeout/expiry/query exhaustion/anchor retirement interpreted as non-admission/refund,
+  no scope abandonment re-enabling related authority, and no post-handoff query-only
+  request returning to dispatch-capable state,
   unanchored conflict abandonment, conflict evidence erasure/cross-purpose key use,
   unbounded/uncharged prepared receipts, local-only provider capacity, static-slot
   clone replay, rollbackable provider checkpoint, partitioned double allocation,
@@ -20889,7 +21046,9 @@ Deliverables:
   original-premise/current-premise/vector-compatibility/resume-CAS/refuse boundaries,
   plus v0.111.163 compatibility/current-policy/revocation/current-head/saturation/
   dispatch-admission boundaries and v0.111.164 local-anchor-unknown/first-byte/anchor-CAS/
-  admitted-receipt/dispatch-unknown/negative-fence/reconcile boundaries,
+  admitted-receipt/dispatch-unknown/negative-fence/reconcile boundaries, v0.111.165
+  semantic-stage/freeze/root-bind/anchor/consume/result boundaries and v0.111.166
+  checkpoint/compact/archive/migrate/restore/retain/abandon/late-evidence boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -21141,6 +21300,11 @@ Deliverables:
   anchor commit, lost response, local admitted-receipt and dispatch-unknown publication;
   unknown permits exact query only, final non-admission is fenced before a bounded paused
   successor, and admitted consequences always reconcile forward under the same identity;
+- after semantic freeze, tests mutate input/worktree/configuration, re-encode requests,
+  change decoder/schema/suite/endpoint/idempotency identity and remove staged custody;
+  every mismatch refuses while anchor receipt, admitted state and endpoint consumption
+  retain one root; checkpoint/compact/archive/migrate/restore preserve each persistent
+  state, and permanent anchor loss remains charged or governance-disables the whole scope;
 - three-plus-member batches exercise pairwise-compatible but N-way-invalid quota,
   threshold, policy, dependency and authority sets across every success/ambiguity/abort/
   compensation/cleanup/reconciliation permutation and reject caller footprint lies;
@@ -21560,6 +21724,14 @@ Deliverables:
   durability, first-byte latency, idempotent anchor query, lost-response reconciliation,
   admitted-receipt publication, permanent non-admission fencing and forward dispatch at
   maximum concurrent requests, clones, routes and anchor/provider failure bounds;
+- semantic-dispatch vectors and benchmarks measure canonical commitment construction,
+  protected staging/write-sync/re-read/pin cost, frozen provider-request reconstruction,
+  root comparison across anchor receipt/local states/endpoint consumption and mutation/
+  re-encoding/substitution refusal at maximum request/object/schema bounds;
+- persistent anchor-lifecycle vectors and benchmarks measure checkpoint, compaction,
+  archive, migration, restore, decoder/key retention, mixed-version refusal, indefinite-
+  unknown query accounting and governed scope-abandonment verification at maximum state,
+  retention, dependency and unreachable-anchor bounds;
 - independent `sagnir-authority-sha3-256-v1` frame, transaction, logical-state,
   and physical-checkpoint vectors, including genesis/checkpoint anchoring,
   non-circular signing frontiers, physical-compaction logical-root preservation,
@@ -22468,7 +22640,9 @@ Deliverables:
   treating connectivity recovery as stabilization evidence; v0.111.163 keeps that proof
   non-authorizing and requires fresh current policy and consequence admission at dispatch,
   while v0.111.164 durably records/reconciles external anchor admission ambiguity before
-  any protected dispatch can proceed;
+  any protected dispatch can proceed; v0.111.165 freezes one semantic dispatch root before
+  admission, and v0.111.166 preserves every persistent anchor state or permanently disables
+  its affected scope without inferring non-admission or refund;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -22955,6 +23129,12 @@ Deliverables:
 - v0.111.164 pre-anchor durable unknown, every first-byte/anchor-commit/response-loss/local-
   receipt/dispatch crash boundary, exact idempotent query, pause/resume/replacement refusal,
   final non-admission replay fence, clone/migration and admitted-forward-only fixtures pass;
+- v0.111.165 canonical semantic-dispatch vectors, staged durability/loss, input/worktree/
+  configuration mutation, request re-encoding, codec/decoder/schema/result/endpoint/
+  idempotency substitution and receipt/state/consumption root-equivalence fixtures pass;
+- v0.111.166 unknown/admitted/abandoned checkpoint, compaction, archive, restore, format-
+  migration, mixed-version, retention, privacy, query-exhaustion, anchor-retirement,
+  governed-abandonment response-loss and late-receipt fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -23551,9 +23731,15 @@ Deliverables:
   `DispatchAnchorAdmissionUnknown`, permits only exact idempotent reconciliation while
   ambiguous, publishes the admitted receipt before dispatch unknown, permanently fences
   final non-admission before any bounded paused successor and never returns an admitted
-  consequence to `Reserved`; policy denial, revocation, head advancement or saturation
-  wins only when it linearizes before admission, while later changes preserve the admitted
-  in-flight consequence and connectivity recovery alone never proves stabilization;
+  consequence to `Reserved`; before anchor unknown, it durably stages and freezes one
+  canonical semantic-dispatch root over exact effect/request/input/endpoint/idempotency/
+  result/codec/custody identity, and the anchor receipt, admitted state and endpoint
+  consumption all bind that root; unknown/admitted states survive checkpoint, compaction,
+  archive, restore and migration with required decoders/keys retained; permanent anchor
+  loss remains charged indefinitely or enters independently governed permanent scope
+  disablement that preserves possible admission and grants no refund/retry; policy denial,
+  revocation, head advancement or saturation wins only before admission, while later
+  changes preserve the in-flight consequence and connectivity never proves stabilization;
   final anchor non-admission is permanently replay-fenced and every old request route is
   closed before a bounded successor generation or mutually exclusive abort may proceed;
   non-borrowable clone-aggregated recovery capacity remains reserved for exact query,
