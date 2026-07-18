@@ -11686,7 +11686,8 @@ Deliverables:
   capacity or retiring decoder/key support;
 - normalized cleanup preserves `ExecutionKnowledge::Unknown`, requires the exact
   normalization receipt and keeps every history-sensitive dependency blocked under
-  v0.111.59 even when admitted current-state dependencies reopen;
+  v0.111.59 even when admitted current-state dependencies reopen; v0.111.67 requires
+  the authoritative composite-head CAS before cleanup or reopening;
 - staged generations use independently accountable keys/encryption instances; a
   shared wrapping key cannot be destroyed while another live or unresolved staged
   payload depends on it, and wrapper deletion alone is not called payload erasure;
@@ -12125,7 +12126,7 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.62 are complete and their provider/fence/effect/
+  v0.111.50 and v0.111.54-v0.111.67 are complete and their provider/fence/effect/
   custody capabilities are admitted; earlier binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
   profile composition pass for the selected platform/storage observer profile;
@@ -12146,8 +12147,9 @@ Deliverables:
 - generated compile-time/runtime capability tables and tests keep CLI/daemon/library
   behavior identical; help/status reports inactive paths without exposing private
   roots, operation presence or profile-sensitive activity;
-- v0.111.63 makes the state permissions normative and requires unforgeable typed
-  capabilities at every key, network, provider, staging and authority API boundary;
+- v0.111.63/v0.111.66 make state witnesses non-authorizing and require their
+  composition with exact operation capability, budget lease and expected root at
+  every key, network, provider, staging and authority API boundary;
 - tests cover every intermediate version/state, missing dependency, parse-only
   object, forged activation evidence, downgrade/rollback, mixed peers, profile loss,
   config bypass and atomic activation crash.
@@ -12183,8 +12185,9 @@ Deliverables:
   `Compensated` requires `Committed`, `Normalized` may retain `Unknown`, and
   `Abandoned` preserves the current execution knowledge without asserting an effect;
 - append-only execution-knowledge transitions and authority-resolution transitions
-  have separate roots/leaf versions, while one composed emergency checkpoint binds
-  both axes, the v0.111.54 provider set, old/new incarnations and policy epoch;
+  produce separate immutable prepared roots/leaves; v0.111.67 makes only one
+  expected-head-CAS composed emergency checkpoint authoritative across both axes,
+  provider/result roots, dependencies, custody and policy epoch;
 - canonical `EmergencyResolvedNormalized` binds the v0.111.55 atomic normalization
   receipt/current-state commitment, preserved `ExecutionKnowledge::Unknown`, exact
   dependency closure, journal/admission-ledger/provider roots, custody generation,
@@ -12207,6 +12210,9 @@ Deliverables:
 - tests cover every valid/invalid pair, normalized cleanup, current-state reopening,
   history-sensitive refusal, late committed/non-execution evidence, concurrent axis
   transitions, rollback, compaction and backup restore.
+- late evidence semantics are normative under v0.111.67: knowledge may advance after
+  normalization, but custody/cleanup cannot resurrect and history-sensitive reopening
+  requires a distinct governed composed-head resolution.
 
 Verification:
 
@@ -12240,13 +12246,13 @@ Deliverables:
   append-only counter/log with device identity, measured implementation, monotonic
   generation, rollback/clone resistance, attestation freshness and revocation roots;
 - `WitnessedComplete` requires independent witnesses or a threshold/diversity set to
-  commit each admitted acceptance frontier and final fence root; witness receipts,
-  consistency proofs, equivocation evidence and unavailable-threshold behavior are
-  canonical and bounded;
-- `ReceiptComplete` requires every semantically accepted submission to produce an
-  externally retained client/witness receipt before success, and reconciles the
-  complete retained receipt set against the final fence roots; missing, duplicated,
-  conflicting or unretained receipts prevent completeness;
+  co-commit each admitted acceptance before execution plus the final fence root under
+  v0.111.65; witness receipts, consistency proofs, equivocation evidence and
+  unavailable-threshold behavior are canonical and bounded;
+- `ReceiptComplete` requires v0.111.65 independent receipt durability before the
+  provider may linearize acceptance or permit execution, then reconciles every
+  prepared/accepted receipt against final fence roots; missing, duplicated,
+  conflicting or unretained evidence prevents completeness and execution;
 - the selected assurance profile, threat boundary and evidence roots are committed
   in provider capability, private descriptor, emergency fence and activation matrix;
   negotiation cannot silently replace a stronger profile with provider assertion;
@@ -12289,14 +12295,17 @@ Deliverables:
 - `ProviderNamespaceFenceReceipt` binds two independently domain-separated roots:
   an append-log root ordered by provider acceptance sequence and an authenticated
   map/set root keyed by `(namespace, operation_id)`;
-- append entries and map leaves bind provider sequence, operation ID, idempotency
-  key, old lease/incarnation, request/effect commitment and current result state;
+- append entries and map leaves bind immutable provider sequence, operation ID,
+  idempotency key, old lease/incarnation, request/effect commitment and
+  `result_state_at_fence`; v0.111.64 places later evidence in separate result roots;
 - a canonical projection/consistency proof establishes that both roots contain the
   same complete unique accepted-operation multiset/count at the fence generation;
   neither root alone can establish full fence completeness;
 - operation IDs are unique within the namespace and idempotency keys map to exactly
   one request/effect commitment; duplicate ID, duplicate key with changed request,
   sequence alias or map/log disagreement is terminal conflict;
+- v0.111.64 uses domain-prefixed operation-ID and idempotency-key leaves in the
+  authenticated map so both uniqueness/absence proofs remain logarithmic;
 - authenticated map pages use the admitted bounded uniquely represented map
   construction and provide logarithmic inclusion/non-inclusion proofs independent of
   append-log length; unbounded inventory scan is never required for exact ID absence;
@@ -12383,10 +12392,10 @@ Exit criteria:
 - Custody bytes are never destroyed for unresolved abandonment before an externally
   reconciled irreversible emergency-namespace transition exists.
 
-### v0.111.63 - Typed Feature Activation Capabilities
+### v0.111.63 - Typed Feature Activation Witnesses
 
-Goal: enforce activation-matrix permissions through unforgeable Rust capabilities
-rather than scattered Boolean checks at authority boundaries.
+Goal: enforce activation-matrix state through unforgeable non-authorizing Rust
+witnesses rather than scattered Boolean checks at authority boundaries.
 
 Deliverables:
 
@@ -12398,19 +12407,21 @@ Deliverables:
   `ModelComplete` grants no runtime capability;
   `WritePrepared` permits quota-charged non-authoritative encrypted staging only,
   with no external effect, active-root publication or authority-visible reference;
-  `AuthorityActive` permits only transitions explicitly admitted by its feature entry;
-- sealed, non-constructible, non-`Clone` Rust capability types represent each state
+  `AuthorityActive` yields only a v0.111.66 non-authorizing `FeatureActiveWitness` for
+  transitions admitted by its feature entry;
+- sealed, non-constructible, non-`Clone` Rust witness types represent each state
   and carry feature/revision/matrix root, policy/profile/provider epochs, operation
   budget lease and lifetime/generation proof where required;
 - constructors remain private to one audited activation verifier that checks the
   signed matrix/root/dependency evidence; deserialization, `unsafe`, default values,
-  test helpers, feature flags and downstream crates cannot mint a stronger token;
+  test helpers, feature flags and downstream crates cannot mint a stronger witness;
 - APIs for key access, network/query, provider mutation, durable staging, active-root
-  publication, recovery/compensation and protected claims require the minimum typed
-  capability in their signatures rather than accepting a Boolean or enum alone;
-- capability transitions consume the prior token and return a narrower or stronger
-  token only after the corresponding durable matrix transition; cancellation, panic,
-  restart and response ambiguity cannot duplicate or retain stale authority tokens;
+  publication, recovery/compensation and protected claims require the feature-state
+  witness plus exact v0.23.4 operation capability, durable budget/reservation lease
+  and expected authority root under v0.111.66, never a Boolean or witness alone;
+- witness transitions consume the prior witness and return a narrower or stronger
+  witness only after the corresponding durable matrix transition; cancellation,
+  panic, restart and response ambiguity cannot duplicate or retain stale witnesses;
 - `ParseOnly` decoders remain `no_std` compatible and receive only bounded immutable
   bytes/work budgets; `VerifyOnly` provider queries use separate read-only handles;
   `WritePrepared` storage is namespaced, quota-held and unreachable by active indexes;
@@ -12430,15 +12441,232 @@ Verification:
 - `cargo test -p sagnir-core`
 - `cargo test -p sagnir-store`
 - compile-fail capability/API suite;
-- activation-token transition/duplication state-machine model;
+- activation-witness transition/duplication state-machine model;
 - public API and `unsafe` boundary audit.
 
 Exit criteria:
 
 - Lower activation states cannot invoke stronger side effects by construction.
-- Every authority-changing public API requires an unforgeable state-specific token.
+- Every authority-changing public API requires a non-authorizing state witness plus
+  the exact independent authorization/budget/root inputs defined by v0.111.66.
 - Matrix rollback, serialization or runtime configuration cannot manufacture active
   authority.
+
+### v0.111.64 - Immutable Acceptance And Result Evidence Roots
+
+Goal: keep final provider fence membership immutable while admitting late operation
+results through a separately authenticated successor history.
+
+Deliverables:
+
+- append-log entries and accepted-operation map leaves contain immutable acceptance
+  facts only: namespace, operation ID, idempotency key, acceptance sequence,
+  request/effect commitment, lease/incarnation and `result_state_at_fence`;
+- `result_state_at_fence` is an immutable observation bound to the fence
+  linearization point, never described as current state and never updated in place;
+- canonical append-only `ProviderOperationResultLog` chains from the immutable
+  `ProviderNamespaceFenceReceipt` and binds operation/acceptance proof, provider
+  result/effect commitment, evidence source, result sequence, predecessor result root,
+  provider/key epoch and late/fenced classification;
+- a separate authenticated result-status map commits the latest admitted evidence
+  state for each operation; every result checkpoint binds result-log root, status-map
+  root, entry count, predecessor checkpoint and immutable acceptance roots;
+- result transitions are monotonic and typed (`NoResultAtFence`, `Pending`,
+  `Committed`, `ProvenNotExecuted`, `Conflicting` or `EffectUnknown`); stale,
+  contradictory or differently committed outcomes preserve explicit conflict;
+- late provider/journal/witness results append to the result log and update only the
+  result-status map/checkpoint; they never change fence sequence, accepted-operation
+  append root, accepted-operation map root, count or assurance evidence;
+- accepted-operation authenticated-map leaves use domain-prefixed keys for both
+  `operation-id || namespace || operation_id` and
+  `idempotency || namespace || idempotency_key`; one projection proof binds both
+  leaves to one acceptance entry and enforces operation/idempotency uniqueness;
+- exact operation and idempotency membership/non-inclusion proofs are logarithmic;
+  domain-prefix substitution, cross-identity aliasing and one-index-only admission
+  are rejected without scanning the complete accepted set;
+- effect classification, emergency composite heads and bridge/normalization/cleanup
+  decisions bind immutable acceptance roots plus the exact current result-evidence
+  checkpoint; neither acceptance nor result evidence can substitute for the other;
+- compaction retains independent append consistency, current-status proofs, conflict
+  evidence and acceptance-to-result linkage through the dispute/retention horizon;
+- tests cover late result after fence, stale `result_state_at_fence`, acceptance-root
+  mutation, result-map/log splice, conflicting outcomes, dual-identity omission/
+  collision, idempotency non-inclusion, compaction and million-entry lookup bounds.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-store`
+- immutable-acceptance/result-log/status-map state-machine model;
+- acceptance/result/dual-identity canonical vectors;
+- logarithmic operation/idempotency proof benchmarks.
+
+Exit criteria:
+
+- Late evidence cannot mutate or invalidate the final accepted-operation fence roots.
+- Every effect bridge binds both immutable acceptance and current result-evidence
+  roots.
+- Operation-ID and idempotency-key uniqueness/absence are both proven logarithmically.
+
+### v0.111.65 - Pre-Execution Receipt And Witness Admission
+
+Goal: ensure independent receipt or witness evidence exists before a provider may
+linearize acceptance or execute an operation.
+
+Deliverables:
+
+- `ReceiptComplete` uses `ReceiptPrepared -> AcceptanceCommitted ->
+  ExecutionEligible`; each transition binds namespace/operation/idempotency,
+  request/effect commitment, lease/incarnation, assurance profile and predecessor;
+- `ReceiptPrepared` is durably acknowledged by an admitted independent receipt store
+  or threshold recipient before provider acceptance; it proves a possible submission,
+  not execution or acceptance, and cannot itself authorize an effect;
+- provider acceptance atomically binds the externally durable prepared-receipt
+  commitment into the v0.111.64 immutable acceptance entry; execution APIs require
+  the resulting `ExecutionEligible` proof and cannot run from local receipt bytes;
+- if independent receipt durability is unavailable, ambiguous or revoked after
+  preparation, the provider must not linearize acceptance or execute; recovery
+  queries the receipt authority and preserves the prepared operation as blocked;
+- prepared receipts absent from a final accepted-operation set reconcile through a
+  terminal `AbortedBeforeAcceptance` or remain explicit uncertainty; deletion, age
+  or provider non-inclusion alone cannot prove non-execution after eligibility;
+- `WitnessedComplete` makes threshold/diverse witness co-commit part of acceptance:
+  the provider cannot create an accepted entry or `ExecutionEligible` proof until the
+  required witness set durably signs the exact acceptance commitment/frontier;
+- asynchronous post-acceptance witness publication does not satisfy witnessed
+  completeness; threshold loss, partial signatures, split views or stale witness
+  epochs keep the operation non-executable rather than downgrading assurance;
+- hardware-monotonic profiles bind their pre-execution counter/log advancement into
+  the same eligibility proof; provider assertion remains explicitly weaker;
+- external receipt/witness/counter evidence reconciles with the final fence and
+  v0.111.64 result log; response loss cannot cause duplicate acceptance/execution or
+  erase independently observed prepared/committed evidence;
+- tests cover execute-before-receipt, crash after preparation/acceptance/eligibility,
+  receipt-store loss, colluding provider/writer, witness delay/equivocation, threshold
+  loss, prepared abort, response suppression, duplicate retry and assurance downgrade.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- receipt/witness/acceptance/execution-eligibility state-machine model;
+- independent store, threshold witness and hardware counter integration suite;
+- canonical prepared/committed/eligible/abort vectors.
+
+Exit criteria:
+
+- Receipt-backed execution is impossible before independent receipt durability.
+- Witness-backed acceptance and execution are impossible before threshold co-commit.
+- Prepared evidence that never becomes accepted remains distinguishable from both
+  execution and proven non-execution.
+
+### v0.111.66 - Feature Witness And Operation Authorization Composition
+
+Goal: keep feature activation proof orthogonal to exact operation authorization,
+budget reservation and authority-root compare-and-swap.
+
+Deliverables:
+
+- v0.111.63 active-state type is a non-authorizing `FeatureActiveWitness`, never a
+  generic authority capability or replacement for v0.23.4 operation capabilities;
+- each witness binds store, realm/genesis, feature/revision, activation-matrix root,
+  policy/profile/provider epochs, daemon/realm incarnation and witness generation;
+  it contains no signing, recovery, provider-mutation or publication permission;
+- every authority-changing call requires all independent inputs:
+  exact purpose/subject/action/resource-scoped v0.23.4 one-operation capability,
+  matching `FeatureActiveWitness`, durable budget/reservation lease and expected
+  authority root/generation; omission of any input is a type/API error or refusal;
+- an internal operation-specific composition token may be minted only by consuming
+  or borrowing those exact inputs after context equality and freshness checks; no
+  public generic authority supertype, widening conversion or reusable ambient token
+  exists;
+- feature witnesses cannot widen scope, extend lifetime, replace possession proof,
+  change quorum/policy, reset budget, alter expected root or convert one operation
+  capability into another;
+- `WritePrepared` similarly requires a non-authorizing feature-state witness plus an
+  exact staging/admission capability and durable quota lease; feature state alone
+  cannot allocate, encrypt, persist or publish bytes;
+- store/realm/incarnation/feature/operation/root mismatches fail before secret access,
+  provider/network mutation or durable writes and cannot be repaired by config,
+  cloning, serialization or local administrator action;
+- sealed private constructors and non-`Clone` ownership preserve `no_std` core types;
+  FFI/service boundaries transport authenticated requests and reacquire typed local
+  evidence rather than serializing Rust witness/capability objects;
+- compile-fail tests prove `FeatureActiveWitness` alone cannot call authority APIs,
+  cannot widen/convert operation capability, cannot cross context, and cannot make
+  `WritePrepared` bypass exact admission/quota inputs;
+- API inventory/release gate rejects a feature-state witness accepted as sole
+  authorization, an operation capability accepted without matching feature witness,
+  or any generic authority capability introduced by a downstream crate.
+
+Verification:
+
+- `cargo test -p sagnir-core`
+- `cargo test -p sagnir-store`
+- compile-fail witness/capability/budget/root composition suite;
+- operation-specific token transition/context state-machine model;
+- public/FFI authority API inventory audit.
+
+Exit criteria:
+
+- Feature activation proves implementation state only and never authorizes an
+  operation by itself.
+- Every authority operation remains exact, one-use, budgeted and expected-root-bound.
+- No feature witness widens or converts authority across operations or contexts.
+
+### v0.111.67 - Authoritative Composite Emergency Head
+
+Goal: publish execution knowledge, authority resolution and late evidence through one
+authoritative head so partial axis updates never control cleanup or dependency state.
+
+Deliverables:
+
+- execution-knowledge and authority-resolution updates create immutable prepared
+  leaves only; neither axis root, prepared result nor local current-state cache is
+  authoritative independently;
+- canonical `EmergencyCompositeHead` binds prior composite head, knowledge root/leaf,
+  resolution root/leaf, immutable acceptance roots, current v0.111.64 result-evidence
+  checkpoint, dependency classification/root, custody/cleanup state, policy epoch,
+  writer/provider incarnations and expected authority generation;
+- one WAL-backed expected-head CAS publishes the complete new composite checkpoint;
+  cleanup, dependency reopening, bridge/normalization decisions, sync/export and
+  status proofs consume only that committed head;
+- crash or cancellation before the CAS leaves both prior axes, result checkpoint,
+  custody and dependencies authoritative; prepared leaves remain inert, bounded and
+  recoverable/collectable without arrival-order selection;
+- `Unknown + Normalized` may later advance to `Committed + Normalized` or
+  `ProvenNotExecuted + Normalized` through a new composed-head CAS binding admitted
+  late evidence; normalization and its earlier cleanup remain immutable/idempotent;
+- history-sensitive dependencies remain blocked after late knowledge until a new
+  governed `NormalizedThenAdopted` (for committed execution) or
+  `NormalizedThenNonExecutionConfirmed` resolution binds original effect/non-effect,
+  normalization receipt, current state, policy and exact dependency closure;
+- current-state dependencies already reopened by normalization are not executed or
+  reopened twice; late evidence cannot resurrect destroyed custody, rerun cleanup,
+  recreate keys/decoders, retry the old operation or reverse anchored abandonment;
+- conflicting late results or concurrent axis/resolution updates create explicit
+  composed conflict heads and preserve all evidence; they never merge axis roots by
+  last writer, choose the newest local cache or infer authority from one root;
+- compaction/backup retains composed-head ancestry, prepared-leaf terminal status,
+  one-time cleanup marker and governed late-resolution evidence;
+- tests cover crash before/after CAS, prepared-leaf replay, mixed-axis roots, stale
+  result checkpoint, late commit/non-execution after normalized cleanup, both governed
+  late resolutions, duplicate cleanup/reopen, abandonment and concurrent conflicts.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- composed-head/axis/result/dependency/custody state-machine model;
+- WAL CAS, crash, late-evidence and compaction integration suite;
+- canonical composite-head and late-resolution vectors.
+
+Exit criteria:
+
+- No individual emergency axis or prepared leaf controls authority independently.
+- Late evidence advances one composed head without resurrecting custody or repeating
+  cleanup.
+- History-sensitive dependencies reopen only through a distinct governed resolution
+  that binds the full normalized history.
 
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
@@ -12469,7 +12697,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.63 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.67 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -12489,8 +12717,10 @@ Deliverables:
   provider fence completeness, safe effect classification/compensation, bounded
   unresolved custody, signed accounting-epoch closure, dual-axis normalization,
   provider completeness assurance, dual-root operation proofs, authoritative custody
-  time/abandonment and typed feature activation capabilities, admitted authentication
-  suite/provider-capacity mode, and one reconciled active store quarantine key,
+  time/abandonment, immutable acceptance/result roots, pre-execution receipt/witness
+  admission, feature-witness/operation authorization composition and authoritative
+  composite emergency heads, admitted authentication suite/provider-capacity mode,
+  and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
   authorized-realm metadata key, and converts it into the candidate's durable
   quota charge while
@@ -12503,7 +12733,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.63 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.67 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -12798,10 +13028,12 @@ Deliverables:
   spam bounds plus immutable payload staging, measured handoff-staging traces,
   independently authorized emergency incarnation fencing, post-fence effect
   classification/bridge blocking and terminal staged-material retirement, independent
-  execution-knowledge/authority-resolution axes, atomic provider fence/set
-  completeness with explicit assurance profiles and dual append/map roots, two-
-  world-safe compensation, bounded authoritative-time custody/anchored abandonment
-  and typed feature activation capabilities;
+  execution-knowledge/authority-resolution axes under one composite-head CAS,
+  immutable acceptance roots plus append-only result evidence, atomic provider set
+  completeness with explicit assurance profiles/dual-identity append/map roots and
+  pre-execution receipt/witness eligibility, two-world-safe compensation, bounded
+  authoritative-time custody/anchored abandonment and non-authorizing feature
+  witnesses composed with exact operation capabilities/budgets/expected roots;
   retrievability states bind private tags/keys to exact ciphertext generations
   across copy-on-write migration, relocation and rotation under purpose-separated
   retention-verification accounting with explicit key provisioning/rotation and
@@ -12859,14 +13091,19 @@ Deliverables:
   handoff staging, authority-unavailable bypass, unfenced emergency incarnation,
   provider-accepted operation omitted from the fenced set, retry/adoption past
   `EffectUnknown`, normalized cleanup that rewrites execution knowledge or reopens a
-  history-sensitive dependency, unknown-effect compensation unsafe in either possible
-  world, provider-collusion completeness claimed without independent observation,
-  append-root-only operation-ID non-inclusion, map/log projection mismatch,
+  history-sensitive dependency, axis/prepared-leaf authority without composed-head
+  CAS, late evidence resurrecting custody or repeating cleanup, unknown-effect
+  compensation unsafe in either possible world, mutable fence root from late result,
+  result-log/status-map splice, provider-collusion completeness claimed without
+  independent observation, execution before retained receipt/witness co-commit,
+  append-root-only operation/idempotency non-inclusion, dual-identity map/log
+  projection mismatch,
   premature emergency material cleanup, unresolved-custody realm/global quota escape,
   restart/clock-reset custody age, destruction before anchored abandonment, mutable/
   dynamic decoder substitution, accounting-key retirement before signed final
-  closure, incomplete or untyped authority-feature activation, coordinator-cover
-  overclaim, retention-accounting key ambiguity, cross-log
+  closure, feature-state witness used as operation authority, missing exact operation
+  capability/budget/expected root, incomplete or untyped activation, coordinator-
+  cover overclaim, retention-accounting key ambiguity, cross-log
   duplicate grant,
   ledger rollback/
   priority erasure or unbounded phantom/debt/spam denial,
@@ -12986,13 +13223,15 @@ Deliverables:
   purpose-separated maintenance-frontier anchors, post-reconciliation satisfaction/
   exact lease CAS plus ordinary next-writer handoffs and bounded recovery-required
   blocking with immutable staged payloads, measured handoff staging, emergency-
-  incarnation fencing, dual-axis emergency resolution, atomic provider operation-set
-  fences with assurance profiles and consistent append/map roots, append-only effect
+  incarnation fencing, dual-axis emergency resolution under one authoritative
+  composite head, immutable acceptance/current-result evidence separation, atomic
+  provider operation-set fences with assurance profiles, consistent dual-identity
+  append/map roots and pre-execution receipt/witness admission, append-only effect
   classification, two-world-safe compensation, post-fence effect bridges, bounded
   authoritative-time emergency custody/anchored abandonment, normalized/terminal
-  material retirement and typed activation gates, cross-log reconciliation, limited
-  caller receipts, durable FIFO/debt fairness and spam bounds under partitions,
-  crashes, sustained appends and restart;
+  material retirement, and feature witnesses composed with exact operation authority,
+  cross-log reconciliation, limited caller receipts, durable FIFO/debt fairness and
+  spam bounds under partitions, crashes, sustained appends and restart;
 - model invariants for no lost encryption instance, no semantic/index
   completeness gap, no Byzantine manifest omission accepted, no hidden
   compartment disclosure, no endpoint-placement overwrite, no clock-derived
@@ -13040,13 +13279,16 @@ Deliverables:
   bypass, forged emergency fence, late-result application outside the effect bridge,
   provider-accepted operation absent from the fenced set, retry/dependent progress
   under `EffectUnknown`, normalized cleanup relabeling execution or reopening history-
-  sensitive dependencies, compensation unsafe in either possible world, provider-
-  collusion completeness without independent evidence, append-only non-inclusion,
-  map/log set mismatch, premature staged-material cleanup, unresolved-custody share
+  sensitive dependencies, axis root controlling authority without composite CAS,
+  late evidence resurrecting custody/repeating cleanup, compensation unsafe in either
+  possible world, mutable acceptance root or result-evidence splice, provider-
+  collusion completeness without independent evidence, execute-before-receipt/
+  witness, append-only operation/idempotency non-inclusion, dual-identity map/log set
+  mismatch, premature staged-material cleanup, unresolved-custody share
   exhaustion, custody-age reset or unanchored abandonment destruction, decoder
-  substitution, accounting-key retirement before signed final closure, lower-state/
-  forged typed capability authority, handoff-trace or coordinator-cover overclaim,
-  retention-key lifecycle bypass,
+  substitution, accounting-key retirement before signed final closure, feature
+  witness as sole/widened operation authority, missing budget/expected-root binding,
+  handoff-trace or coordinator-cover overclaim, retention-key lifecycle bypass,
   duplicate cross-log
   grant, rollback
   priority erasure, phantom ticket blocking forever or ticket-spam
@@ -13146,7 +13388,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.63 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.67 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -13165,7 +13407,9 @@ Deliverables:
   handoff traffic privacy, observer-scoped discovery cover, retention-accounting key/
   epoch closure, atomic provider fence completeness/assurance/dual-root proofs, safe
   compensation/dual-axis normalization, bounded authoritative-time emergency
-  custody/abandonment and typed feature activation through v0.111.63, and the
+  custody/abandonment, immutable acceptance/current-result evidence,
+  pre-execution receipt/witness admission, exact feature-witness/operation authority
+  composition and composite emergency-head publication through v0.111.67, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -13183,12 +13427,14 @@ Deliverables:
   invalid-auth capacity conflict, `WriterHandoffRecoveryRequired`, unavailable
   handoff conversion authority, mixed/private-proof metadata failure, unstaged/
   non-resumable handoff, incomplete/under-assured/inconsistent provider fence set,
-  emergency knowledge/resolution ambiguity, unsafe unknown-effect compensation,
-  normalized cleanup/dependency conflict, pending/over-quota emergency custody,
+  mutable acceptance/result-root or identity-index conflict, execute-before-receipt/
+  witness ambiguity, emergency axis/composite-head ambiguity, unsafe unknown-effect
+  compensation, normalized cleanup/late-evidence/dependency conflict, pending/over-
+  quota emergency custody,
   decoder/authoritative-renewal/anchored-abandonment conflict, retention-accounting
   key/epoch-closure conflict, required handoff/discovery-privacy degradation,
-  unsupported coordinator privacy, missing typed activation capability, inactive/
-  unknown critical feature, exhausted/unverifiable capacity or
+  unsupported coordinator privacy, feature-witness/operation-capability/root/budget
+  mismatch, inactive/unknown critical feature, exhausted/unverifiable capacity or
   rotation/writer-accounting state refuse transfer,
   preserve existing candidate presence/
   quota, and never trigger automatic reprovisioning, budget refill or plaintext
@@ -14189,10 +14435,11 @@ Deliverables:
   consistency proof/current terminal state/completion CAS/maintenance frontier/
   purpose-separated frontier anchor/frontier-satisfaction/lease-CAS/journal-result/
   payload-staging/traffic-profile/ordinary-handoff/recovery-epoch/required-blocking/
-  emergency-incarnation/provider-fence-set/assurance/append-map-projection/inclusion-
-  proof/execution-knowledge/authority-resolution/bridge/conditional-normalization/
-  normalized-cleanup/custody-clock-renewal/anchored-abandonment/material-retirement/
-  activation-matrix/typed-capability/debt target set;
+  emergency-incarnation/provider-fence-set/assurance/dual-identity-append-map/
+  acceptance-result-log/status-map/receipt-witness-eligibility/execution-knowledge/
+  authority-resolution/composite-head/bridge/conditional-normalization/normalized-
+  cleanup/custody-clock-renewal/anchored-abandonment/material-retirement/activation-
+  matrix/feature-witness/operation-capability/budget/root-composition/debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -14259,12 +14506,15 @@ Deliverables:
   maintenance-frontier anchoring, current-ledger satisfaction/lease CAS, durable
   immutable payload staging/ordinary next-writer handoff with bounded recovery-
   required blocking, measured staging traffic, independently authorized emergency
-  incarnation fencing, provider completeness-assurance profiles, consistent append-
-  log/authenticated-map fence roots, independent execution-knowledge/resolution axes,
+  incarnation fencing, provider completeness-assurance profiles with pre-execution
+  receipt/witness eligibility, immutable acceptance append/map roots plus separately
+  chained result log/status roots, dual-identity uniqueness, independent execution-
+  knowledge/resolution prepared axes under one authoritative composite-head CAS,
   append-only classification, two-world-safe compensation/normalization, bounded
   authoritative-time emergency custody/anchored abandonment, governed bridge
-  blocking, normalized/terminal staged-material retirement, activation-matrix/typed-
-  capability gating, cross-log result reconciliation and atomic cleanup;
+  blocking, normalized/terminal staged-material retirement, and non-authorizing
+  feature witnesses composed with exact operation capability/budget/expected root,
+  cross-log result reconciliation and atomic cleanup;
 - composition of the history-independent map algorithm/pages with authority
   active/covered-fence/exception/archive roots, a permanent low-sequence
   exception plus later archival, exact replay refusal, checkpoint rollback
@@ -14449,13 +14699,16 @@ Deliverables:
   grant-only satisfaction, ordinary-handoff overtake, recovery-budget reset or
   authority-unavailable bypass, non-resumable/unstaged handoff, unmeasured handoff
   traffic, unfenced emergency transition, incomplete/under-assured provider fence
-  set, append/map projection mismatch or append-only non-inclusion, late-result
-  application outside the governed bridge, retry/dependent progress under
-  `EffectUnknown`, normalized cleanup rewriting knowledge/history dependencies,
-  compensation unsafe in either possible world, unresolved custody exceeding realm/
-  global shares, custody-age reset or unanchored abandonment, mutable decoder
-  substitution, premature emergency material/key/quota retirement, lower-state or
-  forged typed-capability authority, duplicate cross-log result, rollback
+  set, mutable acceptance root, result-log/status splice, append/map projection
+  mismatch, one-identity-only uniqueness or append-only non-inclusion, execution
+  before independent receipt/witness eligibility, late-result application outside
+  the governed bridge, axis root without composed-head CAS, retry/dependent progress
+  under `EffectUnknown`, normalized cleanup rewriting knowledge/history dependencies,
+  late evidence resurrecting custody/repeating cleanup, compensation unsafe in either
+  possible world, unresolved custody exceeding realm/global shares, custody-age reset
+  or unanchored abandonment, mutable decoder substitution, premature emergency
+  material/key/quota retirement, feature witness used as sole/widened authorization
+  or without budget/expected root, duplicate cross-log result, rollback
   priority loss or unbounded ticket/debt/spam denial, no
   unmanaged-backup recoverability
   claim, no opaque cleanup of published data, no partial durable
@@ -14586,6 +14839,10 @@ Deliverables:
   v0.111.61 append/map/project/prove/compact boundaries,
   v0.111.62 clock/frontier/reserve/renew/anchor/destroy boundaries,
   v0.111.63 parse/verify/stage/activate/consume-token boundaries,
+  v0.111.64 accept/fence/result-append/status-CAS/compact boundaries,
+  v0.111.65 receipt-prepare/retain/accept/witness/execute/abort boundaries,
+  v0.111.66 witness/authorize/reserve/root-check/compose/consume boundaries,
+  v0.111.67 prepare-axis/publish-head/reopen/late-evidence/cleanup boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -14771,20 +15028,24 @@ Deliverables:
   negative-proof omission, weak provider consistency, commit-immediately-before-
   fence, false non-execution evidence, `EffectUnknown` retry/dependent/conflicting
   progress, bridge split view, unsafe inverse, conditional-normalization state race,
-  normalized cleanup/knowledge rewrite/history-sensitive reopening, classification
-  rewrite, provider/writer collusion under each completeness profile, hardware rollback,
-  witness/receipt omission, assurance downgrade, append/map root mismatch, duplicate
-  operation/idempotency key, stale map non-inclusion, projection splice, cross-realm
-  unresolved-custody exhaustion, restart/clock-reset age, late renewal reservation,
-  abandonment-anchor loss/rollback, mutable decoder substitution, abandoned-scope
-  reenable, premature staged-key/payload/quota retirement, emergency cleanup response
-  loss, handoff staging size/timing/backup correlation, cover-staging exhaustion,
+  normalized cleanup/knowledge rewrite/history-sensitive reopening, partial-axis head,
+  prepared-leaf replay, late-evidence custody resurrection/duplicate cleanup,
+  classification rewrite, provider/writer collusion under each completeness profile,
+  hardware rollback, receipt/witness after execution, receipt-store loss, eligibility
+  forgery, assurance downgrade, mutable fence result, result-log/status-map splice,
+  one-identity-only map, append/map root mismatch, duplicate operation/idempotency key,
+  stale map non-inclusion, projection splice, cross-realm unresolved-custody exhaustion,
+  restart/clock-reset age, late renewal reservation, abandonment-anchor loss/rollback,
+  mutable decoder substitution, abandoned-scope reenable, premature staged-key/payload/
+  quota retirement, emergency cleanup response loss, handoff staging size/timing/
+  backup correlation, cover-staging exhaustion,
   active coordinator real-budget observation, false blind-cover claim, retention-
   accounting key provisioning/rotation ambiguity, non-empty/forked epoch closure,
-  partial audit rewrap, restored closed key, lower-capability key/network/provider/
-  publication calls, token forgery/replay/duplication, parse-only feature activation,
-  matrix stripping/downgrade, competing emergency/maintenance activation, unanchored
-  maintenance and caller-receipt overclaim,
+  partial audit rewrap, restored closed key, feature-witness-only authority, operation-
+  capability widening/cross-context use, missing budget/expected root, lower-state
+  key/network/provider/publication calls, token forgery/replay/duplication, parse-only
+  feature activation, matrix stripping/downgrade, competing emergency/maintenance
+  activation, unanchored maintenance and caller-receipt overclaim,
   cross-log response ambiguity, ticket spam/phantom/debt/restart races, unmanaged-
   backup restore after key
   retirement, privacy-profile change, quota-refund, padding-budget, cross-purpose
@@ -15136,14 +15397,16 @@ Deliverables:
   lease-CAS records, ordinary next-writer handoff/result/debt transitions,
   handoff-recovery epoch/resource/required-state transitions, anchored roots/limited
   receipts, immutable payload-staging/traffic profiles, emergency-incarnation/fence/
-  late-result transitions, dual execution-knowledge/authority-resolution axes,
-  normalized terminal cleanup/dependency classes, provider completeness assurance/
-  attestation/witness/receipt evidence, consistent append-log/map roots/projection/
-  inclusion/non-inclusion proofs, governed effect bridges, committed-effect
-  compensation/two-world normalization, bounded authoritative-time custody/renewal/
-  anchored abandonment, staged-material destruction/quota release, activation
-  matrices/typed capabilities, rollback refusal, phantom cleanup, spam ceilings,
-  fairness and ledger compaction;
+  late-result transitions, immutable acceptance plus result-log/status-map roots,
+  dual operation/idempotency map identities, pre-execution receipt/witness eligibility,
+  execution-knowledge/authority-resolution prepared axes and composed-head CAS,
+  normalized/late-evidence terminal cleanup/dependency classes, completeness assurance
+  evidence, consistent append/map projection/inclusion/non-inclusion proofs, governed
+  effect bridges, committed-effect compensation/two-world normalization, bounded
+  authoritative-time custody/renewal/anchored abandonment, staged-material destruction/
+  quota release, activation matrices, feature witnesses plus operation capability/
+  budget/root composition, rollback refusal, phantom cleanup, spam ceilings, fairness
+  and ledger compaction;
 - handoff privacy benchmarks compare baseline/padded/high-security size, timing,
   timestamp and backup-block traces plus emergency-retention overhead; discovery
   benchmarks compare complete active-coordinator views for real/cover operations;
@@ -15681,13 +15944,25 @@ Deliverables:
   provider equivocation is in scope and never claims collusion detection without an
   independent observer;
 - v0.111.61 fence receipts bind consistent ordered append-log and authenticated
-  operation-ID map roots with uniqueness/projection proofs, preserving logarithmic
-  inclusion/non-inclusion and exact sequence history;
+  operation-ID map roots with uniqueness/projection proofs, while v0.111.64 adds
+  domain-separated idempotency identity and immutable fence-time result state;
 - v0.111.62 custody age survives restart under `ClockEpoch` plus authoritative
   frontier/time evidence, renewal reserves before its safety margin, and unresolved
   abandonment is externally reconciled before destruction;
 - v0.111.63 normative state permissions are enforced by sealed non-forgeable Rust
-  capability types required by key, network, provider, staging and authority APIs;
+  witnesses, while v0.111.66 keeps exact operation authorization/budget/root separate;
+- v0.111.64 final acceptance roots contain immutable acceptance/fence-time facts only;
+  late outcomes append to separately chained result log/status roots, and both
+  operation/idempotency identities support logarithmic proofs;
+- v0.111.65 receipt-backed execution requires independent receipt durability before
+  acceptance, and witnessed execution requires threshold co-commit as part of
+  acceptance; unavailable evidence leaves work non-executable;
+- v0.111.66 feature state is a non-authorizing store/realm/revision/matrix/incarnation
+  witness composed with one exact v0.23.4 operation capability, durable budget lease
+  and expected authority root before any side effect;
+- v0.111.67 prepared axis leaves are inert until one expected-head CAS publishes the
+  composed emergency checkpoint; late knowledge cannot resurrect custody/repeat
+  cleanup, and history-sensitive dependencies need a new governed resolution;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -15916,6 +16191,18 @@ Deliverables:
 - v0.111.63 compile-fail permission, private constructor, token consume/replay/
   duplication, stale/cross-feature root, serialization forgery, panic/restart and
   public authority-API audit fixtures pass;
+- v0.111.64 immutable fence-time result, late result append/status CAS, acceptance-
+  root stability, result splice/conflict, dual-identity omission/collision,
+  idempotency non-inclusion and compaction fixtures pass;
+- v0.111.65 receipt preparation/durability, acceptance/eligibility ordering, execute-
+  before-receipt, prepared abort/uncertainty, witness threshold/delay/equivocation,
+  response suppression and downgrade fixtures pass;
+- v0.111.66 feature-witness-only refusal, exact operation capability, budget/root/
+  context mismatch, widening/conversion, WritePrepared admission and compile-fail/
+  public/FFI API inventory fixtures pass;
+- v0.111.67 prepared-axis replay, composed-head CAS crash, mixed roots, normalized
+  late committed/non-execution evidence, governed history resolution, duplicate
+  cleanup/reopen, abandonment and conflict-head fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -16100,10 +16387,11 @@ Deliverables:
   write-prepared and authority-active states; emergency recovery, protected handoff,
   coordinator-private discovery and protected retention accounting remain read-only
   until every named closure/provider/profile dependency is active, and mixed/older
-  binaries cannot strip or downgrade that floor; sealed non-forgeable Rust
-  capabilities enforce that parse has no keys/network/writes, verify is query-only,
-  modeled has no runtime power, prepared writes only charged non-authoritative
-  staging, and only admitted active tokens reach authority-changing APIs;
+  binaries cannot strip or downgrade that floor; sealed non-forgeable Rust feature-
+  state witnesses enforce that parse has no keys/network/writes, verify is query-only,
+  modeled has no runtime power and prepared writes only charged non-authoritative
+  staging, but never authorize an operation; every authority call also requires the
+  exact one-operation capability, durable budget lease and expected authority root;
 - reproducible model assurance with exact bounds, assumptions, property classes,
   reductions, explored-state coverage, resources, seeds/configuration, and
   completion status;
@@ -16315,26 +16603,31 @@ Deliverables:
   while operator-confirmed independent threshold emergency recovery may fence the
   entire old incarnation, quarantine late results and activate a linked new
   journal/ledger incarnation without reusing identifiers or operation authority;
-  one atomic provider transition fences acceptance and commits final ordered append-
-  log and operation-ID map roots with uniqueness/projection proofs and logarithmic
-  non-inclusion; its completeness claim is provider-asserted, hardware-monotonic,
-  witnessed or receipt-backed, and protected recovery requires independent evidence
-  when provider equivocation is in scope; unverifiable completeness freezes the
-  whole affected provider/authority scope; execution knowledge and authority
-  resolution remain independent, so normalization may terminate custody and reopen
-  only proven current-state dependencies while permanently preserving unknown
-  execution and history-sensitive blocking; ordinary compensation requires proven
-  commit, while unknown effects normalize only through an atomic provider operation
-  safe in both possible worlds, and irreducible uncertainty stays blocked; staged
-  bytes, immutable hash-bound decoder, keys and quota remain within checked realm/
+  one atomic provider transition fences acceptance and commits immutable acceptance
+  facts in a final ordered append root plus domain-prefixed operation-ID/idempotency
+  map root; late outcomes append only to separately chained result-log/status roots,
+  and effect bridges bind both; completeness is provider-asserted, hardware-monotonic,
+  witnessed or receipt-backed, with independent receipt durability or witness co-
+  commit required before acceptance/execution for those profiles; protected recovery
+  requires independent evidence when provider equivocation is in scope, while
+  unverifiable completeness freezes the whole affected provider/authority scope;
+  execution-knowledge and resolution axis updates remain inert prepared leaves until
+  one expected-head CAS publishes their composed head with current result/dependency/
+  custody roots; normalization may terminate custody and reopen only proven current-
+  state dependencies while preserving unknown execution/history-sensitive blocking;
+  late evidence may advance knowledge but cannot resurrect custody, repeat cleanup or
+  reopen history-sensitive dependencies without a new governed composed resolution;
+  ordinary compensation requires proven commit, while unknown effects normalize only
+  through an atomic provider operation safe in both possible worlds and irreducible
+  uncertainty stays blocked; staged bytes, immutable hash-bound decoder, keys and
+  quota remain within checked realm/
   global custody shares; renewal binds one process `ClockEpoch` and persistent
   authoritative time/frontier evidence without restart age reset; governed
   abandonment anchors externally before destruction, permanently preserves unknown
   execution and disables the scope; authenticated normalized/terminal cleanup
   preserves permanent commitment/resolution evidence; caller receipts expose only
-  caller-relative
-  rollback and cannot replace
-  system-wide anchoring or require a ticket to repair the ledger;
+  caller-relative rollback and cannot replace system-wide anchoring or require a
+  ticket to repair the ledger;
 - durable quarantine candidate metadata uses a purpose-separated
   `StoreQuarantineMetadataKey` active before first publication, wrapped to
   admitted daemon/provider and recovery recipients, bound to store/quarantine/
