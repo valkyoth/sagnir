@@ -12129,7 +12129,7 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.90 are complete and their provider/fence/effect/
+  v0.111.50 and v0.111.54-v0.111.95 are complete and their provider/fence/effect/
   custody/anchor/evidence/admission/privacy capabilities are admitted; earlier
   binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
@@ -12182,18 +12182,24 @@ authority so safe normalization can terminate custody without inventing history.
 Deliverables:
 
 - canonical emergency state contains independent `ExecutionKnowledge` values refined
-  by v0.111.73-v0.111.74/v0.111.82: `Unknown`, `ProvenNotAccepted`,
+  by v0.111.73-v0.111.74/v0.111.82/v0.111.87: `Unknown`, `ProvenNotAccepted`,
   `AcceptedExecutionUnknown`, `AcceptedNeverStarted`, `AcceptedStartedNoEffect`,
-  `Committed(effect_commitment)` and `Conflicting(evidence_root)`, plus
+  `AcceptedEffectsPartial(effect_knowledge_root)`, `Committed(effect_commitment)` and
+  `Conflicting(evidence_root)`, plus
   `AuthorityResolution` values `Blocked`, `Adopted`, `Compensated`, `Normalized`,
   `Abandoned` and v0.111.79 `ConflictAbandoned`; `ProvenNoEffect` is a derived
   classification that retains its non-acceptance, never-started or started-no-effect
   evidence kind;
-- valid-pair rules are explicit: `Adopted` requires `Committed`, ordinary
-  `Compensated` requires `Committed`, `Normalized` may retain unresolved knowledge,
-  `Conflicting` permits only `Blocked` or fail-closed `ConflictAbandoned`, and ordinary
-  `Abandoned` preserves non-conflicting current execution knowledge without asserting
-  an effect;
+- v0.111.91 refines partial operations with a per-permit
+  `EffectAuthorityResolution` map bound one-to-one to the v0.111.87 effect-knowledge
+  map; operation-level `AuthorityResolution` remains canonical for scalar and
+  aggregate custody decisions but cannot erase different permit resolutions;
+- valid-pair rules are explicit: scalar `Adopted` and ordinary `Compensated` require
+  scalar `Committed`; a committed permit in `AcceptedEffectsPartial` may adopt or
+  compensate only through its exact v0.111.91 resolution leaf while ambiguous permits
+  remain blocked; `Normalized` may retain unresolved knowledge, `Conflicting` permits
+  only `Blocked` or fail-closed `ConflictAbandoned`, and ordinary `Abandoned` preserves
+  non-conflicting current execution knowledge without asserting an effect;
 - append-only execution-knowledge transitions and authority-resolution transitions
   produce separate immutable prepared roots/leaves; v0.111.67 makes only one locally
   committed expected-head-CAS candidate across both axes, provider/result roots,
@@ -12965,6 +12971,8 @@ Deliverables:
   admits the separate terminal `ConflictAbandoned` pair after externally anchored
   disablement, but it cannot pair with adopted, compensated, normalized or ordinary
   abandoned resolution, choose evidence, reopen dependencies or satisfy policy;
+  v0.111.93 may authorize a separate conflict-observation consequence without making
+  conflict a satisfying dependency or treating either statement as true;
 - the v0.111.69 projection emits `Conflicting` only from positive admitted
   contradiction evidence and emits `Unknown` only for missing, pending, stale or
   otherwise insufficient evidence; neither state may be converted into the other;
@@ -13663,7 +13671,8 @@ Deliverables:
   `AcceptedExecutionUnknown`;
 - compensation, audit, billing and policy consume exact committed permit witnesses;
   each committed effect may be compensated independently under its own authority,
-  while ambiguous permits and consequences depending on them remain blocked;
+  while ambiguous permits and consequences depending on them remain blocked; the
+  corresponding authority transition uses the v0.111.91 per-permit resolution map;
 - operation-level finality distinguishes all-committed, all-no-effect, terminal mixed,
   unresolved partial and conflicting plans; terminal mixed means every permit is
   conclusive, not that every permit produced the same outcome;
@@ -13703,10 +13712,11 @@ Deliverables:
   flushes the complete immutable request commitment, query identity and recovery data
   before any byte, call, transaction, device command or provider handoff can cross the
   declared effect boundary;
-- crossing the handoff boundary durably and conservatively projects to
-  `OutcomeUnknown` unless one atomic admitted provider operation also commits a
-  stronger terminal result; crash or response loss cannot reconstruct `Ready`, infer
-  no effect or authorize another local dispatch attempt;
+- v0.111.95 requires `OutcomeUnknown` to be expected-root-CAS committed and durably
+  flushed after `DispatchPrepared` but before external handoff; this conservative
+  dispatch-authorization state may mean the request was never sent, but crash or
+  response loss cannot reconstruct `Ready`, infer no effect or authorize another
+  local dispatch attempt;
 - recovery may only query the exact request commitment and idempotency key and append
   admitted outcome evidence; it cannot regenerate request bytes, change endpoint,
   allocate a new permit, replay because a local send marker is absent or rely on HTTP/
@@ -13717,7 +13727,8 @@ Deliverables:
   queue, provider and downstream assumptions required for each claim;
 - protected activation refuses at-most-once or exactly-once claims unless the complete
   path has an admitted non-equivocating idempotency/transaction mechanism; ordinary
-  retry middleware is disabled or included explicitly in the provider model;
+  retry middleware is disabled or included explicitly in the provider model, and
+  v0.111.94 binds every claim to a durable deduplication/replay-fence horizon;
 - cancellation, panic, process kill, VM clone, stale WAL replay and concurrent recovery
   preserve one durable permit successor; conflicting terminal evidence enters
   `Conflicting` and no local newest-result choice resolves it;
@@ -13805,9 +13816,10 @@ Deliverables:
 - invoking a dependent permit requires consuming or narrowly borrowing the exact
   typed witness declared by its edge; witness variance, kind erasure, cross-plan use,
   stale-root use and one outcome satisfying a different predicate are rejected;
-- `Terminal` accepts only admitted conclusive committed or proven-no-effect knowledge
-  unless the edge explicitly admits conflict; ambiguity never satisfies a dependency,
-  and a conflicting predecessor blocks ordinary dependent authority;
+- `Terminal` accepts only admitted conclusive committed or proven-no-effect knowledge;
+  ambiguity and conflict never satisfy an ordinary dependency, while v0.111.93 uses a
+  separate conflict-observation consequence for audit, quarantine, fencing and
+  abandonment without asserting either conflicting outcome;
 - output predicates use deterministic bounded canonical evaluators and commit input/
   output schemas, function/version root and target domain; predicate evaluation cannot
   perform I/O, access secrets or mint capabilities;
@@ -13817,6 +13829,8 @@ Deliverables:
 - plan amendments bind old/new plan roots, completed and ambiguous permit sets,
   amendment authority, policy decision and expected composite root; they preserve old
   outcomes and cannot rearm consumed permits or weaken dependency requirements;
+  v0.111.92 must fence the old executor generation and publish one append-only effect-
+  plan lineage before any amended permit becomes invocable;
 - compile-fail, model and crash tests cover wrong witness types, ambiguous/contradictory
   predecessors, stale outputs, predicate substitution, cross-plan borrowing, dynamic
   target escape, amendment races and recovery between witness creation and dispatch.
@@ -13833,6 +13847,251 @@ Exit criteria:
 - Every dependent effect names and proves the exact predecessor outcome it requires.
 - Ambiguity cannot satisfy an effect dependency.
 - Data-dependent execution cannot create effect authority outside the admitted plan.
+
+### v0.111.91 - Per-Permit Emergency Authority Resolution
+
+Goal: resolve, compensate or terminate each known effect independently without
+collapsing a partially known operation into one scalar authority outcome.
+
+Deliverables:
+
+- canonical `EffectAuthorityResolution` values are `Blocked`, `Adopted`,
+  `Compensated`, `Normalized`, `Abandoned` and `ConflictAbandoned`; each leaf binds
+  operation, effect-plan lineage, plan root/generation, permit index, exact v0.111.87
+  knowledge leaf/root, resolution evidence, policy epoch and predecessor leaf;
+- `EffectAuthorityResolutionMap` has exactly the same bounded permit domain as the
+  active effect-knowledge map; missing, duplicate, extra or cross-plan entries and
+  knowledge/resolution map-generation mismatch are critical refusals;
+- canonical `EffectEmergencyStateRoot` commits the knowledge-map root, resolution-map
+  root, derived aggregate summaries, current effect-plan lineage root, dependency/
+  custody roots and expected prior composite head; neither map is authoritative alone;
+- pair rules are per permit: `Adopted` and ordinary `Compensated` require that exact
+  permit to be committed, `Normalized` requires an admitted two-world-safe operation,
+  ambiguous knowledge remains `Blocked`, and conflicting knowledge permits only
+  `Blocked` or the exact externally anchored `ConflictAbandoned` lifecycle;
+- operation-level resolution is a deterministic non-authorizing summary for status,
+  custody and compatibility; it cannot authorize compensation, cleanup, dependency
+  reopening or bridge execution without an exact permit-indexed resolution witness;
+- compensation consumes one committed-effect witness and one scoped affine authority
+  for the same permit; success updates only that leaf and consequences that depend on
+  it, while unrelated ambiguous, conflicting or unprocessed permits remain blocked;
+- emergency bridges, cleanup, dependency closure, custody release and composite-head
+  projection consume exact permit sets and map roots; cleanup releases only inventory
+  exclusively owned by terminal permit resolutions and preserves shared/uncertain
+  custody conservatively;
+- late evidence advances the corresponding knowledge leaf, invalidates stale
+  resolution composition and requires a new expected-root transition; it cannot undo
+  completed compensation/cleanup or select a conflicting outcome by arrival order;
+- tests cover every knowledge/resolution pair, committed-plus-ambiguous compensation,
+  cross-index and stale-map substitution, partial cleanup, shared custody, late
+  evidence, aggregate-summary misuse, compaction, sync and mixed-version refusal.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-store`
+- per-permit knowledge/resolution/composite-head state-machine model;
+- canonical map-domain, pair-rule, bridge and cleanup vectors.
+
+Exit criteria:
+
+- A committed permit may be compensated while an ambiguous permit remains blocked.
+- Scalar operation summaries cannot authorize per-effect consequences.
+- Every emergency consequence preserves the exact permit knowledge it resolved.
+
+### v0.111.92 - Effect Plan Amendment Fencing And Lineage
+
+Goal: ensure a governed plan amendment cannot leave old executors or permits live
+beside a newly activated plan generation.
+
+Deliverables:
+
+- canonical amendment lifecycle is `Active -> FreezePrepared -> ExecutorFenced ->
+  AmendmentPrepared -> ActiveSuccessor`; each transition binds operation, current
+  lineage root, old/new plan roots and generations, executor incarnation, permit-state
+  map, amendment authority/policy, expected composite head and predecessor transition;
+- `FreezePrepared` acquires exclusive expected-generation authority and prevents new
+  permit extraction; `ExecutorFenced` becomes durable only after every old permit is
+  classified as terminal, `OutcomeUnknown`, or `RevokedBeforeDispatch` with proof that
+  no v0.111.95 dispatch authorization became authoritative;
+- every permit dispatch CAS validates the currently active executor generation and
+  plan-lineage root immediately before durable dispatch authorization; stale in-memory
+  executors, process clones and pre-fence permits fail without external handoff;
+- permits already dispatch-authorized or handed off stay under their original plan
+  root and idempotency identity until terminal reconciliation; amendment cannot revoke,
+  duplicate, rebase or remint them and new dependencies refer to their carried outcome
+  through exact lineage-bound witnesses;
+- canonical `EffectPlanLineageRoot` commits the original plan and every ordered
+  amendment, generation fence, carried permit/outcome set, revoked-before-dispatch set,
+  new permit set and predecessor lineage root; history is append-only and bounded by
+  explicit amendment count, depth, work and retained-decoder limits;
+- `ActiveSuccessor` publishes the new plan, executor generation, lineage and composite
+  roots atomically through expected-root CAS before any new permit can be minted;
+  recovery from intermediate states completes or remains fenced and never reactivates
+  both generations;
+- concurrent amendments conflict on the same old generation and preserve all signed
+  contenders for governed resolution; local timestamp, process identity or arrival
+  order cannot select a successor;
+- cancellation, policy revocation and abandonment use the same fence/accounting rules
+  and cannot classify an old permit unused from memory absence or Rust `Drop`;
+- crash/race tests cover every fence/publication boundary, amendment with old permits
+  in memory, concurrent amendments, cloned processes, stale dispatch CAS, dispatched
+  carry-forward, revocation-before-dispatch and recovery before successor activation.
+
+Verification:
+
+- `cargo test -p sagnir-core`
+- `cargo test -p sagnir-store`
+- effect-plan lineage/amendment-fence state-machine model;
+- executor-generation compile-fail and crash/concurrency suite.
+
+Exit criteria:
+
+- At most one executor generation can authorize a new dispatch for an operation.
+- Every old permit is terminal, ambiguous or durably revoked before amendment.
+- Plan amendments preserve one append-only lineage across restart and sync.
+
+### v0.111.93 - Conflict-Observed Consequence Authority
+
+Goal: react safely to contradictory effect evidence without treating conflict as a
+successful, failed or otherwise satisfying predecessor outcome.
+
+Deliverables:
+
+- ordinary `DependencyRequirement::Terminal` admits only conclusive committed or
+  proven-no-effect knowledge; no ordinary dependency edge, output predicate, policy
+  obligation or plan amendment may consume conflict as satisfaction;
+- conflict creates a sealed non-outcome `ConflictObservedWitness` binding operation,
+  plan lineage/root, permit index, canonical contradiction/evidence root, provider/
+  key epochs, active composite head and disclosure profile;
+- only a separately authorized `PermittedConsequence<ConflictObserved>` may consume
+  that witness, exact operation capability, budget and expected root; admitted
+  consequence kinds are bounded audit capture, quarantine, authority fencing,
+  notification and the v0.111.79 conflict-abandonment preparation;
+- conflict-observed consequences state only that contradiction exists; they cannot
+  select either statement, emit committed/proven-no-effect knowledge, satisfy an
+  ordinary dependency, authorize compensation/adoption or reopen current/history-
+  sensitive authority;
+- any externally effectful conflict response uses its own precommitted effect plan,
+  dispatch lifecycle and provider evidence; observing conflict is not ambient or
+  reusable side-effect authority;
+- duplicate conflict observations are idempotent under the exact evidence root;
+  refined contradiction evidence creates a new witness/root and cannot replay an old
+  consequence token or repeat cleanup/notification outside policy;
+- status, proof and audit formats distinguish outcome witnesses from conflict-
+  observation witnesses and apply the active privacy profile to both;
+- tests cover conflict passed to every ordinary dependency kind, witness conversion,
+  outcome selection, compensation attempts, cross-permit/root reuse, bounded audit/
+  fencing actions, duplicate/refined evidence and conflict-abandonment composition.
+
+Verification:
+
+- `cargo test -p sagnir-core`
+- `cargo test -p sagnir-policy`
+- conflict-observation/consequence state-machine model;
+- compile-fail outcome-witness separation and canonical consequence vectors.
+
+Exit criteria:
+
+- Conflict never satisfies an ordinary effect dependency.
+- Conflict response observes contradiction without asserting either outcome.
+- Every conflict-triggered side effect consumes separate exact authority.
+
+### v0.111.94 - Provider Deduplication Horizons And Replay Fences
+
+Goal: bind idempotency, at-most-once and exactly-once claims to durable provider
+retention so delayed or cloned requests cannot become new work after compaction.
+
+Deliverables:
+
+- every protected provider publishes a canonical `DeduplicationContract` binding
+  provider namespace/incarnation, operation and idempotency-key scope, key/provider/
+  protocol epochs, admitted delivery claim, retention frontier/horizon, authoritative
+  time source, compaction rule, replay-fence root and migration/restore behavior;
+- idempotency identities are domain separated by operation kind, provider, endpoint,
+  realm and epoch; rotation cannot reinterpret an old key under a new namespace or
+  permit cross-tenant, cross-effect or cross-generation deduplication;
+- exactly-once and at-most-once profiles retain terminal deduplication records through
+  the maximum admitted lifetime of queues, proxies, retries, offline clones, backups
+  and delayed network delivery; ordinary cache expiry is not a replay boundary;
+- when any request copy can outlive detailed retention, compaction emits a permanent
+  authenticated replay fence, tombstone or monotonic epoch rejection rule that rejects
+  old operation/idempotency identities without re-executing or treating them as new;
+- provider/key rotation and migration carry detailed records or proof-preserving replay
+  fences before activating successors; backup restore verifies current fence/epoch
+  continuity before writes and cannot reopen compacted identities;
+- delayed queue/proxy requests arriving before, at or after a retention transition are
+  rejected, deduplicated or queried under the original epoch; they never cross the
+  effect boundary as a fresh operation because local details expired;
+- if durable deduplication or replay fencing becomes unavailable, the provider refuses
+  affected writes and permanently downgrades the claim for that interval; it may not
+  continue exactly-once service and relabel uncertainty later;
+- deletion/retention policy exposes no operation membership beyond its provider privacy
+  profile; private replay fences use keyed authenticated structures with bounded
+  inclusion/non-inclusion proofs and independent canonical vectors;
+- tests cover horizon edges, delayed queues, proxy caches, years-old offline clones,
+  compaction, key/provider rotation, migration, stale backup restore, epoch replay,
+  fence loss, privacy leakage and claim downgrade/refusal.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-sync`
+- provider deduplication-horizon/replay-fence state-machine model;
+- delayed-delivery, compaction, migration and restore integration suite.
+
+Exit criteria:
+
+- Expired detailed records never make an old idempotency identity new again.
+- Delivery claims remain valid for every admitted delayed or cloned request lifetime.
+- Missing replay-fence continuity refuses writes and downgrades affected claims.
+
+### v0.111.95 - Conservative Dispatch Authorization Ordering
+
+Goal: remove the local-WAL/external-handoff crash gap by recording uncertainty before
+an effect can leave the process.
+
+Deliverables:
+
+- normative ordering for each permit is: durably expected-root-CAS commit and flush
+  `DispatchPrepared`; durably commit and flush its `OutcomeUnknown` dispatch-
+  authorization successor; perform the external handoff; append terminal evidence if
+  returned and reconcile through exact query if it is not;
+- `OutcomeUnknown` means dispatch was authorized and may or may not have reached the
+  provider; it intentionally includes the safe false-positive case where a crash
+  happened after local durability but before any external byte was sent;
+- the effect API receives a sealed affine `DispatchAuthorizedUnknown` capability only
+  after the second WAL state and required file/directory durability are verified; no
+  socket, client library, proxy, queue, device or provider handle is reachable from
+  `Ready` or `DispatchPrepared` code paths;
+- no purely local marker claims that handoff definitely occurred because local WAL and
+  an external provider do not transition atomically; authenticated provider admission,
+  terminal result or final non-inclusion evidence refines uncertainty append-only;
+- recovery from `DispatchPrepared` may fence/revoke under v0.111.92 only after proving
+  no dispatch authorization committed; recovery from `OutcomeUnknown` is query-only
+  and cannot send, reauthorize, mint another permit or infer no effect from local
+  absence;
+- provider transactional admission may return stronger evidence, but local authority
+  remains `OutcomeUnknown` until that exact evidence is durably appended and projected;
+  response loss preserves uncertainty and v0.111.94 replay-fence protection;
+- logs, status and proofs distinguish prepared-not-authorized from authorized-unknown
+  without exposing request identifiers or claiming network observation;
+- fault injection kills before and after each WAL append, CAS, file sync, directory
+  sync, capability construction, first socket byte, proxy/queue acceptance, provider
+  admission, response read and terminal-evidence persistence.
+
+Verification:
+
+- `cargo test -p sagnir-core`
+- `cargo test -p sagnir-store`
+- dispatch-authorization/WAL-handoff state-machine model;
+- instrumented no-byte/partial-handoff/response-loss crash suite.
+
+Exit criteria:
+
+- No external effect path is reachable before durable `OutcomeUnknown` authorization.
+- A post-durability, pre-send crash remains safely queryable uncertainty.
+- Recovery never mistakes local WAL state for proof of external handoff or no effect.
 
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
@@ -13863,7 +14122,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.90 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.95 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -13895,7 +14154,9 @@ Deliverables:
   knowledge, affine bounded effect plans, conservative panic accounting,
   rollback-resistant static-slot checkpoints, purpose-separated conflict evidence,
   per-effect mixed-outcome knowledge, durable dispatch, non-equivocating slot
-  allocation and typed dependency witnesses,
+  allocation, typed dependency witnesses, per-permit emergency resolution, fenced
+  plan-amendment lineage, conflict-observation consequences, provider replay fences
+  and conservative pre-handoff dispatch authorization,
   admitted authentication suite/provider-capacity mode,
   and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
@@ -13910,7 +14171,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.90 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.95 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -14221,8 +14482,12 @@ Deliverables:
   non-equivocating fenced allocation; started-no-effect knowledge retains its policy
   kind, effect plans consume affine indexed permits through durable dispatch states,
   mixed plans preserve a per-effect knowledge lattice, typed outcome witnesses gate
-  dependencies, panic accounting charges ambiguity conservatively, and conflict
-  evidence uses independent emergency keys/retention;
+  dependencies, per-permit resolution maps authorize exact compensation/cleanup,
+  plan amendments fence old executor generations under one lineage, conflict response
+  uses non-outcome consequence authority, provider delivery claims retain replay
+  fences, and uncertainty is durable before handoff; panic accounting charges
+  ambiguity conservatively, and conflict evidence uses independent emergency keys/
+  retention;
   retrievability states bind private tags/keys to exact ciphertext generations
   across copy-on-write migration, relocation and rotation under purpose-separated
   retention-verification accounting with explicit key provisioning/rotation and
@@ -14289,7 +14554,12 @@ Deliverables:
   borrowed/reused start or effect permit, mixed-outcome knowledge collapse,
   dispatch before durable preparation, duplicate request after response loss,
   overclaimed remote delivery semantics, untyped or wrong-outcome dependency,
-  data-dependent target authority outside the committed plan, unknown-effect
+  data-dependent target authority outside the committed plan, scalar resolution of a
+  partial effect map, cross-permit compensation/cleanup, two live executor generations,
+  stale permit dispatch after amendment, conflict satisfying an ordinary dependency,
+  conflict witness converted into outcome authority, expired deduplication identity
+  treated as new, restored replay fence rollback, external handoff before durable
+  unknown authorization, unknown-effect
   compensation unsafe in either possible world, mutable fence root from late result,
   result-log/status-map splice, provider-collusion completeness claimed without
   independent observation, execution before retained receipt/witness co-commit,
@@ -14436,8 +14706,11 @@ Deliverables:
   canonical conflict blocking and acceptance/execution outcome separation, immutable
   acceptance/current-result evidence separation, provider start-before-effect and
   affine bounded effect plans with durable per-permit dispatch, per-effect mixed
-  knowledge and typed dependency witnesses, fail-closed post-start recovery with
-  distinct started-no-effect knowledge, non-equivocating static-slot allocation,
+  knowledge, per-permit resolution and typed dependency witnesses, amendment-fenced
+  executor lineage, conflict-observation consequence authority, replay-fenced provider
+  deduplication and conservative pre-handoff uncertainty, fail-closed post-start
+  recovery with distinct started-no-effect knowledge, non-equivocating static-slot
+  allocation,
   externally anchored conflict abandonment under independent
   emergency evidence keys/retention, atomic
   provider operation-set fences with assurance profiles, consistent dual-identity
@@ -14610,7 +14883,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.90 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.95 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -14632,7 +14905,7 @@ Deliverables:
   custody/abandonment, immutable acceptance/current-result evidence,
   pre-execution receipt/witness admission, exact feature-witness/operation authority
   composition and externally anchored composite emergency-head publication through
-  v0.111.90, and the
+  v0.111.95, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -15569,7 +15842,9 @@ Deliverables:
 - proof and sync-message corpus;
 - per-effect knowledge-map/summary, durable dispatch-WAL transition, static-slot
   allocation-fence/quorum evidence, dependency-outcome witness/predicate and governed
-  plan-amendment corpus;
+  plan-amendment, per-permit resolution-map/composite-root, effect-plan lineage/fence,
+  conflict-observation witness/consequence, deduplication-contract/replay-fence and
+  dispatch-authorization ordering corpus;
 - deterministic fact rule/query-plan, snapshot cursor, immutable-index offset,
   exact cryptographic suite/hybrid transcript, opaque bundle outer/inner
   manifest, and blind-claim corpus;
@@ -15683,7 +15958,9 @@ Deliverables:
   static-receipt-slot-consumption/started-no-effect/effect-plan-permit/child-panic-
   accounting/static-slot-checkpoint/conflict-evidence-key-retention/per-effect-
   knowledge-map/dispatch-WAL/delivery-profile/static-slot-allocation-fence/dependency-
-  outcome-witness/plan-amendment/debt target set;
+  outcome-witness/plan-amendment/effect-resolution-map/composite-effect-state/plan-
+  lineage/executor-fence/conflict-observation-consequence/deduplication-horizon/replay-
+  fence/dispatch-authorization-order/debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -15759,8 +16036,10 @@ Deliverables:
   externally anchored composite-head activation lifecycle plus provider
   start-before-effect, affine bounded effect plans, distinct started-no-effect
   knowledge, monotonic per-effect mixed-outcome projection, durable permit dispatch,
-  typed dependency witnesses and anchored irreducible-conflict abandonment under
-  independent evidence keys/retention,
+  typed dependency witnesses, per-permit emergency resolution, amendment-fenced plan
+  lineage, separate conflict-observation consequences, provider deduplication/replay-
+  fence horizons, conservative pre-handoff uncertainty and anchored irreducible-
+  conflict abandonment under independent evidence keys/retention,
   append-only classification, two-world-safe compensation/normalization, bounded
   authoritative-time emergency custody/anchored abandonment, governed bridge
   blocking, normalized/terminal staged-material retirement, and non-authorizing
@@ -15970,6 +16249,10 @@ Deliverables:
   mixed-permit knowledge collapse, non-monotonic evidence join, dispatch without a
   durable prepared CAS, duplicate local dispatch, overclaimed remote delivery,
   wrong-outcome dependency witness, dynamic target escape or unsafe plan amendment,
+  scalar partial-plan resolution, cross-permit consequence authority, old/new executor
+  overlap, stale generation dispatch, conflict satisfying dependency, conflict/outcome
+  witness substitution, expired deduplication reuse, replay-fence rollback, provider
+  migration without horizon continuity or handoff before durable `OutcomeUnknown`,
   unanchored conflict abandonment, conflict evidence erasure/cross-purpose key use,
   unbounded/uncharged prepared receipts, local-only provider capacity, static-slot
   clone replay, rollbackable provider checkpoint, partitioned double allocation,
@@ -16130,12 +16413,17 @@ Deliverables:
   v0.111.82 started/no-effect/project/policy boundaries,
   v0.111.83 plan-commit/start-consume/permit-consume/query boundaries,
   v0.111.84 child-reserve/checkpoint/panic-charge/refund boundaries,
-  v0.111.85 slot-root/checkpoint/finality/restore boundaries and
+  v0.111.85 slot-root/checkpoint/finality/restore boundaries,
   v0.111.86 evidence-key/provision/rotate/archive/retire boundaries,
   v0.111.87 per-effect-join/project/compensate/conflict boundaries,
   v0.111.88 ready/dispatch-prepare/handoff/query/result boundaries,
-  v0.111.89 allocate/fence/quorum/reconfigure/heal boundaries and
+  v0.111.89 allocate/fence/quorum/reconfigure/heal boundaries,
   v0.111.90 witness-create/borrow-or-consume/predicate/amend boundaries,
+  v0.111.91 resolution-map/compose/compensate/cleanup boundaries,
+  v0.111.92 freeze/fence/classify/amend/activate-lineage boundaries,
+  v0.111.93 observe/authorize/consequence/abandon boundaries,
+  v0.111.94 dedup-retain/compact/rotate/migrate/replay-refuse boundaries and
+  v0.111.95 prepare/authorize-unknown/handoff/result/query boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -16332,6 +16620,12 @@ Deliverables:
   durable CAS/flush, network-handoff crash, duplicate proxy/provider delivery,
   false at-most-once/exactly-once claim, wrong-outcome dependency witness, predicate/
   derivation substitution, out-of-domain target or amendment rearming a permit,
+  scalar resolution over mixed effects, wrong-permit compensation/cleanup, old
+  executor dispatch after amendment fence, two active amendment generations,
+  process-clone stale permit, conflict satisfying `Terminal`, conflict witness used as
+  committed/no-effect evidence, expired idempotency record replay, delayed queue after
+  horizon, replay-fence/key-epoch rollback, provider migration losing deduplication,
+  handoff before durable unknown authorization, crash between unknown flush and send,
   unanchored
   conflict abandonment/cleanup, provider/writer collusion under each completeness
   profile,
@@ -16733,9 +17027,12 @@ Deliverables:
 - provider execution benchmarks measure start-reservation/start durability, effect
   plan/permit entry, per-effect knowledge-map joins, summary projection, durable
   dispatch WAL/CAS/flush, network handoff, query reconciliation, dependency-witness/
-  predicate evaluation, plan amendment and result overhead; delivery-profile
-  benchmarks distinguish local dispatch, provider idempotency, remote invocation and
-  semantic-effect costs; no-effect projection/policy benchmarks retain kind costs;
+  predicate evaluation, per-permit resolution composition/compensation, executor-
+  generation fence, plan-lineage amendment, conflict-observation consequence and
+  result overhead; delivery-profile benchmarks distinguish prepared/authorized/
+  handed-off states, local dispatch, provider idempotency, remote invocation, semantic-
+  effect and deduplication-detail/replay-fence retention/compaction/migration costs;
+  no-effect projection/policy benchmarks retain kind costs;
   conflict-abandonment/evidence benchmarks measure anchor, archive and verified custody
   release; child-budget benchmarks measure durable checkpoints/conservative panic
   charges; static-range benchmarks race cloned clients and measure rollback-resistant
@@ -17310,6 +17607,10 @@ Deliverables:
 - v0.111.87 preserves mixed per-effect knowledge, v0.111.88 makes permit dispatch
   durable and delivery claims explicit, v0.111.89 requires non-equivocating fenced
   static-slot allocation, and v0.111.90 types every dependency outcome witness;
+- v0.111.91 makes emergency resolution per permit, v0.111.92 fences plan amendments
+  under one lineage, v0.111.93 separates conflict observation from outcome authority,
+  v0.111.94 binds delivery claims to replay-fenced deduplication horizons, and
+  v0.111.95 persists conservative uncertainty before external handoff;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -17600,6 +17901,16 @@ Deliverables:
   equivocation, reconfiguration, partition-healing and advisory downgrade fixtures pass;
 - v0.111.90 typed dependency witness, predicate/derivation substitution, bounded target,
   ambiguity blocking and governed plan-amendment fixtures pass;
+- v0.111.91 knowledge/resolution map-domain, partial compensation, exact cleanup,
+  stale-root, shared-custody and scalar-summary misuse fixtures pass;
+- v0.111.92 old-permit classification, executor fence, stale generation, concurrent
+  amendment, process-clone, lineage publication and crash recovery fixtures pass;
+- v0.111.93 conflict/dependency refusal, observation-witness separation, bounded
+  consequence, duplicate evidence and abandonment-composition fixtures pass;
+- v0.111.94 deduplication horizon, delayed queue, offline clone, replay-fence
+  compaction, key/provider migration, backup rollback and downgrade fixtures pass;
+- v0.111.95 prepared/unknown durability ordering, no-byte crash, partial handoff,
+  terminal-evidence loss and exact query-only recovery fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -18033,9 +18344,18 @@ Deliverables:
   permit are affine, consumed once and reconciled by query rather than reissue;
   multi-effect operations preserve a monotonic per-effect knowledge map so committed
   effects remain individually compensable while ambiguous dependents stay blocked;
-  every permit is expected-root-CAS and WAL-flush prepared before external handoff,
+  the composite emergency root binds a same-domain per-permit resolution map, and
+  compensation, bridges, cleanup and dependency closure consume exact permit indexes
+  rather than scalar operation summaries; governed plan amendments exclusively fence
+  and account for every old permit, validate executor generation on each dispatch and
+  publish one append-only plan lineage before minting successor permits; conflict
+  never satisfies an ordinary dependency and can trigger only a separately authorized
+  `ConflictObserved` consequence that asserts no outcome; every permit is durable
+  `DispatchPrepared`, then durable `OutcomeUnknown`, before external handoff,
   and delivery profiles distinguish one local dispatch, provider idempotency,
-  at-most-once remote invocation and exactly-once semantic effect; each dependency
+  at-most-once remote invocation and exactly-once semantic effect while binding the
+  claim to provider/key epoch, deduplication lifetime, compaction/migration behavior
+  and a permanent replay fence for delayed queues, backups and offline clones; each dependency
   consumes or borrows its declared typed outcome witness, while data-dependent targets
   remain within a precommitted bounded derivation domain or require a governed plan
   amendment; one
