@@ -12129,7 +12129,7 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.155 are complete and their provider/fence/effect/
+  v0.111.50 and v0.111.54-v0.111.157 are complete and their provider/fence/effect/
   custody/anchor/evidence/admission/privacy capabilities are admitted; earlier
   binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
@@ -15692,10 +15692,11 @@ Deliverables:
   revalidation, permit safe post-non-admission abort and fix exact threshold assumptions;
   v0.111.146-v0.111.148 atomically order recipient validation with effect consumption,
   reserve revalidation recovery capacity and separate threshold safety from availability;
-  v0.111.149-v0.111.155 fence pending-effect executors, close/refund recovery reserves,
+  v0.111.149-v0.111.157 fence pending-effect executors, close/refund recovery reserves,
   require complete reserve-slice disposition, define total-nonresponsive fault sets and
   make eventual progress conditional on explicit temporal/resource assumptions plus one
-  affine worst-case capacity reservation per admitted request;
+  affine worst-case capacity reservation per admitted request, permanent negative
+  reservation closure and separate capability/request state axes;
 - tests cover two restored clones consuming one grant, disjoint/overlapping ranges,
   hardware-counter rollback, provider deduplication expiry, permanent replay fencing,
   threshold double-spend, process/device identity churn, double local quota release,
@@ -17528,10 +17529,11 @@ advertising eventual progress against the same remaining decision capacity.
 
 Deliverables:
 
-- canonical request lifecycle is `ProgressEligible -> ProgressReserveAuthorizedUnknown ->
-  ProgressRoundReserved -> ProgressActive -> (ProgressTerminal | ProgressUnavailable)`;
-  `ProgressEligible` and reservation-unknown are non-authorizing/query-only and may
-  advertise at most `QuorumReachable`;
+- the provisional request lifecycle separates eligible, reservation-unknown, reserved,
+  active/query-only and terminal conditions; v0.111.157 fixes the canonical request-state
+  names and keeps them distinct from aggregate capability availability;
+  eligible/reservation-unknown requests are non-authorizing/query-only and may advertise
+  at most `QuorumReachable`;
 - the transition to `ProgressRoundReserved` atomically compares the current authenticated
   provider-capacity root, verifies the complete v0.111.154 resource premise, reserves its
   exact worst-case capacity and publishes `EventuallySynchronousProgress` status in one
@@ -17556,15 +17558,16 @@ Deliverables:
   and reservation identity; exact replay returns the existing pending/active/terminal
   result, while a changed request, epoch, vector or provider root cannot share it;
 - loss or ambiguity of the reservation response remains fully charged and query-only;
-  another reservation is forbidden until authenticated query proves non-admission or the
-  original lifecycle reaches an admitted terminal state;
-- `ProgressUnavailable` is terminal only after exact reservation query and all downstream
-  work prove that no provider can still consume or retain the reserved vector; otherwise
+  another reservation is forbidden until v0.111.156 permanently fences authenticated
+  non-admission and closes every delivery route, or the original request reaches an
+  admitted terminal state;
+- a capability may become unavailable immediately, but request terminality requires exact
+  reservation/result query and complete downstream closure under v0.111.157; otherwise
   the request remains reservation-unknown or active/query-only with its full charge;
-- `ProgressActive` consumes only the reserved vector and records coordinator/retry/work/
-  evidence usage monotonically; exhausting a dimension produces `ProgressUnavailable`
-  without borrowing capacity or weakening quorum, and unresolved external work retains
-  the reservation until terminal reconciliation;
+- an `Active` request consumes only the reserved vector and records coordinator/retry/work/
+  evidence usage monotonically; exhausting a dimension changes capability availability
+  and makes unresolved work query-only without borrowing capacity, weakening quorum,
+  fabricating terminal request state or releasing the reservation;
 - terminal accounting uses one authenticated expected-root transition: cumulative work
   already consumed remains debited, reusable unused concurrency/in-flight slices are
   released exactly once, and retained evidence/replay-fence capacity remains charged for
@@ -17586,8 +17589,8 @@ Verification:
 - `cargo test -p sagnir-store`
 - `cargo test -p sagnir-policy`
 - `cargo test -p sagnir-sync`
-- eligible/reserve-authorized-unknown/reserve-CAS/active/consume/query/
-  terminal-or-unavailable accounting model;
+- eligible/reservation-unknown/reserve-CAS/reserved/active/query-only/terminal/
+  closed-unavailable accounting model, finalized by v0.111.157;
 - concurrent-admission, clone-replay, Byzantine-coordinator and joint-reservation suite.
 
 Exit criteria:
@@ -17595,6 +17598,125 @@ Exit criteria:
 - Every eventual-progress claim owns one complete affine worst-case round reservation.
 - Live reservations cannot oversubscribe any authenticated provider-capacity dimension.
 - Ambiguous admission stays charged and terminal release/refund occurs exactly once.
+
+### v0.111.156 - Progress Reservation Non-Admission Fence And Route Closure
+
+Goal: prevent a delayed old reservation request from consuming capacity after a negative
+query and a successor reservation generation.
+
+Deliverables:
+
+- canonical `ProgressReservationNonAdmissionFence` binds operation/request lineage,
+  reservation attempt and generation, idempotency identity, configuration/provider/
+  accounting epoch, requested resource vector, exact final non-admission result/reason,
+  predecessor root and permanent provider replay-fence entry;
+- a current `not found`, map non-inclusion, timeout, negative cache or one provider's
+  response is observational only; non-admission becomes successor authority only after
+  the reservation provider durably records the negative fence and exact query proves the
+  old identity can never become admitted in any current or migrated provider epoch;
+- every proxy, queue, retry/dead-letter buffer, coordinator handoff, failover endpoint and
+  migration route that could carry the old reservation request satisfies the complete
+  v0.111.100 delivery-closure contract before any successor generation is prepared;
+- canonical `ProgressReservationGenerationClosed` binds the negative fence, complete
+  route inventory/closure proof, conservative capacity disposition, retained query/
+  refusal routes and previous generation root in one authenticated successor;
+- the next bounded reservation attempt uses a fresh generation/request identity and
+  references the complete prior negative-fence/closure chain; it retains the same parent
+  operation/resource maximum and cannot erase consumed attempts, bytes/work, ambiguity
+  or retained evidence;
+- old delayed requests reaching any provider/proxy after closure return the permanent
+  negative result and cannot reserve, activate, consume or recreate capacity even after
+  a successor reservation succeeds;
+- provider migration/failover imports every permanent negative fence, route-closure root,
+  generation head and refusal/query route before accepting a new reservation generation;
+  missing continuity freezes successors and leaves conservative capacity charged;
+- compaction keeps an authenticated closed-generation prefix and sufficient permanent
+  refusal material to reject every delayed identity for the replay-fence lifetime;
+- a successfully reserved/active/terminal request identity is permanently single-use and
+  can never reserve progress capacity again; semantically later work requires a separately
+  authorized operation identity rather than a retry generation;
+- tests delay old requests in every route, return negative query before closure, race
+  closure with provider migration, restore old provider/queue snapshots, compact refusal
+  state, deliver the old request after a successor reserves and replay a successful
+  terminal request identity.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- request/query-negative/fence/close-routes/close-generation/retry-or-refuse model;
+- proxy, queue, failover, migration, delayed-old-request and terminal-replay suite.
+
+Exit criteria:
+
+- No negative observation authorizes a replacement reservation.
+- Every retry generation descends from permanent non-admission fencing and route closure.
+- Successful request identities are permanently single-use.
+
+### v0.111.157 - Progress Capability And Request State Separation
+
+Goal: separate aggregate progress availability from the terminality and query obligations
+of each reserved request.
+
+Deliverables:
+
+- canonical aggregate axis is `ProgressCapabilityStatus::{Healthy, Degraded,
+  Unavailable, Recovering}` and canonical per-request axis is
+  `ProgressRequestState::{Eligible, ReservationUnknown, Reserved, Active,
+  ActiveQueryOnly, Terminal, ClosedUnavailable}`; encoded tags, transitions, policy,
+  status, logs and proofs never reuse one axis as the other;
+- capability status derives from authenticated aggregate capacity, provider/connectivity,
+  synchrony/fairness premise and reconfiguration health; it may become `Unavailable`
+  immediately when capacity falls below v0.111.154/v0.111.155 requirements without
+  asserting that any request is closed, unreserved, no-effect or refundable;
+- a reserved or active request whose capability becomes unavailable moves to
+  `ActiveQueryOnly` when no further execution is authorized; it retains its complete
+  reservation, idempotency/query authority, replay fences, external ambiguity and result
+  obligations until monotonic reconciliation;
+- `ReservationUnknown` remains conservative and query-only regardless of capability
+  recovery; status `Recovering` or `Healthy` cannot promote it to `Reserved`, redispatch
+  it or allocate a replacement without the exact authenticated reservation result;
+- `ClosedUnavailable` is terminal only after v0.111.156 negative fencing/route closure or
+  complete reservation/operation/result query proves that no current, delayed or migrated
+  provider can reserve, consume or retain the vector and terminal accounting is reconciled;
+- `Terminal` records a successfully completed or otherwise terminally reconciled request
+  and is permanently single-use; neither capability recovery nor a later operation can
+  reopen its request/operation identity;
+- capacity exhaustion while a provider operation, coordinator generation, joint-consensus
+  message, result persistence/query or reconciliation remains ambiguous changes capability
+  status but preserves `ReservationUnknown`/`ActiveQueryOnly`, charge and exact query route;
+- terminal release/refund consumes one affine accounting authority only from `Terminal`
+  or `ClosedUnavailable`; response loss remains charged/query-only and capability status
+  cannot independently release per-request capacity;
+- provider migration/reconfiguration carries both axes, all request reservations,
+  ambiguous sub-operations, negative fences, results and query routes before status or
+  request execution resumes; split-axis or unknown enum values fail closed;
+- CLI and audit output report capability status separately from each request state and
+  explain whether progress is blocked by aggregate capacity, connectivity, reservation
+  uncertainty, active reconciliation or terminal closure without leaking private counts;
+- tests exhaust capacity while provider work, every coordinator generation, joint-
+  consensus delivery, result persistence/query and reconciliation are ambiguous; also
+  recover capability health, lose terminal-accounting responses, restore clones, migrate
+  providers and attempt status/request enum substitution.
+
+Verification:
+
+- `cargo test -p sagnir-codec`
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- capability-status x request-state product model with all legal/refused transitions;
+- exhaustion-ambiguity, recovery-no-reopen, clone, migration and terminal-accounting suite.
+
+Exit criteria:
+
+- Capability unavailability never fabricates terminal request state or capacity release.
+- Ambiguous requests remain charged and query-only across exhaustion and recovery.
+- Only fully reconciled terminal request states can release capacity exactly once.
 
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
@@ -17625,7 +17747,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.155 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.157 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -17683,7 +17805,8 @@ Deliverables:
   revalidation recovery reserves, checked safety/reachability profiles, fenced pending-
   effect execution, reserve closure/refund, complete slice disposition, total-
   nonresponsive fault semantics, resource-sound temporal progress and affine per-request
-  progress capacity through v0.111.155,
+  progress capacity, permanent reservation non-admission fencing and split capability/
+  request states through v0.111.157,
   admitted authentication suite/provider-capacity mode,
   and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
@@ -17698,7 +17821,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.155 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.157 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -18500,7 +18623,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.155 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.157 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -18533,8 +18656,9 @@ Deliverables:
   post-non-admission abort, exact rollback-resistant threshold profiles, atomic recipient
   consumption, protected revalidation recovery, checked threshold reachability, fenced
   pending-effect execution, complete reserve closure/refund, total-nonresponsive fault
-  semantics, resource-sound temporal progress and affine progress reservations through
-  v0.111.155, and the
+  semantics, resource-sound temporal progress, affine progress reservations, permanent
+  reservation non-admission closure and split capability/request states through
+  v0.111.157, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -19501,7 +19625,8 @@ Deliverables:
   recipient-consumption, revalidation-recovery-reserve, threshold safety/reachability,
   fenced pending-effect execution, recovery-reserve closure/refund, complete reserve-
   slice disposition, total-nonresponsive fault semantics, resource-sound temporal
-  progress and affine per-request progress-reservation corpus;
+  progress, affine per-request progress reservation, permanent reservation non-admission
+  closure and capability/request dual-state corpus;
 - deterministic fact rule/query-plan, snapshot cursor, immutable-index offset,
   exact cryptographic suite/hybrid transcript, opaque bundle outer/inner
   manifest, and blind-claim corpus;
@@ -19641,7 +19766,8 @@ Deliverables:
   profile/atomic-recipient-consume/revalidation-recovery-reserve/threshold-safety-
   reachability/fenced-pending-effect/recovery-reserve-close/reserve-slice-disposition/
   threshold-fault-set-overlap/threshold-eventual-progress/temporal-progress-resources/
-  progress-round-reservation/progress-reservation-release/debt target set;
+  progress-round-reservation/progress-reservation-release/progress-negative-fence/
+  progress-delivery-closure/progress-capability-request-state/debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -20007,8 +20133,10 @@ Deliverables:
   duplicate recovery-reserve refund, no unresolved slice hidden in terminal closure,
   no Byzantine withholding omitted from `u_total`, no threshold reachability/progress
   claim without checked `q <= N - u_total` plus its declared synchrony/fairness and
-  remaining-resource-at-stabilization assumptions, and no eventual-progress status from
-  a shared capacity observation without one affine aggregate-checked request reservation,
+  remaining-resource-at-stabilization assumptions, no eventual-progress status from a
+  shared capacity observation without one affine aggregate-checked request reservation,
+  no successor reservation from current non-inclusion without permanent replay fencing
+  and complete route closure, and no capability status used as terminal request evidence,
   unanchored conflict abandonment, conflict evidence erasure/cross-purpose key use,
   unbounded/uncharged prepared receipts, local-only provider capacity, static-slot
   clone replay, rollbackable provider checkpoint, partitioned double allocation,
@@ -20239,9 +20367,11 @@ Deliverables:
   v0.111.151 safety/reachability/synchrony/retry/progress boundaries,
   v0.111.152 slice-resolution/partition/preflight/release/closed boundaries,
   v0.111.153 fault-set-classification/overlap/joint-reachability boundaries,
-  v0.111.154 resource-premise/stabilization/exhaustion/renewal/progress boundaries and
-  v0.111.155 eligible/reserve-authorized-unknown/reserve-CAS/active/consume/query/release
-  boundaries,
+  v0.111.154 resource-premise/stabilization/exhaustion/renewal/progress boundaries,
+  v0.111.155 eligible/reservation-unknown/reserve-CAS/active/consume/query/release
+  boundaries, v0.111.156 query-negative/fence/close-routes/close-generation/retry-or-
+  refuse boundaries and v0.111.157 capability-status/request-state/query-only/terminal-
+  accounting boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -20460,6 +20590,13 @@ Deliverables:
   for one round; only aggregate expected-root reservation winners advertise progress,
   while clones, response loss and Byzantine coordinator replacement remain charged under
   the winning request identity and cannot oversubscribe any capacity dimension;
+- negative reservation queries race delayed proxy/queue/failover requests and successor
+  generations; only permanent provider refusal plus complete route closure permits a new
+  bounded generation, and old requests remain refused after successor success/migration;
+- capacity exhausts while provider work, coordinator generations, joint-consensus messages,
+  result persistence/query and reconciliation are individually ambiguous; capability
+  status becomes unavailable while request state remains charged `ActiveQueryOnly` until
+  complete closure, and later capability recovery cannot reopen terminal identities;
 - three-plus-member batches exercise pairwise-compatible but N-way-invalid quota,
   threshold, policy, dependency and authority sets across every success/ambiguity/abort/
   compensation/cleanup/reconciliation permutation and reject caller footprint lies;
@@ -20848,6 +20985,12 @@ Deliverables:
   worst-case vector sizing, many-request CAS races, clone replay, response-loss query,
   coordinator child-slice consumption, joint old/new reservation and exactly-once terminal
   accounting at maximum concurrency and resource dimensions;
+- progress-negative-closure vectors and benchmarks measure permanent refusal publication,
+  complete route inventory/closure, bounded generation-chain verification, delayed-old-
+  request rejection, migration and compaction at maximum route/generation bounds;
+- progress dual-state vectors and benchmarks measure capability-status recomputation,
+  request-state transitions, ambiguous `ActiveQueryOnly` retention, terminal-accounting
+  query and status/request reporting across maximum concurrent reservations;
 - independent `sagnir-authority-sha3-256-v1` frame, transaction, logical-state,
   and physical-checkpoint vectors, including genesis/checkpoint anchoring,
   non-circular signing frontiers, physical-compaction logical-root preservation,
@@ -21745,6 +21888,8 @@ Deliverables:
   temporal progress only while the capacity-at-stabilization premise holds;
 - v0.111.155 grants that progress class only through an affine per-request worst-case
   round reservation whose aggregate CAS prevents concurrent oversubscription;
+- v0.111.156 permanently fences/closes every negatively resolved reservation route before
+  retry, and v0.111.157 separates aggregate capability health from request terminality;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -22203,6 +22348,12 @@ Deliverables:
 - v0.111.155 many-request observation/reservation races, aggregate capacity CAS, restored
   clone admission, Byzantine coordinator replacement, joint old/new reservation,
   response-loss query and exactly-once release/refund fixtures pass;
+- v0.111.156 negative-query insufficiency, delayed proxy/queue/failover request, permanent
+  replay fence, complete delivery closure, successor generation, migration, compaction and
+  successful-terminal identity replay fixtures pass;
+- v0.111.157 exhaustion during provider/coordinator/joint-message/result-query ambiguity,
+  capability/request enum separation, `ActiveQueryOnly` retention, capability recovery,
+  terminal accounting response loss, clone and migration fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -22778,6 +22929,10 @@ Deliverables:
   coordinator replacement, joint work, result persistence, response-loss query and
   reconciliation; widened checked arithmetic rejects infeasible combinations and
   exhausted or unreserved resource premises become explicit unavailable state;
+  negative reservation results authorize a successor only after permanent replay fencing
+  and complete delivery closure across every old route, successful identities are forever
+  single-use, and aggregate `ProgressCapabilityStatus` never substitutes for per-request
+  `ProgressRequestState` terminal/query/accounting evidence;
   final anchor non-admission is permanently replay-fenced and every old request route is
   closed before a bounded successor generation or mutually exclusive abort may proceed;
   non-borrowable clone-aggregated recovery capacity remains reserved for exact query,
