@@ -12129,7 +12129,7 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.126 are complete and their provider/fence/effect/
+  v0.111.50 and v0.111.54-v0.111.129 are complete and their provider/fence/effect/
   custody/anchor/evidence/admission/privacy capabilities are admitted; earlier
   binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
@@ -15481,12 +15481,12 @@ Deliverables:
   includes its in-flight/terminal state and saturation cannot erase or retroactively
   revoke it;
 - provider, hardware-backed and local destructive APIs require the exact anchor receipt
-  before their first irreversible effect and durably reconcile it to one terminal or
-  ambiguous result; response loss queries by admission identity and cannot repeat the
-  consequence under a replacement witness;
+  before their first irreversible effect, but the cloneable receipt alone grants no raw
+  mutation authority; v0.111.127 consumes it through the endpoint's clone-safe exact-
+  effect mechanism and durably reconciles one terminal or ambiguous result;
 - witness formats, anchor-CAS mechanics and reconciliation remain `WritePrepared` and
-  non-authorizing until v0.111.126 admits enforceable provider capacity, reserved fence/
-  recovery lanes and non-equivocating failover for the selected anchor profile;
+  non-authorizing until v0.111.126 admits enforceable provider capacity/reserved fence
+  and recovery lanes and v0.111.127 admits clone-safe endpoint consumption;
 - head generation, anchor epoch, consequence-class, scope, policy-root or finality-
   frontier mismatch returns typed `CurrentAuthorityUnavailable` and leaves prepared
   work inert; no permissive UX or local administrator override converts it to authority;
@@ -15679,6 +15679,8 @@ Deliverables:
 - CLI configuration requires explicit offline-profile selection and reports supported
   effect classes, clone-safety mechanism and non-revocation limitation without exposing
   private operation membership or stable cross-realm identifiers;
+- grant creation remains `WritePrepared` and cannot release a usable capability until
+  v0.111.128 completes the failure-atomic external reservation/commit/delivery lifecycle;
 - tests cover two restored clones consuming one grant, disjoint/overlapping ranges,
   hardware-counter rollback, provider deduplication expiry, permanent replay fencing,
   threshold double-spend, process/device identity churn, double local quota release,
@@ -15781,7 +15783,9 @@ Deliverables:
   stale replicas are query-only and split-brain admission freezes the affected scope;
 - bounded batching commits an ordered list of individually identified expected-head
   admissions under one provider CAS; every item retains its own quota charge, result and
-  ordering position, and no item may cross an intervening head transition;
+  ordering position, and no item may cross an intervening head transition; batch mode
+  remains disabled until v0.111.129 proves semantic independence and all-or-none
+  publication for the complete member set;
 - denial, exhaustion and throttling are local/provider resource states only and never
   prove non-execution, saturation, revocation or absence; protected callers keep work
   inert and preserve exact query-only reconciliation authority;
@@ -15806,6 +15810,174 @@ Exit criteria:
 - Authorization exhaustion cannot consume the capacity required to publish saturation
   or reconcile already admitted consequences.
 - Every admission is exactly queryable, idempotent and ordered against its expected head.
+
+### v0.111.127 - Clone-Safe Consequence Execution
+
+Goal: ensure one valid anchor admission receipt cannot execute the same semantic effect
+multiple times after the executor workspace is cloned.
+
+Deliverables:
+
+- canonical `ConsequenceExecutionConsumption` binds anchor admission ID/receipt root,
+  exact operation/lineage/permit/consequence/effect identity, immutable effect
+  commitment, endpoint/provider/hardware namespace and epoch, downstream idempotency
+  key, resource identity, consumption mode and expected terminal-result domain;
+- an anchor receipt is immutable admission evidence and an input to checked execution,
+  never a bearer capability for arbitrary filesystem, key, quota, custody or accounting
+  mutation; raw executor APIs cannot accept the receipt without the typed consumption;
+- provider effects atomically consume the admission ID through the v0.111.94 permanent
+  idempotency/replay-fence record before the effect boundary; exact replay returns the
+  original pending/terminal/ambiguous result and changed effect commitment is conflict;
+- hardware effects atomically consume an attested monotonic one-use slot bound to the
+  admission/effect identity; rollback, reset, clone, replacement device or attestation-
+  epoch ambiguity freezes the effect and retains the admission charge;
+- local filesystem effects are admitted only when semantically idempotent over one exact
+  immutable content/resource-instance identity and an uncloneable boundary proves
+  exclusive ownership; path strings, mutable names, inode reuse, locks and local ledger
+  claims cannot establish that identity or exclusivity;
+- a content-addressed local deletion may produce one idempotent local-instance tombstone
+  but cannot claim global erasure, delete another replica, destroy shared key material or
+  release shared capacity; copied instances remain separately visible obligations;
+- key destruction without hardware/provider one-use enforcement is limited to an exact
+  independently wrapped local key slot under proven exclusive ownership and cannot
+  satisfy realm-wide cryptographic erasure or shared retention policy;
+- shared quota, custody, retention and accounting transitions execute once at the
+  anchor/provider under the admission ID; local receipts are evidence inputs only and
+  cannot independently credit, refund or release capacity in each clone;
+- endpoint result evidence binds consumption identity, original effect commitment and
+  terminal/ambiguous state; response loss queries that exact identity, replacement
+  admission is prohibited and divergent endpoint results enter explicit conflict;
+- activation matrices declare which consequence classes each endpoint can consume
+  clone-safely; unsupported local execution remains inert/advisory and cannot inherit a
+  provider/hardware claim from another effect class;
+- tests obtain one valid admission, clone the workspace and concurrently execute it at
+  provider, hardware, local immutable-deletion, key-destruction and shared quota/custody
+  endpoints; tests also cover changed commitments, path/resource replacement, replay-
+  fence loss, hardware rollback, result-response loss and exact-result replay.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- admission/consume/effect/query/result state-machine model;
+- restored-clone provider, hardware, filesystem and accounting integration suite.
+
+Exit criteria:
+
+- Copying a valid admission receipt cannot multiply semantic effect execution.
+- Exact replay returns one original result; changed effect identity is conflict.
+- Local idempotent deletion never implies shared erasure or shared capacity release.
+
+### v0.111.128 - Failure-Atomic Offline Grant Issuance
+
+Goal: prevent an ambiguous or response-lost offline-grant issuance from allocating a
+replacement range, slot or capability.
+
+Deliverables:
+
+- canonical issuance lifecycle is `GrantIssuePrepared -> ExternalSlotReserved ->
+  GrantIssueCommitted -> GrantDelivered`, with typed terminal abort/conflict states and
+  no transition inferred from missing local bytes or an unverified provider response;
+- `OfflineGrantIssuance` binds issuance ID, exact v0.111.124 grant commitment,
+  provider/hardware/threshold namespace and epoch, slot/range/counter identity, maximum
+  count/byte/work/custody/key/quota charge, expected prior issuance root and expiry rule;
+- `GrantIssuePrepared` durably reserves the complete local maximum charge and immutable
+  grant bytes before any external slot, range or threshold capability can escape;
+- `ExternalSlotReserved` records the provider/hardware operation ID and an exact
+  queryable pending/ambiguous reservation; timeout, response loss, restart, clone or
+  missing local grant bytes leaves both local and external capacity charged;
+- `GrantIssueCommitted` binds one externally reserved consumption mechanism to one grant
+  commitment under an expected-root CAS before delivery; a different grant, issuance
+  ID, range, slot, charge or provider epoch cannot reuse or replace that reservation;
+- `GrantDelivered` records the exact delivery/possession acknowledgement without making
+  consumption revocable; delivery response loss queries by issuance ID and never mints
+  a second grant or reallocates another external consumption location;
+- abort before external reservation releases only the local prepared charge; later abort
+  requires authenticated proof that no grant bytes, usable slot/range or consumable
+  capability escaped and that external reservation is terminally cancelled;
+- ambiguous issuance permits only exact query/reconciliation; operator retry, permissive
+  UX, policy change, key rotation or provider failover cannot choose a replacement ID or
+  treat silence as non-issuance;
+- reconnect imports issuance and consumption histories together, proving every committed
+  grant is delivered/unused, consumed, expired, terminally cancelled or conflicting
+  before capacity release or successor offline authority activation;
+- compaction, backup/restore and provider migration retain issuance-to-grant-to-
+  consumption linkage and permanent non-reuse of every escaped or ambiguous slot/range;
+- tests cover crashes and response loss at every state, lost delivery acknowledgement,
+  two restored issuers, replacement-ID attempts, provider/hardware reservation query,
+  external cancellation ambiguity, key/provider rotation, reconnect with prior
+  consumption and abort proof substitution.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-store`
+- offline-grant issue/reserve/commit/deliver/reconcile state-machine model;
+- provider-range, hardware-slot and threshold-capability fault-injection suite.
+
+Exit criteria:
+
+- Ambiguous issuance never allocates or delivers replacement offline authority.
+- External reservations remain charged until exact terminal reconciliation.
+- Reconnect accounts for issuance and consumption as one continuous history.
+
+### v0.111.129 - Semantically Independent Anchor Admission Batches
+
+Goal: ensure individually valid consequences cannot enter one anchor batch when their
+combined effects, dependencies or authority transitions are incompatible.
+
+Deliverables:
+
+- canonical `BatchAdmissionProof` binds expected composite head, ordered member count/
+  root, each exact authority witness/admission/effect commitment, aggregate budget/
+  capacity root, affected-scope relation proof, policy/provider epochs and batch CAS ID;
+- member ordering is canonical by domain-separated consequence identity after proving
+  independence; caller order, arrival timing, thread schedule or provider grouping
+  cannot select a different authoritative batch root;
+- duplicate operation, permit, consequence slot, resolution generation, effect identity,
+  idempotency key or mutually exclusive transition is rejected before provider quota
+  reservation; one permit/kind/generation cannot appear twice under different wrappers;
+- affected scopes are disjoint or carry one typed compatibility proof from a closed
+  commutativity table; overlapping key destruction, cleanup/custody release, quota
+  mutation, compensation, dependency reopening or policy transition is incompatible by
+  default and cannot be approved through a generic caller assertion;
+- no member depends on another member's result, terminal evidence, released resource or
+  successor head; result-dependent consequences require a later head and individual or
+  later independent-batch admission after predecessor terminalization;
+- every member uses compatible policy, provider, key, executor and anchor epochs, and
+  aggregate checked count/byte/work/concurrency/custody/quota charges fit both local and
+  v0.111.126 provider capacity before any member admission is visible;
+- one all-or-none expected-head provider CAS publishes the ordered member admissions and
+  per-member receipts; failure, exhaustion, head race or semantic conflict publishes no
+  member, consumes no effect authority and returns exact query-only batch reconciliation;
+- provider execution still applies v0.111.127 clone-safe consumption independently per
+  member; batch admission neither merges idempotency identities nor permits one member's
+  terminal result to satisfy another member's execution evidence;
+- crash recovery queries the batch CAS ID and accepts only the complete canonical member
+  root; partial provider replies, reordered receipt sets, duplicate members and local
+  subset persistence remain inert until complete reconciliation or explicit conflict;
+- privacy profiles cover batch size, consequence-class mix, affected-scope relation,
+  denial and timing; padding members consume separate capacity and never become effects,
+  evidence, dependency satisfaction or admission-authority placeholders;
+- tests cover cleanup versus compensation, two consequences for one permit/slot,
+  overlapping key destruction, dependency ordering, result-dependent members, policy/
+  provider epoch mismatch, aggregate overflow, deterministic reordering, partial
+  response, competing head CAS, clone replay and compatible disjoint effects.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- batch-validate/reserve/CAS/query/reconcile state-machine model;
+- canonical independence, compatibility, aggregate-budget and all-or-none vectors.
+
+Exit criteria:
+
+- A batch contains only semantically independent consequences under one expected head.
+- Result-dependent or overlapping incompatible consequences require later authority.
+- Batch failure cannot publish or execute a subset of members.
 
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
@@ -15836,7 +16008,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.126 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.129 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -15885,7 +16057,8 @@ Deliverables:
   acyclic checkpoint/composite-head publication, evidence-admission saturation
   fencing, current composite-head authority witnesses, complete evidence-source
   closure, exact permit-relevance admission, clone-safe offline grants, assurance-
-  qualified closure and clone-aggregated anchor admission capacity,
+  qualified closure, clone-aggregated anchor admission capacity, clone-safe endpoint
+  consumption, failure-atomic grant issuance and semantic batch independence,
   admitted authentication suite/provider-capacity mode,
   and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
@@ -15900,7 +16073,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.126 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.129 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -16327,7 +16500,8 @@ Deliverables:
   authenticated contradiction leaving old authority usable, stale offline consequence
   authority, cloned offline-grant double spend, incomplete or provider-asserted source
   closure under equivocation, cross-permit saturation, clone-amplified anchor-capacity
-  exhaustion, or untrusted saturation,
+  exhaustion, cloned post-admission receipt execution, duplicate grant allocation after
+  issuance ambiguity, mutually incompatible batch members, or untrusted saturation,
   unknown-effect
   compensation unsafe in either possible world, mutable fence root from late result,
   result-log/status-map splice, provider-collusion completeness claimed without
@@ -16574,8 +16748,9 @@ Deliverables:
   checkpoint rebase, missing saturation fence after authenticated overflow, stale
   pre-saturation proof reuse, stale-head irreversible consequence execution, omitted
   source-log suffix, false/weak-assurance source closure, cross-permit marker
-  substitution, cloned offline-capability consumption, anchor-admission Sybil reset or
-  unauthenticated saturation-marker creation,
+  substitution, cloned offline-capability or admission-receipt consumption, anchor-
+  admission Sybil reset, response-lost grant replacement, partial/incompatible batch
+  publication or unauthenticated saturation-marker creation,
   append-only operation/idempotency non-inclusion, dual-identity map/log set
   mismatch, premature staged-material cleanup, unresolved-custody share
   exhaustion, custody-age reset or unanchored abandonment destruction, decoder
@@ -16681,7 +16856,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.126 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.129 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -16705,7 +16880,8 @@ Deliverables:
   composition, externally anchored composite emergency-head publication, fresh
   current-authority witnesses, complete evidence-source closure, permit-relevant
   saturation admission, clone-safe offline grants, closure assurance and bounded
-  clone-aggregated anchor admission through v0.111.126, and the
+  clone-aggregated anchor admission plus clone-safe endpoint execution, failure-atomic
+  offline issuance and semantically independent batches through v0.111.129, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -17661,7 +17837,8 @@ Deliverables:
   evidence-admission-saturation marker, current-composite-head authority witness,
   evidence-source closure/fence, permit-relevant saturation eligibility, clone-safe
   offline consequence grant/consumption, closure-assurance profile/evidence and anchor-
-  admission capacity/accounting/failover corpus;
+  admission capacity/accounting/failover, clone-safe endpoint consumption, offline-
+  grant issuance lifecycle and batch-admission-independence corpus;
 - deterministic fact rule/query-plan, snapshot cursor, immutable-index offset,
   exact cryptographic suite/hybrid transcript, opaque bundle outer/inner
   manifest, and blind-claim corpus;
@@ -17791,7 +17968,8 @@ Deliverables:
   lineage-permit-state-checkpoint/inventory-summary/conflict-archive/acyclic-checkpoint-
   head/evidence-admission-saturation/current-composite-head-authority-witness/evidence-
   source-closure/permit-relevant-saturation-eligibility/offline-consequence-authority/
-  closure-assurance/anchor-admission-capacity/debt target set;
+  closure-assurance/anchor-admission-capacity/consequence-execution-consumption/offline-
+  grant-issuance/batch-admission-proof/debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -17886,7 +18064,8 @@ Deliverables:
   fencing, fresh externally anchored authority at protected effect linearization,
   complete fenced evidence-source recovery, exact permit-relevance eligibility, clone-
   safe exact-effect offline grants, assurance-qualified closure and clone-aggregated
-  anchor admission capacity, plus anchored
+  anchor admission capacity, clone-safe admitted-effect consumption, failure-atomic
+  offline-grant issuance and semantically independent batch admission, plus anchored
   irreducible-conflict abandonment under independent evidence keys/retention,
   append-only classification, two-world-safe compensation/normalization, bounded
   authoritative-time emergency custody/anchored abandonment, governed bridge
@@ -18328,6 +18507,9 @@ Deliverables:
   v0.111.124 grant/slot-or-range/consume/replay/reconcile boundaries,
   v0.111.125 profile/cover/verify/conflict-or-close boundaries and
   v0.111.126 reserve/admit/query/reconcile/failover-or-refuse boundaries,
+  v0.111.127 receipt/endpoint-consume/effect/query/result boundaries,
+  v0.111.128 prepare/external-reserve/commit/deliver/reconcile boundaries and
+  v0.111.129 validate-independent/aggregate/reserve/CAS/query boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -18471,6 +18653,15 @@ Deliverables:
 - cloned/Sybil anchor clients exhaust count, byte, work, concurrency and ambiguity
   limits while saturation publication, exact query and reconciliation use independent
   reserves; failover rollback, split brain, stale replicas and batch/head races refuse;
+- two post-admission workspace clones concurrently present one valid receipt to
+  provider, hardware, local immutable-resource deletion, key destruction and shared
+  quota/custody endpoints; only one semantic effect/result or explicit conflict exists;
+- offline-grant issuance partitions and crashes after every prepared/reserved/committed/
+  delivered boundary, including response-lost reservation/delivery, replacement grant,
+  external cancellation ambiguity and reconnect with already consumed authority;
+- batch attacks combine cleanup/compensation, duplicate permit slots, overlapping key
+  destruction, dependency-ordered effects, incompatible epochs and aggregate overflow;
+  partial replies, reordered members and competing heads never publish a subset;
 - conflicting partitioned representative selections, stale expected-root CAS,
   multi-head propagation, and authorized multi-parent resolution;
 - concurrent authorized replicas preparing/signing from one transparency head,
@@ -18773,6 +18964,15 @@ Deliverables:
 - anchor-admission vectors and benchmarks measure clone/Sybil aggregated quota debit,
   idempotent query, ambiguity retention, reserve-lane isolation, failover and ordered
   batching across every count/byte/work/concurrency/privacy dimension;
+- clone-safe execution vectors and benchmarks measure provider replay-fence, hardware-
+  slot, immutable local-instance and anchor-side accounting consumption under concurrent
+  restored clones, exact replay, changed commitment and response loss;
+- offline-grant issuance vectors and benchmarks measure every lifecycle durability/
+  query boundary, maximum dual charge, ambiguous retention, abort proof and reconnect
+  reconciliation for provider ranges, hardware slots and threshold capabilities;
+- batch-admission vectors and benchmarks measure canonical ordering, duplicate/scope/
+  dependency/epoch checks, aggregate budgets, all-or-none CAS and per-member clone-safe
+  execution at maximum admitted batch size;
 - independent `sagnir-authority-sha3-256-v1` frame, transaction, logical-state,
   and physical-checkpoint vectors, including genesis/checkpoint anchoring,
   non-circular signing frontiers, physical-compaction logical-root preservation,
@@ -19641,6 +19841,9 @@ Deliverables:
   v0.111.125 qualifies source closure with independent completeness assurance, and
   v0.111.126 bounds anchor admission under clone/Sybil aggregation with reserved
   recovery capacity;
+- v0.111.127 makes admission-receipt execution clone-safe at every effect endpoint,
+  v0.111.128 makes offline-grant issuance failure-atomic, and v0.111.129 admits only
+  semantically independent all-or-none anchor batches;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -20013,6 +20216,15 @@ Deliverables:
 - v0.111.126 clone/Sybil quota, every capacity dimension, ambiguous charge, reserved
   recovery lane, saturation under exhaustion, failover/split brain, stale replica,
   batch ordering, idempotency and privacy fixtures pass;
+- v0.111.127 post-admission clone race, provider replay, hardware rollback, immutable-
+  resource substitution, local/shared destruction boundary, exact-result replay and
+  changed-effect conflict fixtures pass;
+- v0.111.128 every issuance crash boundary, reservation/delivery response loss,
+  replacement grant/ID, ambiguous cancel, external charge retention, provider rotation,
+  reconnect-consumption and abort-proof fixtures pass;
+- v0.111.129 duplicate permit/slot, overlap compatibility, result dependency, epoch/
+  aggregate-budget mismatch, deterministic ordering, partial reply, competing head,
+  all-or-none publication and per-member execution fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -20544,15 +20756,26 @@ Deliverables:
   successor head accounts for the in-flight/terminal consequence; anchor admission
   enforces clone/Sybil-aggregated realm/principal count/byte/work/concurrency/ambiguity
   quotas, exact idempotent query, non-equivocating failover and independent saturation/
-  reconciliation reserves; stale/offline heads remain historically verifiable but
-  cannot authorize current cleanup, retry, compensation, key destruction, quota
-  release, provider activation or dependency reopening, except through explicitly pre-
-  issued, bounded, non-revocable, exact-effect authority consumed by an admitted
-  hardware-monotonic slot, non-equivocating static range, permanent provider replay
-  fence or externally enforced threshold capability; cloneable local tokens grant no
-  protected authority, and pure-local irreversible effects require independently proven
-  exclusive idempotent ownership or wait for reconnection; the later-revocation
-  limitation is declared; each cleanup,
+  reconciliation reserves; the returned admission receipt is evidence rather than a
+  bearer mutation capability, and provider replay fences, hardware-monotonic slots,
+  exact immutable local-resource idempotency or anchor-side shared-accounting
+  consumption ensures restored executors produce one semantic effect/result or conflict;
+  local receipt replay cannot establish shared erasure or credit quota/custody twice;
+  batched admissions require one canonical `BatchAdmissionProof` with no duplicate
+  slot, only disjoint/typed-compatible scopes, no inter-member result dependency,
+  compatible epochs, checked aggregate budgets, deterministic ordering and all-or-none
+  expected-head publication, while each member retains independent clone-safe execution;
+  stale/offline heads remain historically verifiable but cannot authorize current
+  cleanup, retry, compensation, key destruction, quota release, provider activation or
+  dependency reopening, except through explicitly pre-issued, bounded, non-revocable,
+  exact-effect authority consumed by an admitted hardware-monotonic slot, non-
+  equivocating static range, permanent provider replay fence or externally enforced
+  threshold capability; issuance durably moves through prepared, external-slot-
+  reserved, committed and delivered states under one ID/maximum charge, and ambiguity
+  allows only exact query without replacement; cloneable local tokens grant no protected
+  authority, and pure-local irreversible effects require independently proven exclusive
+  idempotent ownership or wait for reconnection; the later-revocation limitation is
+  declared; each cleanup,
   reopen, compensation, normalization, sync/export or retention release consumes its
   own exact affine consequence token that already owns its budget and expected active
   root; extra work uses typed child reservations from that budget, never independent
