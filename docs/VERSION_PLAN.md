@@ -12129,7 +12129,7 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.115 are complete and their provider/fence/effect/
+  v0.111.50 and v0.111.54-v0.111.118 are complete and their provider/fence/effect/
   custody/anchor/evidence/admission/privacy capabilities are admitted; earlier
   binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
@@ -14875,11 +14875,11 @@ Deliverables:
 - `Terminal` accepts only monotonic confirmation of its exact committed/no-effect/
   conflicting terminal knowledge or produces conflict; terminal evidence cannot be
   replaced by a weaker no-dispatch proof;
-- canonical `AcceptedStartedNoEffectProof` commits the v0.111.114
-  `EffectPlanLineageRoot` and `LineagePermitInventoryRoot`, then supplies one
-  compatible finality proof for every permit ever admitted across all generations;
-  current-plan-only proof, omission, duplication, index substitution or aggregate
-  operation-level closure is refused;
+- canonical `AcceptedStartedNoEffectProof` consumes one exact active v0.111.117
+  `LineagePermitStateCheckpoint`, then supplies one compatible finality proof for every
+  permit ever admitted across all generations; independently supplied lineage,
+  inventory, state-map or knowledge roots, current-plan-only proof, omission,
+  duplication, index substitution or aggregate operation-level closure are refused;
 - mixed plans may combine no-dispatch proofs for never-authorized permits with delivery
   closure for dispatch-authorized permits; any unknown, conflicting or incompletely
   covered permit keeps the aggregate from proving no effect;
@@ -15033,6 +15033,9 @@ Deliverables:
 - the consumed activation authority cannot be reconstructed, cloned, refunded or
   replaced after crash, timeout, cancellation or response loss; recovery from the
   unknown state is query-only under the exact reservation/request/provider identity;
+- a provider negative query is observational only; v0.111.116 requires a typed
+  `ConsequenceActivationFinalityProof` with complete activation-delivery closure before
+  refining the unknown state to never activated or permitting a successor generation;
 - provider activation verifies the exact unknown-authorization root and committed
   local transition receipt before one idempotent admission CAS; stale, alternate or
   omitted unknown roots are refused without consuming another reservation;
@@ -15046,10 +15049,11 @@ Deliverables:
   closure evidence rather than reactivation;
 - cancellation and deadlines after unknown authorization cannot abort, release
   capacity or select a replacement; they retain conservative charge and enter the same
-  reconciliation path as response loss;
+  reconciliation path as response loss until v0.111.116 terminal activation finality;
 - tests instrument CAS, WAL append, file/directory flush, capability consumption,
   first provider byte, provider admission, response receive, local activation receipt
-  and terminal evidence persistence, killing before and after every boundary.
+  and terminal evidence persistence, killing before and after every boundary; negative
+  query before delayed activation cannot close the unknown state.
 
 Verification:
 
@@ -15060,7 +15064,8 @@ Verification:
 Exit criteria:
 
 - No provider activation byte can leave before durable resolution uncertainty.
-- Activation response loss yields query-only recovery, never replacement activation.
+- Activation response loss is query-only until typed v0.111.116 finality, never direct
+  replacement activation.
 - Provider admission is never misreported as terminal consequence completion.
 
 ### v0.111.114 - Lineage-Wide Permit Inventory Finality
@@ -15086,18 +15091,26 @@ Deliverables:
   exactly one immutable admission entry, every successor descends from it and every
   entry derives from an admitted plan; current state/active-plan membership is a
   separate deterministic non-destructive view;
-- `AcceptedStartedNoEffectProof` binds the exact `EffectPlanLineageRoot`, final
-  `LineagePermitInventoryRoot`, inventory count/order and one v0.111.110 compatible
-  finality proof for every entry, not merely the current plan's permit set;
+- `AcceptedStartedNoEffectProof` consumes the exact active v0.111.117
+  `LineagePermitStateCheckpoint`, its inventory count/order and one v0.111.110
+  compatible finality proof for every admitted permit, not independently supplied
+  roots or merely the current plan's permit set;
 - revoked-before-dispatch and tombstoned permits require final authenticated
   no-dispatch evidence, dispatch-authorized ambiguous permits require delivery closure
   and historical outcome evidence, and terminal permits require monotonic confirmation;
 - any omitted, duplicated, unknown, conflicting, stale-generation or incompletely
   covered inventory entry blocks aggregate no-effect; a current generation with no
   active effects cannot hide an old `OutcomeUnknown` permit;
-- compaction may replace old entry detail only with proof-preserving immutable
-  summaries that remain enumerable and bound to the inventory root; GC, sync, archive,
-  restore and partial clone cannot treat inactive permits as unreachable authority;
+- v0.111.117 atomically binds the inventory/event root to current permit-state,
+  effect-knowledge and dispatch-state maps plus the active composite head; every
+  authority-changing permit transition publishes one consistent successor checkpoint;
+- v0.111.118 bounds transitions, evidence, bytes and verification work; duplicate
+  evidence cannot append authority, and compaction may replace old detail only with
+  bounded-depth proof-preserving immutable summaries that remain enumerable and bound
+  to the inventory root;
+- GC, sync, archive, restore and partial clone cannot treat inactive permits as
+  unreachable authority or accept an inventory independently from its active
+  checkpoint;
 - tests cover amendment removal/replacement of old unknown permits, carried permit
   duplication, revoked/tombstoned omission, concurrent amendments, stale inventory
   roots, compaction, partial clone, mixed current-plan no-effect and late old outcomes.
@@ -15164,6 +15177,154 @@ Exit criteria:
 - Local commit and local abort fence are mutually exclusive durable successors.
 - Committed consequences cannot use ordinary abort to erase unresolved authority.
 
+### v0.111.116 - Consequence Activation Finality Proof
+
+Goal: prove both historical provider non-activation and permanent closure of every
+delayed activation path before resolving activation uncertainty to no effect.
+
+Deliverables:
+
+- canonical `ConsequenceActivationFinalityProof` binds consequence transaction,
+  lineage/permit/kind/generation, inert reservation, activation request commitment,
+  v0.111.113 unknown-authorization root, provider namespace/incarnation/epoch, query
+  identity, activation delivery profile and evidence frontier;
+- the proof contains a domain-separated activation `DeliveryClosureProof` covering
+  every admitted client, proxy, retry buffer, queue, dead-letter, partition-recovery and
+  provider-admission layer plus the exact activation replay-fence/epoch root;
+- v0.111.100 closure machinery may be reused only under a distinct activation-request
+  domain tag and schema; execution-request, ordinary effect or unrelated consequence
+  closure cannot substitute for activation closure;
+- typed `ProviderActivationOutcome` is `NeverActivated`, `Activated`, `Conflicting` or
+  `Unknown`; it binds exact provider admission/fence evidence and never aliases the
+  separate `ConsequenceEffectOutcome`;
+- `NeverActivated` requires final authenticated provider admission-state evidence and
+  complete activation delivery closure; a current negative query, non-inclusion,
+  timeout, disconnected provider or one drained layer is insufficient;
+- only compatible `NeverActivated` plus complete closure may project
+  `ResolutionProvenNoEffect`, release activation ambiguity or satisfy policy for a new
+  consequence generation; the projector has no public constructor from raw outcomes;
+- `Activated` with unknown consequence effect remains `ResolutionOutcomeUnknown` even
+  when activation delivery is closed; provider admission is not effect completion;
+  `Conflicting` remains blocked and `Unknown` remains query-only;
+- provider/key/protocol rotation carries old activation admission records, replay
+  fences and delivery-layer closure before successor activation; loss or unverifiable
+  continuity freezes the consequence and prohibits retry;
+- status, sync and audit preserve activation outcome, activation closure and consequence
+  effect outcome as separately inspectable typed roots under the active privacy profile;
+- tests cover negative query before delayed activation, proxy/queue/retry restoration,
+  partition healing, activated-with-unknown-effect, late activation, conflicting
+  admission, provider epoch rotation, replay-fence loss, root splice and kind confusion.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-store`
+- activation-delivery/outcome/effect-finality state-machine model;
+- canonical activation-domain closure and typed finality vectors.
+
+Exit criteria:
+
+- Provider non-activation observation alone never resolves activation uncertainty.
+- A successor generation requires permanent closure of every old activation path.
+- Provider admission and consequence effect outcome remain distinct states.
+
+### v0.111.117 - Authoritative Lineage Permit State Checkpoint
+
+Goal: bind append-only permit history and every authoritative current permit map into
+one rollback-resistant checkpoint consumed by lineage-wide finality.
+
+Deliverables:
+
+- canonical `LineagePermitStateCheckpoint` binds `EffectPlanLineageRoot`, append-only
+  `LineagePermitInventoryRoot` and event count, current permit-state map root,
+  effect-knowledge map root, dispatch-state map root, executor generation, predecessor
+  checkpoint root and exact active `EffectEmergencyStateRoot`/composite head;
+- every authority-changing permit admission, amendment, dispatch, evidence join,
+  revocation, terminalization or tombstone transition atomically commits the inventory
+  append, all affected map successors and one checkpoint successor under the expected
+  predecessor/composite-head CAS or leaves the complete prior checkpoint authoritative;
+- canonical projection proves every inventory admission/transition through the event
+  count is reflected exactly in the permit-state, effect-knowledge and dispatch maps,
+  and every authoritative map leaf has one matching inventory lineage;
+- `AcceptedStartedNoEffectProof` consumes the exact checkpoint selected by the active
+  composite head and complete proofs for its inventory projection; independently
+  supplied or merely mutually hash-consistent roots have no finality authority;
+- checkpoint verification rejects stale inventory with newer knowledge/dispatch maps,
+  new inventory with stale maps, omitted transition suffixes, executor-generation
+  splice, unrelated composite head, predecessor fork and rollback;
+- startup, sync, partial clone, archive, compaction and restore verify checkpoint
+  ancestry/current-head selection before permitting finality, cleanup, retry,
+  compensation, dependency reopening or new permit authority;
+- mixed-version peers unable to parse the checkpoint remain verify/refuse-only for the
+  affected lineage and cannot advertise equivalent current state from older roots;
+- tests cover crashes after each event/map/checkpoint write, inventory/map splice,
+  suffix omission, simultaneous evidence/amendment, stale active head, checkpoint fork,
+  executor rollover, compaction, restore rollback and mixed-version refusal.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-sync`
+- inventory/maps/checkpoint/composite-head atomicity state-machine model;
+- canonical checkpoint, projection and rollback vectors.
+
+Exit criteria:
+
+- Append-only permit history and current permit state cannot be selected independently.
+- Lineage finality consumes exactly the checkpoint authorized by the active head.
+- Omitted transitions or stale maps cannot preserve checkpoint authority.
+
+### v0.111.118 - Bounded Permit Inventory And Finality Work
+
+Goal: keep lineage history, conflict retention and finality verification predictably
+bounded under repeated evidence, amendments and reconciliation.
+
+Deliverables:
+
+- protocol constants bound admitted permits, transitions and evidence items per permit,
+  total lineage transitions, inventory/event encoded bytes, amendment/reconciliation
+  frequency, retained live conflict evidence and finality decode/hash/proof work;
+- realm policy may choose lower limits but cannot raise protocol hard maxima; all
+  counters use checked arithmetic, are charged before decode/append/verification and
+  aggregate across replicas, actors, provider responses and concurrent sessions;
+- canonical evidence identity and semantic join detect replayed, reordered or duplicate
+  provider statements/effect facts before append; duplicates may update local telemetry
+  only and cannot consume event sequence, change roots or amplify authority history;
+- genuine monotonic knowledge changes append one canonical minimal transition; arrival
+  order cannot split equivalent joins into extra authoritative events, while conflicting
+  evidence remains preserved rather than discarded to stay under a limit;
+- current-state checkpoints use proof-preserving summaries with protocol-bounded
+  verification depth; each summary binds covered event range/count/root, prior summary,
+  current map roots and consistency proof without rewriting the logical inventory root;
+- genuine conflict detail beyond the live bound moves to a separately keyed, encrypted,
+  append-only conflict-evidence archive with its own item/byte/work/retention bounds;
+  archive summaries preserve contradiction commitments needed by current authority;
+- amendment and reconciliation attempts consume persistent rate/work budgets before
+  provider query or append; restart, identity churn, failed attempts and duplicate
+  evidence cannot reset budgets or create free verification work;
+- hard-limit exhaustion never drops an admitted permit, conflict or unknown outcome;
+  it blocks new amendments/evidence-producing work, preserves read/query/recovery and
+  requires governed lineage closure/abandonment or a fresh causally linked operation;
+- finality verification declares exact item/byte/proof/depth budgets and returns typed
+  `ResourceLimit` without a partial no-effect result or cached authority; high-resource
+  hosts may parallelize within the same deterministic authoritative work bounds;
+- tests cover duplicate floods, equivalent evidence permutations, conflict growth,
+  amendment/reconciliation churn, checked overflow, exact limits, restart reset,
+  summary-chain depth, archive unavailability and resource refusal without authority.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-store`
+- bounded inventory/evidence/compaction/finality state-machine model;
+- adversarial duplicate/conflict corpus and scale benchmarks at every limit.
+
+Exit criteria:
+
+- Duplicate evidence cannot grow authoritative lineage history.
+- Finality verification has protocol-fixed item, byte, depth and work ceilings.
+- Limit exhaustion preserves every admitted uncertainty and returns no partial proof.
+
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
 Goal: ensure untrusted remote data cannot influence trusted state before full
@@ -15193,7 +15354,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.115 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.118 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -15237,6 +15398,8 @@ Deliverables:
   per-permit dispatch finality, cross-domain consequence activation and non-recursive
   witness durability frontiers, conservative provider-activation ordering, lineage-
   wide permit inventory finality and pre-commit consequence abort fencing,
+  activation-delivery finality, authoritative lineage permit-state checkpoints and
+  bounded permit-inventory/finality work,
   admitted authentication suite/provider-capacity mode,
   and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
@@ -15251,7 +15414,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.115 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.118 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -15670,7 +15833,10 @@ Deliverables:
   ambiguous activation replaced/aborted, recursive receipt/checkpoint fixed point,
   activation before durable unknown, admission mislabeled terminal, old permit omitted
   after amendment, lineage inventory deletion, provider abort without local fence,
-  commit/abort dual successor or ordinary abort after local authority commit,
+  commit/abort dual successor or ordinary abort after local authority commit, negative
+  provider query used without activation delivery closure, admission/effect outcome
+  collapse, inventory/current-map splice, omitted checkpoint suffix, checkpoint
+  rollback, duplicate-evidence history amplification or unbounded finality work,
   unknown-effect
   compensation unsafe in either possible world, mutable fence root from late result,
   result-log/status-map splice, provider-collusion completeness claimed without
@@ -15910,7 +16076,10 @@ Deliverables:
   witness statement/checkpoint/receipt dependency, activation handoff before unknown
   CAS/flush, activation admission projected terminal, current-plan-only permit proof,
   inventory removal/reuse, abort without local fence, stale commit after abort or
-  ordinary abort after committed authority,
+  ordinary abort after committed authority, negative activation query used as finality,
+  activation/effect outcome collapse, inventory/map/checkpoint splice, omitted event
+  suffix, checkpoint rollback, duplicate-evidence append amplification or unbounded
+  permit-history/finality verification,
   append-only operation/idempotency non-inclusion, dual-identity map/log set
   mismatch, premature staged-material cleanup, unresolved-custody share
   exhaustion, custody-age reset or unanchored abandonment destruction, decoder
@@ -16016,7 +16185,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.115 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.118 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -16038,7 +16207,7 @@ Deliverables:
   custody/abandonment, immutable acceptance/current-result evidence,
   pre-execution receipt/witness admission, exact feature-witness/operation authority
   composition and externally anchored composite emergency-head publication through
-  v0.111.115, and the
+  v0.111.118, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -16988,7 +17157,9 @@ Deliverables:
   composite authority transition, per-permit dispatch-state/finality vector,
   cross-domain consequence reservation/activation receipt and non-recursive witness-
   statement/checkpoint/acknowledgement/receipt, provider-activation-unknown,
-  lineage-permit-inventory/projection and local-abort-fence/provider-abort corpus;
+  lineage-permit-inventory/projection, local-abort-fence/provider-abort,
+  activation-finality/closure, lineage-permit-state-checkpoint/map projection and
+  bounded inventory-summary/conflict-archive corpus;
 - deterministic fact rule/query-plan, snapshot cursor, immutable-index offset,
   exact cryptographic suite/hybrid transcript, opaque bundle outer/inner
   manifest, and blind-claim corpus;
@@ -17114,7 +17285,8 @@ Deliverables:
   transition/tagged-consequence-generation/witness-admission-receipt/per-permit-
   finality-vector/inert-provider-reservation/provider-activation-receipt/witness-
   statement/durability-acknowledgement/provider-activation-unknown/lineage-permit-
-  inventory/abort-fence/provider-abort-receipt/debt target set;
+  inventory/abort-fence/provider-abort-receipt/activation-finality/activation-closure/
+  lineage-permit-state-checkpoint/inventory-summary/conflict-archive/debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -17203,8 +17375,9 @@ Deliverables:
   generation/slot/history/budget publication with cross-domain inert provider
   reservation/activation, and non-recursive checkpoint-verifiable witness-admission
   receipts, durable unknown-before-provider-activation ordering, append-only lineage-
-  wide permit inventory finality and pre-commit local/provider abort fencing, plus
-  anchored
+  wide permit inventory finality and pre-commit local/provider abort fencing,
+  activation-delivery finality, atomic inventory/current-map/composite checkpoints and
+  bounded permit-history/finality work, plus anchored
   irreducible-conflict abandonment under independent evidence keys/retention,
   append-only classification, two-world-safe compensation/normalization, bounded
   authoritative-time emergency custody/anchored abandonment, governed bridge
@@ -17635,6 +17808,9 @@ Deliverables:
   boundaries, v0.111.113 unknown-CAS/flush/consume/handoff/query/terminal boundaries,
   v0.111.114 inventory-append/project/amend/aggregate/compact boundaries and
   v0.111.115 local-abort-fence/provider-abort/query/local-close boundaries,
+  v0.111.116 activation-layer-close/outcome/join/project/refuse boundaries,
+  v0.111.117 event/maps/checkpoint/composite-CAS/rollback boundaries and
+  v0.111.118 charge/deduplicate/append/summarize/archive/refuse boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -17868,6 +18044,10 @@ Deliverables:
   retry, provider admission mislabeled terminal, amendment-hidden old unknown permit,
   stale/incomplete lineage inventory, abort-before-local-fence, commit-versus-abort
   race, delayed activation after provider abort, stale restore and lost abort response,
+  negative query before delayed activation, proxy/queue restoration, activation replay-
+  fence loss, activated-with-unknown-effect, inventory/map/composite-head splice,
+  omitted event suffix, checkpoint rollback, duplicate evidence flood, transition/
+  conflict growth, summary-depth overflow and partial finality on resource refusal,
   unanchored
   conflict abandonment/cleanup, provider/writer collusion under each completeness
   profile,
@@ -18285,7 +18465,9 @@ Deliverables:
   proof verification, lineage-wide permit inventory append/projection and complete
   mixed finality aggregation, composite local consequence-authority transaction/
   recovery, durable activation-unknown CAS/flush, inert provider reserve/activate/
-  query, local abort fence/provider abort reconciliation and every staged envelope-
+  query, activation-delivery closure/finality, local abort fence/provider abort
+  reconciliation, atomic lineage checkpoint publication/projection, duplicate-evidence
+  canonicalization, bounded summary/conflict archival and every staged envelope-
   admission/lineage-derivation step;
   delivery-profile benchmarks distinguish prepared/authorized/
   handed-off states, local dispatch, provider idempotency, remote invocation, semantic-
@@ -18888,6 +19070,9 @@ Deliverables:
 - v0.111.113 persists unknown before provider activation, v0.111.114 makes aggregate
   finality cover the append-only lineage permit inventory, and v0.111.115 fences local
   commit/activation authority before pre-commit provider abort;
+- v0.111.116 requires complete activation-delivery closure for non-activation finality,
+  v0.111.117 binds inventory and all current permit maps in the active checkpoint, and
+  v0.111.118 bounds permit history, conflict retention and finality work;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -19229,6 +19414,13 @@ Deliverables:
   current-plan omission, compaction, partial clone and late old-outcome fixtures pass;
 - v0.111.115 local fence/provider abort ordering, commit race, delayed activation,
   response loss, stale restore, rotation and committed-abort refusal fixtures pass;
+- v0.111.116 delayed activation, negative query, layer restoration, typed provider/
+  effect outcome, replay-fence rotation/loss and closure substitution fixtures pass;
+- v0.111.117 inventory/map/event-count/composite-head splice, omitted suffix, every
+  crash boundary, predecessor fork, rollback and mixed-version fixtures pass;
+- v0.111.118 duplicate/equivalent evidence flood, exact transition/byte/work limits,
+  conflict archive, summary depth, restart budget and partial-result refusal fixtures
+  pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -19699,7 +19891,10 @@ Deliverables:
   authority; ambiguous activation remains query-only and blocks replacement, provider
   admission is not terminal effect evidence, and ordinary provider abort requires a
   mutually exclusive durable pre-commit local abort fence while committed authority
-  must reconcile or use governed abandonment;
+  must reconcile or use governed abandonment; a negative provider query never closes
+  activation uncertainty unless a typed `ConsequenceActivationFinalityProof` combines
+  `NeverActivated` with complete domain-separated closure across every activation
+  transport layer and the provider activation replay fence;
   no terminal resolution, cleanup, reopening or release precedes terminal evidence;
   every permit is durable
   `DispatchPrepared`, then durable `OutcomeUnknown`, before external handoff,
@@ -19709,16 +19904,22 @@ Deliverables:
   and a permanent replay fence for delayed queues, backups and offline clones;
   historical finality is a state-indexed sum: pre-acceptance `NeverAccepted` and
   accepted-but-not-started `AcceptedNeverStarted` require an authenticated final
-  `NoDispatchAuthorizationProof`; accepted-started plans bind the append-only
-  `EffectPlanLineageRoot` and `LineagePermitInventoryRoot` and prove every permit ever
-  admitted across every generation: `Ready` or durably revoked `DispatchPrepared`
-  permits require final no-dispatch proof, `DispatchAuthorizedUnknown` permits require
-  a `DeliveryClosureProof` over every admitted proxy, queue, retry/dead-letter layer,
-  provider epoch and replay fence plus complete effect-boundary coverage, and terminal
-  permits accept only confirmation or conflict; committed/conflicting/unknown outcomes
-  remain those states, closure, local absence or a deduplication tombstone alone selects
-  none, and omission of any active, carried, revoked, terminal, ambiguous, cancelled or
-  tombstoned historical permit blocks aggregate no-effect finality; each
+  `NoDispatchAuthorizationProof`; accepted-started plans consume the exact active
+  `LineagePermitStateCheckpoint` atomically binding `EffectPlanLineageRoot`, append-only
+  inventory/event root and count, permit-state/effect-knowledge/dispatch-state maps,
+  executor generation, predecessor and active composite head, then prove every permit
+  ever admitted across every generation: `Ready` or durably revoked
+  `DispatchPrepared` permits require final no-dispatch proof,
+  `DispatchAuthorizedUnknown` permits require a `DeliveryClosureProof` over every
+  admitted proxy, queue, retry/dead-letter layer, provider epoch and replay fence plus
+  complete effect-boundary coverage, and terminal permits accept only confirmation or
+  conflict; committed/conflicting/unknown outcomes remain those states, closure, local
+  absence or a deduplication tombstone alone selects none, and omission of any active,
+  carried, revoked, terminal, ambiguous, cancelled or tombstoned historical permit
+  blocks aggregate no-effect finality; permit transitions, evidence, encoded bytes,
+  conflict retention, amendment/reconciliation frequency and finality work obey
+  protocol hard bounds, duplicate evidence appends no authority, and bounded-depth
+  summaries plus a separately bounded conflict archive preserve exact roots; each
   dependency
   consumes or borrows its declared typed outcome witness, while data-dependent targets
   remain within a precommitted bounded derivation domain, and wider targets require a
