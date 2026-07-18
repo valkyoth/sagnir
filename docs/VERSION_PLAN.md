@@ -12129,7 +12129,7 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.154 are complete and their provider/fence/effect/
+  v0.111.50 and v0.111.54-v0.111.155 are complete and their provider/fence/effect/
   custody/anchor/evidence/admission/privacy capabilities are admitted; earlier
   binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
@@ -15692,9 +15692,10 @@ Deliverables:
   revalidation, permit safe post-non-admission abort and fix exact threshold assumptions;
   v0.111.146-v0.111.148 atomically order recipient validation with effect consumption,
   reserve revalidation recovery capacity and separate threshold safety from availability;
-  v0.111.149-v0.111.154 fence pending-effect executors, close/refund recovery reserves,
+  v0.111.149-v0.111.155 fence pending-effect executors, close/refund recovery reserves,
   require complete reserve-slice disposition, define total-nonresponsive fault sets and
-  make eventual progress conditional on explicit temporal/resource assumptions;
+  make eventual progress conditional on explicit temporal/resource assumptions plus one
+  affine worst-case capacity reservation per admitted request;
 - tests cover two restored clones consuming one grant, disjoint/overlapping ranges,
   hardware-counter rollback, provider deduplication expiry, permanent replay fencing,
   threshold double-spend, process/device identity churn, double local quota release,
@@ -17393,6 +17394,7 @@ Deliverables:
 Verification:
 
 - `cargo test -p sagnir-object`
+- `cargo test -p sagnir-crypto`
 - `cargo test -p sagnir-store`
 - `cargo test -p sagnir-policy`
 - `cargo test -p sagnir-sync`
@@ -17465,7 +17467,8 @@ Deliverables:
 
 - `EventuallySynchronousProgress` binds a canonical `ProgressResourcePremise` covering
   the minimum retry, coordinator-generation, message, byte/work, in-flight, evidence and
-  reconciliation capacity required for one complete bounded decision round;
+  reconciliation capacity required for one complete bounded decision round; v0.111.155
+  turns that premise into one affine per-request reservation rather than a shared check;
 - because the pre-stabilization period is unbounded, finite cumulative budgets do not by
   themselves prove liveness: the progress claim is conditional on the complete resource
   premise remaining available when the network reaches its stabilization point;
@@ -17496,7 +17499,8 @@ Deliverables:
   without predicting or claiming that stabilization has occurred;
 - tests place stabilization immediately before, at and after resource exhaustion; vary
   `B`/`U_total` overlap, fair and unfair schedules, Byzantine coordinators, resource
-  renewal, restart/clone attempts, joint reconfiguration and permanent partition.
+  renewal, restart/clone attempts, joint reconfiguration and permanent partition; the
+  temporal model also races concurrent status/reservation CAS attempts under v0.111.155.
 
 Verification:
 
@@ -17506,6 +17510,8 @@ Verification:
 - `cargo test -p sagnir-policy`
 - `cargo test -p sagnir-sync`
 - temporal model checking under explicit fairness/eventual-synchrony/resource assumptions;
+- composed v0.111.155 model proves progress-status iff one matching aggregate reservation
+  owns the complete premise and concurrent capacity/status CAS attempts cannot overbook it;
 - stabilization-boundary, exhaustion, renewal and joint-consensus liveness suite.
 
 Exit criteria:
@@ -17514,6 +17520,81 @@ Exit criteria:
 - Temporal liveness holds under all declared synchrony, fairness and resource assumptions.
 - Arbitrary pre-stabilization execution may exhaust progress, but cannot violate safety
   or fabricate renewed capacity.
+
+### v0.111.155 - Affine Per-Request Progress Round Reservation
+
+Goal: prevent concurrent requests, restored clones or coordinator generations from
+advertising eventual progress against the same remaining decision capacity.
+
+Deliverables:
+
+- canonical request lifecycle is `ProgressEligible -> ProgressReserveAuthorizedUnknown ->
+  ProgressRoundReserved -> ProgressActive -> (ProgressTerminal | ProgressUnavailable)`;
+  `ProgressEligible` and reservation-unknown are non-authorizing/query-only and may
+  advertise at most `QuorumReachable`;
+- the transition to `ProgressRoundReserved` atomically compares the current authenticated
+  provider-capacity root, verifies the complete v0.111.154 resource premise, reserves its
+  exact worst-case capacity and publishes `EventuallySynchronousProgress` status in one
+  expected-root CAS; no separate status check, optimistic promise or local lock can grant
+  the progress class;
+- each reservation binds request/operation identity, participant and configuration epoch,
+  old/new joint-configuration roots where applicable, coordinator-generation bound,
+  resource-dimension vector, reservation/accounting provider, predecessor/result roots
+  and one query/idempotency identity;
+- the reserved vector covers the worst admitted post-stabilization path, including every
+  permitted Byzantine coordinator replacement, fair retry/message round, joint-consensus
+  old/new work, result persistence, response-loss query and terminal reconciliation;
+  optimistic successful-round sizing is non-authorizing;
+- one checked aggregate accounting transition proves the sum of all live reservations in
+  every dimension does not exceed authenticated provider capacity; arithmetic overflow,
+  partial-dimension success or non-atomic old/new provider reservation refuses progress;
+- reserved capacity is affine and non-borrowable by later requests, diagnostics, ordinary
+  retries, out-of-bound coordinator generations, policy evaluation or unrelated
+  reconciliation; admitted retries/coordinator replacements and other sub-operations
+  consume typed child slices under the same reservation and cannot mint independent capacity;
+- clones, restored processes, devices and duplicate admissions use the same stable request
+  and reservation identity; exact replay returns the existing pending/active/terminal
+  result, while a changed request, epoch, vector or provider root cannot share it;
+- loss or ambiguity of the reservation response remains fully charged and query-only;
+  another reservation is forbidden until authenticated query proves non-admission or the
+  original lifecycle reaches an admitted terminal state;
+- `ProgressUnavailable` is terminal only after exact reservation query and all downstream
+  work prove that no provider can still consume or retain the reserved vector; otherwise
+  the request remains reservation-unknown or active/query-only with its full charge;
+- `ProgressActive` consumes only the reserved vector and records coordinator/retry/work/
+  evidence usage monotonically; exhausting a dimension produces `ProgressUnavailable`
+  without borrowing capacity or weakening quorum, and unresolved external work retains
+  the reservation until terminal reconciliation;
+- terminal accounting uses one authenticated expected-root transition: cumulative work
+  already consumed remains debited, reusable unused concurrency/in-flight slices are
+  released exactly once, and retained evidence/replay-fence capacity remains charged for
+  its declared lifetime; response loss is query-only and clone replay cannot double-refund;
+- reconfiguration, provider failover and capacity migration carry every live reservation,
+  usage vector, ambiguity, result and old query/refusal route before either configuration
+  can advertise progress; missing continuity degrades requests to query-only/unavailable;
+- privacy profiles expose only admitted capacity/status buckets while exact encrypted
+  per-request and aggregate accounting remains authoritative;
+- tests race many requests that each observe one round of free capacity, duplicate and
+  restore admissions across clones/processes, lose reserve/release responses, exhaust all
+  Byzantine coordinator replacements before selecting a correct coordinator, reserve
+  asymmetric/joint rounds, overflow each dimension and migrate active reservations.
+
+Verification:
+
+- `cargo test -p sagnir-codec`
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- eligible/reserve-authorized-unknown/reserve-CAS/active/consume/query/
+  terminal-or-unavailable accounting model;
+- concurrent-admission, clone-replay, Byzantine-coordinator and joint-reservation suite.
+
+Exit criteria:
+
+- Every eventual-progress claim owns one complete affine worst-case round reservation.
+- Live reservations cannot oversubscribe any authenticated provider-capacity dimension.
+- Ambiguous admission stays charged and terminal release/refund occurs exactly once.
 
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
@@ -17544,7 +17625,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.154 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.155 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -17601,7 +17682,8 @@ Deliverables:
   rollback-resistant threshold profiles, atomic recipient consumption, protected
   revalidation recovery reserves, checked safety/reachability profiles, fenced pending-
   effect execution, reserve closure/refund, complete slice disposition, total-
-  nonresponsive fault semantics and resource-sound temporal progress through v0.111.154,
+  nonresponsive fault semantics, resource-sound temporal progress and affine per-request
+  progress capacity through v0.111.155,
   admitted authentication suite/provider-capacity mode,
   and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
@@ -17616,7 +17698,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.154 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.155 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -18418,7 +18500,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.154 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.155 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -18451,7 +18533,8 @@ Deliverables:
   post-non-admission abort, exact rollback-resistant threshold profiles, atomic recipient
   consumption, protected revalidation recovery, checked threshold reachability, fenced
   pending-effect execution, complete reserve closure/refund, total-nonresponsive fault
-  semantics and resource-sound temporal-progress contracts through v0.111.154, and the
+  semantics, resource-sound temporal progress and affine progress reservations through
+  v0.111.155, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -19417,8 +19500,8 @@ Deliverables:
   revalidation lineage, post-non-admission abort, exact threshold-profile, atomic
   recipient-consumption, revalidation-recovery-reserve, threshold safety/reachability,
   fenced pending-effect execution, recovery-reserve closure/refund, complete reserve-
-  slice disposition, total-nonresponsive fault semantics and resource-sound temporal-
-  progress corpus;
+  slice disposition, total-nonresponsive fault semantics, resource-sound temporal
+  progress and affine per-request progress-reservation corpus;
 - deterministic fact rule/query-plan, snapshot cursor, immutable-index offset,
   exact cryptographic suite/hybrid transcript, opaque bundle outer/inner
   manifest, and blind-claim corpus;
@@ -19558,7 +19641,7 @@ Deliverables:
   profile/atomic-recipient-consume/revalidation-recovery-reserve/threshold-safety-
   reachability/fenced-pending-effect/recovery-reserve-close/reserve-slice-disposition/
   threshold-fault-set-overlap/threshold-eventual-progress/temporal-progress-resources/
-  debt target set;
+  progress-round-reservation/progress-reservation-release/debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -19922,9 +20005,10 @@ Deliverables:
   from terminal effect consumption, no normal exhaustion blocking query/closure/conflict/
   abort recovery, no duplicate/stale executor after `EffectPending`, no premature or
   duplicate recovery-reserve refund, no unresolved slice hidden in terminal closure,
-  no Byzantine withholding omitted from `u_total`, and no threshold reachability/progress
+  no Byzantine withholding omitted from `u_total`, no threshold reachability/progress
   claim without checked `q <= N - u_total` plus its declared synchrony/fairness and
-  remaining-resource-at-stabilization assumptions,
+  remaining-resource-at-stabilization assumptions, and no eventual-progress status from
+  a shared capacity observation without one affine aggregate-checked request reservation,
   unanchored conflict abandonment, conflict evidence erasure/cross-purpose key use,
   unbounded/uncharged prepared receipts, local-only provider capacity, static-slot
   clone replay, rollbackable provider checkpoint, partitioned double allocation,
@@ -20154,8 +20238,10 @@ Deliverables:
   v0.111.150 active/preflight/closing/release-query/closed boundaries,
   v0.111.151 safety/reachability/synchrony/retry/progress boundaries,
   v0.111.152 slice-resolution/partition/preflight/release/closed boundaries,
-  v0.111.153 fault-set-classification/overlap/joint-reachability boundaries and
-  v0.111.154 resource-premise/stabilization/exhaustion/renewal/progress boundaries,
+  v0.111.153 fault-set-classification/overlap/joint-reachability boundaries,
+  v0.111.154 resource-premise/stabilization/exhaustion/renewal/progress boundaries and
+  v0.111.155 eligible/reserve-authorized-unknown/reserve-CAS/active/consume/query/release
+  boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -20370,6 +20456,10 @@ Deliverables:
   authenticated delivery/coordinator replacement only after stabilization; schedules
   immediately before/after resource-premise exhaustion transition to explicit
   `Unavailable`, and permanent partitions preserve safety/no progress;
+- concurrent progress admissions synchronize after each observes enough shared capacity
+  for one round; only aggregate expected-root reservation winners advertise progress,
+  while clones, response loss and Byzantine coordinator replacement remain charged under
+  the winning request identity and cannot oversubscribe any capacity dimension;
 - three-plus-member batches exercise pairwise-compatible but N-way-invalid quota,
   threshold, policy, dependency and authority sets across every success/ambiguity/abort/
   compensation/cleanup/reconciliation permutation and reject caller footprint lies;
@@ -20754,6 +20844,10 @@ Deliverables:
   arbitrary pre-stabilization schedules, resource-premise checks immediately before/after
   exhaustion, fair post-stabilization retry/delivery, coordinator churn, admitted renewal,
   stable joint reconfiguration and bounded resource/reserve use;
+- progress-reservation vectors and benchmarks measure aggregate capacity-root contention,
+  worst-case vector sizing, many-request CAS races, clone replay, response-loss query,
+  coordinator child-slice consumption, joint old/new reservation and exactly-once terminal
+  accounting at maximum concurrency and resource dimensions;
 - independent `sagnir-authority-sha3-256-v1` frame, transaction, logical-state,
   and physical-checkpoint vectors, including genesis/checkpoint anchoring,
   non-circular signing frontiers, physical-compaction logical-root preservation,
@@ -21649,6 +21743,8 @@ Deliverables:
 - v0.111.152 requires a complete terminal reserve-slice partition before refund,
   v0.111.153 counts Byzantine withholding inside `u_total`, and v0.111.154 admits
   temporal progress only while the capacity-at-stabilization premise holds;
+- v0.111.155 grants that progress class only through an affine per-request worst-case
+  round reservation whose aggregate CAS prevents concurrent oversubscription;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -22104,6 +22200,9 @@ Deliverables:
 - v0.111.154 stabilization immediately before/at/after capacity exhaustion, temporal
   fairness, restart-stable charging, admitted renewal, joint-round capacity and explicit
   unavailable-state fixtures pass;
+- v0.111.155 many-request observation/reservation races, aggregate capacity CAS, restored
+  clone admission, Byzantine coordinator replacement, joint old/new reservation,
+  response-loss query and exactly-once release/refund fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -22673,9 +22772,12 @@ Deliverables:
   safety-only, quorum-reachable and eventually-synchronous-progress classes are distinct;
   Byzantine safety uses `b`, reachability uses total nonresponse `u_total` including
   Byzantine withholding, and progress additionally requires fair authenticated delivery,
-  coordinator replacement, stable reconfiguration and enough authenticated decision/
-  reconciliation capacity at eventual synchronization; widened checked arithmetic rejects
-  infeasible combinations and exhausted resource premises become explicit unavailable state;
+  coordinator replacement and stable reconfiguration; each advertised progress request
+  owns one affine aggregate-checked reservation for enough authenticated worst-case
+  decision/reconciliation capacity at eventual synchronization, including Byzantine
+  coordinator replacement, joint work, result persistence, response-loss query and
+  reconciliation; widened checked arithmetic rejects infeasible combinations and
+  exhausted or unreserved resource premises become explicit unavailable state;
   final anchor non-admission is permanently replay-fenced and every old request route is
   closed before a bounded successor generation or mutually exclusive abort may proceed;
   non-borrowable clone-aggregated recovery capacity remains reserved for exact query,
