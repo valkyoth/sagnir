@@ -12129,7 +12129,7 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.151 are complete and their provider/fence/effect/
+  v0.111.50 and v0.111.54-v0.111.154 are complete and their provider/fence/effect/
   custody/anchor/evidence/admission/privacy capabilities are admitted; earlier
   binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
@@ -15692,8 +15692,9 @@ Deliverables:
   revalidation, permit safe post-non-admission abort and fix exact threshold assumptions;
   v0.111.146-v0.111.148 atomically order recipient validation with effect consumption,
   reserve revalidation recovery capacity and separate threshold safety from availability;
-  v0.111.149-v0.111.151 fence pending-effect executors, close/refund recovery reserves
-  and distinguish quorum reachability from eventual progress under explicit assumptions;
+  v0.111.149-v0.111.154 fence pending-effect executors, close/refund recovery reserves,
+  require complete reserve-slice disposition, define total-nonresponsive fault sets and
+  make eventual progress conditional on explicit temporal/resource assumptions;
 - tests cover two restored clones consuming one grant, disjoint/overlapping ranges,
   hardware-counter rollback, provider deduplication expiry, permanent replay fencing,
   threshold double-spend, process/device identity churn, double local quota release,
@@ -17105,22 +17106,25 @@ Exit criteria:
 ### v0.111.148 - Threshold Safety, Quorum Reachability And Checked Arithmetic
 
 Goal: distinguish safe threshold configurations from configurations whose quorum remains
-reachable under a declared withholding bound, without claiming scheduler/network progress.
+reachable under a declared total-nonresponse bound, without claiming scheduler/network
+progress.
 
 Deliverables:
 
 - every protected threshold capability declares one reachability class:
-  `SafetyOnly` or `QuorumReachable { unavailable_or_withholding: u }`, bound into
+  `SafetyOnly` or `QuorumReachable { total_nonresponsive: u_total }`, bound into
   configuration roots, shares, certificates, provider policy and CLI/audit output;
 - all classes retain v0.111.145 safety equations; a symmetric reachability profile also
-  requires `q <= N - u`, while an asymmetric profile requires both
-  `q_activation <= N - u` and `q_abort <= N - u` so either quorum can be assembled with
-  up to `u` unavailable or withholding participants;
+  requires `q <= N - u_total`, while an asymmetric profile requires both
+  `q_activation <= N - u_total` and `q_abort <= N - u_total` so either quorum can be
+  assembled with up to `u_total` nonresponsive participants; v0.111.153 fixes the exact
+  Byzantine-withholding overlap semantics;
 - configuration admission derives and verifies the combined feasible region rather than
   assuming safety implies reachability; when the same simple bound is used for Byzantine
-  safety and withholding (`b = u = f`), symmetric feasibility requires `N > 3f`;
+  safety and total nonresponse (`b = u_total = f`), symmetric feasibility requires
+  `N > 3f`;
   asymmetric profiles satisfy every same-kind, cross-kind and reachability inequality;
-- a safe configuration whose quorum exceeds `N - u` is admitted only as `SafetyOnly`;
+- a safe configuration whose quorum exceeds `N - u_total` is admitted only as `SafetyOnly`;
   `QuorumReachable` claims only enough potentially responsive participants, not eventual
   message delivery, fair scheduling or progress; v0.111.151 defines any stronger claim;
 - decode first enforces protocol-fixed maxima for `N`, `f`, quorum fields, participant
@@ -17242,8 +17246,10 @@ Deliverables:
   stores and concurrent cleanup cannot start another closure or refund;
 - the external provider atomically compares the exact reserve/accounting predecessor and
   publishes one authenticated `RecoveryReserveReleaseReceipt` for only the verified
-  unused slices; spent, ambiguous, conflict-retention and unavailable-provider slices
-  remain charged until their own terminal proof exists;
+  unused slices; spent slices remain charged, while ambiguous, conflict-retention and
+  unavailable-provider slices block entry into `RecoveryReserveClosing` until their own
+  terminal proof or admitted permanent-retention disposition exists; v0.111.152 fixes
+  the complete slice partition and prohibits unresolved residuals inside `Closed`;
 - response loss while closing remains charged and query-only; exact retry/query returns
   the original release result, while changed slice counts, roots, grant, provider epoch
   or operation identity is conflict and never a second refund;
@@ -17287,12 +17293,14 @@ under explicit network, scheduler, reconfiguration and resource assumptions.
 Deliverables:
 
 - canonical `ThresholdFaultModel` separates `byzantine_or_equivocating: b` from
-  `unavailable_or_withholding: u`; safety intersections use `b`, quorum reachability uses
-  `u`, and a simple profile may commit `b = u = f` without making equality implicit;
+  `total_nonresponsive: u_total`; safety intersections use `b`, quorum reachability uses
+  `u_total`, and v0.111.153 defines Byzantine-withholding overlap and joint-configuration
+  counting precisely; a simple profile may commit `b = u_total = f` without making
+  equality implicit;
 - v0.111.145 equations become symmetric `2q > N + b` and asymmetric
   `2q_activation > N + b`, `2q_abort > N + b`,
-  `q_activation + q_abort > N + b`; v0.111.148 reachability remains
-  `q <= N - u` for each required decision, all under widened checked arithmetic;
+  `q_activation + q_abort > N + b`; v0.111.148 reachability becomes
+  `q <= N - u_total` for each required decision, all under widened checked arithmetic;
 - capability classes are `SafetyOnly`, `QuorumReachable` and
   `EventuallySynchronousProgress`; the first two make no scheduler/message-delivery
   liveness claim even when enough participants exist;
@@ -17308,6 +17316,7 @@ Deliverables:
   retained-evidence budgets apply before and after stabilization; dedicated decision/
   reconciliation reserves prevent ordinary floods from blocking already admitted work,
   while exhausted assumptions produce explicit unavailable state rather than false progress;
+  v0.111.154 defines the capacity-at-stabilization premise and temporal liveness model;
 - partitions, perpetual message loss, unstable reconfiguration, insufficient authenticated
   delivery or unfair scheduling preserve safety but invalidate the progress capability;
   no bounded-time progress claim is made in a fully asynchronous or indefinitely
@@ -17315,11 +17324,12 @@ Deliverables:
 - joint consensus proves safety/reachability under both configurations and requires an
   admitted overlap stability interval for eventual progress; externally fenced transfer
   declares its separate connectivity/coordinator assumptions and never falls back locally;
-- capability negotiation, policy, CLI/status and release evidence report `b`, `u`, safety,
+- capability negotiation, policy, CLI/status and release evidence report `b`, `u_total`, safety,
   reachability, eventual-synchrony assumptions, resource bounds and current
   `Healthy`/`Degraded`/`Unavailable`/`Recovering` progress state without treating delay as
   equivocation, abort, no effect or permission to weaken quorum;
-- tests separate `b != u`, simple `b = u`, Byzantine leaders, withholding/crash faults,
+- tests separate `b != u_total`, simple `b = u_total`, Byzantine leaders,
+  Byzantine-withholding/crash faults,
   pre-stabilization arbitrary delay/reorder/duplication, post-stabilization fair delivery,
   coordinator replacement, retry exhaustion, resource floods, unstable/joint
   reconfiguration, permanent partition and recovery without any asynchronous time bound.
@@ -17336,9 +17346,174 @@ Verification:
 
 Exit criteria:
 
-- Safety uses `b`; quorum reachability uses independently declared `u`.
+- Safety uses `b`; quorum reachability uses independently declared `u_total`.
 - Eventual progress is claimed only under explicit eventual-synchrony and fairness assumptions.
 - Fully asynchronous or indefinitely partitioned execution has no bounded-time progress claim.
+
+### v0.111.152 - Complete Recovery Reserve Slice Disposition
+
+Goal: close a recovery reserve only after every slice has a terminal accounting
+disposition, with no unresolved residual hidden inside a terminal state.
+
+Deliverables:
+
+- Sagnir admits the full-closure model only: `RecoveryReserveClosing` cannot begin while
+  any slice is ambiguous, conflict-pending, provider-unavailable, query-pending,
+  migration-pending or otherwise capable of later becoming refundable or consumable;
+  no `PartiallyReleased`, `RecoveryReserveResidual` or equivalent state is admitted;
+- each slice has one authenticated terminal disposition:
+  `Consumed`, `Refundable`, `PermanentlyRetained` or `Released`; unresolved conditions
+  are separate nonterminal states and cannot be encoded as terminal retained capacity;
+- `PermanentlyRetained` requires an admitted terminal proof that no later refund is
+  possible, names the exact ambiguity/conflict/provider reason and preserves the charge
+  forever; policy, timeout, local absence or provider unavailability alone cannot create
+  that proof;
+- close preflight commits a complete canonical slice-partition root and proves every
+  initial reserve slice appears exactly once; the release request contains only the
+  `Refundable` partition, while `Consumed` and `PermanentlyRetained` remain charged;
+- `RecoveryReserveReleaseReceipt` binds the full partition root, released subset,
+  retained subset, predecessor accounting root and resulting capacity root so omission,
+  duplication, relabeling or later refund of a retained slice is detectable;
+- if one unresolved slice later resolves while other slices are already refundable, the
+  reserve remains `Active`, the refundable dispositions remain immutable and uncredited,
+  and closure begins only after the last slice reaches a terminal disposition;
+- exact result queries and terminal evidence may advance unresolved slices under the
+  original reserve lineage, but cannot reopen a released slice, change a terminal
+  disposition or allocate replacement recovery capacity;
+- provider migration/failover transfers the complete slice-state map, partition root,
+  pending query authority and prospective refund set before resolution or closure;
+  missing continuity leaves all capacity charged;
+- compaction retains terminal disposition proofs, complete partition root and unique
+  release receipt for the lifetime of the accounting/replay fence;
+- tests resolve one ambiguous/conflicting/provider-unavailable slice after every other
+  slice becomes refundable, attempt premature close, forge permanent retention, omit or
+  duplicate partition entries, lose the final response, migrate during late resolution
+  and replay old snapshots after `Closed`.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- active/slice-resolution/partition/preflight/closing/release/closed state-machine model;
+- delayed-resolution, partition-completeness and permanent-retention integration suite.
+
+Exit criteria:
+
+- No unresolved reserve slice can exist inside `RecoveryReserveClosed`.
+- Every initial slice has exactly one terminal disposition before any refund is credited.
+- A late-resolving slice delays closure without enabling partial or duplicate release.
+
+### v0.111.153 - Total-Nonresponsive Threshold Fault Semantics
+
+Goal: make quorum reachability count every participant that does not respond, including
+Byzantine participants that withhold, under one precise old/new configuration model.
+
+Deliverables:
+
+- canonical threshold semantics use sets `B` and `U_total`, where `|B| <= b` bounds
+  Byzantine/equivocating participants and `U_total` contains every nonresponsive or
+  non-contributing participant regardless of whether the cause is Byzantine withholding,
+  invalid Byzantine output, crash, disconnection, censorship or benign unavailability;
+- `|U_total| <= u_total` is the complete reachability premise and required quorums use
+  `q <= N - u_total`; Byzantine participants that remain responsive may be outside
+  `U_total`, while every Byzantine participant that withholds is counted inside it;
+- a profile claiming reachability for every execution in which all admitted Byzantine
+  participants may withhold requires `b <= u_total`; otherwise status and negotiation
+  state the narrower assumption and executions exceeding `u_total` become
+  `Unavailable` without weakening safety;
+- separate/disjoint unavailable and Byzantine bounds are not silently added or treated
+  as independent; any alternate future model must commit an explicit maximum-union bound
+  and use `q <= N - max_union` rather than reinterpreting `u_total`;
+- safety equations continue to use `b` even when some Byzantine participants are also in
+  `U_total`; overlap never reduces the safety bound or counts one signer twice;
+- joint consensus binds old and new `B`/`U_total` bounds, participant identity mapping
+  and simultaneous-fault assumptions; each required old/new quorum satisfies its own
+  `q <= N - u_total`, and shared nonresponsive identities are represented consistently
+  across both sets without assuming beneficial overlap;
+- externally fenced transfer and capability negotiation expose the same fault-set
+  semantics, supported overlap assumptions and current observed/assumed nonresponsive
+  counts without identifying private participants beyond policy;
+- checked decoding rejects legacy ambiguous `u`, disjoint-set interpretations, omitted
+  joint bounds, impossible `b/u_total/N` combinations and arithmetic overflow;
+- tests vary no overlap, partial overlap and complete Byzantine-withholding overlap,
+  require/refuse `b <= u_total` profiles, exercise old/new membership changes and prove
+  safety remains intact when the reachability premise is exceeded.
+
+Verification:
+
+- `cargo test -p sagnir-codec`
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- configure/classify-faults/check-safety/check-reachability/reconfigure model;
+- Byzantine-withholding overlap and joint-consensus fault-injection suite.
+
+Exit criteria:
+
+- `u_total` means all nonresponsive participants, including Byzantine withholders.
+- Every reachability equation and joint configuration uses the same explicit set model.
+- Exceeding the reachability premise changes availability state, never quorum safety.
+
+### v0.111.154 - Resource-Sound Temporal Progress Verification
+
+Goal: claim eventual progress only when eventual synchrony, fairness and sufficient
+decision/reconciliation capacity all hold at the stabilization point.
+
+Deliverables:
+
+- `EventuallySynchronousProgress` binds a canonical `ProgressResourcePremise` covering
+  the minimum retry, coordinator-generation, message, byte/work, in-flight, evidence and
+  reconciliation capacity required for one complete bounded decision round;
+- because the pre-stabilization period is unbounded, finite cumulative budgets do not by
+  themselves prove liveness: the progress claim is conditional on the complete resource
+  premise remaining available when the network reaches its stabilization point;
+- every pre-stabilization attempt charges restart-stable, clone-aggregated counters and
+  retained evidence exactly once; restart, coordinator replacement, retry or apparent
+  recovery cannot replenish cumulative capacity or erase prior consumption;
+- capability status transitions to `Unavailable` as soon as remaining authenticated
+  capacity falls below the premise; it stops advertising eventual progress and permits
+  only bounded query/reconciliation or a separately admitted resource renewal;
+- any renewable scheduling profile is explicit, rate-limited and restart-stable, bounds
+  in-flight state and retained evidence independently and proves a complete renewal
+  authority/accounting transition; ordinary wall time, process restart or network
+  reconnect cannot mint capacity;
+- recovery from resource exhaustion requires a new authenticated policy/provider
+  admission that preserves prior attempts, conflicts and replay fences; it cannot be
+  represented as uninterrupted progress under the old capability;
+- temporal verification distinguishes safety invariants, reachability states and liveness
+  properties: while eventual synchrony, authenticated delivery, fair scheduling, stable
+  configuration and the complete resource premise hold, every continuously enabled
+  admitted request eventually reaches a decision/reconciliation terminal; if the resource
+  premise fails first, status eventually reaches explicit `Unavailable` and no decision
+  liveness claim survives;
+- joint consensus requires enough remaining old/new capacity at stabilization for the
+  complete joint round; exhausting either side invalidates progress while preserving
+  both safety checks;
+- CLI/status, negotiation and release evidence report the resource-premise root,
+  remaining-capacity class and exact reason a progress capability became unavailable,
+  without predicting or claiming that stabilization has occurred;
+- tests place stabilization immediately before, at and after resource exhaustion; vary
+  `B`/`U_total` overlap, fair and unfair schedules, Byzantine coordinators, resource
+  renewal, restart/clone attempts, joint reconfiguration and permanent partition.
+
+Verification:
+
+- `cargo test -p sagnir-codec`
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- temporal model checking under explicit fairness/eventual-synchrony/resource assumptions;
+- stabilization-boundary, exhaustion, renewal and joint-consensus liveness suite.
+
+Exit criteria:
+
+- Eventual progress is never advertised after its remaining-resource premise fails.
+- Temporal liveness holds under all declared synchrony, fairness and resource assumptions.
+- Arbitrary pre-stabilization execution may exhaust progress, but cannot violate safety
+  or fabricate renewed capacity.
 
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
@@ -17369,7 +17544,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.151 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.154 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -17425,8 +17600,8 @@ Deliverables:
   transitions, bounded negative-fenced revalidation/post-non-admission abort and exact
   rollback-resistant threshold profiles, atomic recipient consumption, protected
   revalidation recovery reserves, checked safety/reachability profiles, fenced pending-
-  effect execution, reserve closure/refund and explicit eventual-progress assumptions
-  through v0.111.151,
+  effect execution, reserve closure/refund, complete slice disposition, total-
+  nonresponsive fault semantics and resource-sound temporal progress through v0.111.154,
   admitted authentication suite/provider-capacity mode,
   and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
@@ -17441,7 +17616,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.151 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.154 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -18243,7 +18418,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.151 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.154 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -18275,8 +18450,8 @@ Deliverables:
   enforceable recipient-set transitions, bounded negative-fenced revalidation,
   post-non-admission abort, exact rollback-resistant threshold profiles, atomic recipient
   consumption, protected revalidation recovery, checked threshold reachability, fenced
-  pending-effect execution, reserve closure/refund and eventual-progress contracts through
-  v0.111.151, and the
+  pending-effect execution, complete reserve closure/refund, total-nonresponsive fault
+  semantics and resource-sound temporal-progress contracts through v0.111.154, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -19241,8 +19416,9 @@ Deliverables:
   scoped-authorization final-provider, recipient-set transition, anchor-negative-fence/
   revalidation lineage, post-non-admission abort, exact threshold-profile, atomic
   recipient-consumption, revalidation-recovery-reserve, threshold safety/reachability,
-  fenced pending-effect execution, recovery-reserve closure/refund and threshold
-  eventual-progress corpus;
+  fenced pending-effect execution, recovery-reserve closure/refund, complete reserve-
+  slice disposition, total-nonresponsive fault semantics and resource-sound temporal-
+  progress corpus;
 - deterministic fact rule/query-plan, snapshot cursor, immutable-index offset,
   exact cryptographic suite/hybrid transcript, opaque bundle outer/inner
   manifest, and blind-claim corpus;
@@ -19380,7 +19556,8 @@ Deliverables:
   threshold-decision-certificate/scoped-authorization-contract/recipient-set-transition/
   anchor-negative-fence/revalidation-lineage/post-non-admission-abort/exact-threshold-
   profile/atomic-recipient-consume/revalidation-recovery-reserve/threshold-safety-
-  reachability/fenced-pending-effect/recovery-reserve-close/threshold-eventual-progress/
+  reachability/fenced-pending-effect/recovery-reserve-close/reserve-slice-disposition/
+  threshold-fault-set-overlap/threshold-eventual-progress/temporal-progress-resources/
   debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
@@ -19744,8 +19921,10 @@ Deliverables:
   weighted/custom or rollbackable participant state, no recipient validation separated
   from terminal effect consumption, no normal exhaustion blocking query/closure/conflict/
   abort recovery, no duplicate/stale executor after `EffectPending`, no premature or
-  duplicate recovery-reserve refund, and no threshold reachability/progress claim without
-  checked `q <= N - u` plus its declared synchrony/fairness/resource assumptions,
+  duplicate recovery-reserve refund, no unresolved slice hidden in terminal closure,
+  no Byzantine withholding omitted from `u_total`, and no threshold reachability/progress
+  claim without checked `q <= N - u_total` plus its declared synchrony/fairness and
+  remaining-resource-at-stabilization assumptions,
   unanchored conflict abandonment, conflict evidence erasure/cross-purpose key use,
   unbounded/uncharged prepared receipts, local-only provider capacity, static-slot
   clone replay, rollbackable provider checkpoint, partitioned double allocation,
@@ -19972,8 +20151,11 @@ Deliverables:
   v0.111.147 reserve/exhaust/query/close/abort/reconcile boundaries and
   v0.111.148 decode/check-safety/check-reachability/reconfigure boundaries,
   v0.111.149 pending/owner-fence/dispatch-unknown/query/terminal boundaries,
-  v0.111.150 active/preflight/closing/release-query/closed boundaries and
+  v0.111.150 active/preflight/closing/release-query/closed boundaries,
   v0.111.151 safety/reachability/synchrony/retry/progress boundaries,
+  v0.111.152 slice-resolution/partition/preflight/release/closed boundaries,
+  v0.111.153 fault-set-classification/overlap/joint-reachability boundaries and
+  v0.111.154 resource-premise/stabilization/exhaustion/renewal/progress boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -20179,12 +20361,15 @@ Deliverables:
 - threshold tests cover every symmetric/asymmetric equation boundary, participant-state
   rollback, duplicate aliases, weighted/custom refusal, old/new joint consensus and
   externally fenced transfer under both configurations' fault bounds;
-- threshold reachability tests withhold up to `u` participants, distinguish safety-only
+- threshold reachability tests withhold up to `u_total` participants, including
+  Byzantine withholders, distinguish safety-only
   from reachable profiles and exercise maximum-width checked sums/products/subtractions,
   overflow encodings and joint-configuration reachability;
-- eventual-progress schedules separate Byzantine `b` from unavailable `u`, permit
-  arbitrary pre-stabilization delay and require fair authenticated delivery/coordinator
-  replacement only after stabilization; permanent partitions preserve safety/no progress;
+- eventual-progress schedules separate Byzantine `b` from total nonresponse `u_total`,
+  vary their overlap, permit arbitrary pre-stabilization delay and require fair
+  authenticated delivery/coordinator replacement only after stabilization; schedules
+  immediately before/after resource-premise exhaustion transition to explicit
+  `Unavailable`, and permanent partitions preserve safety/no progress;
 - three-plus-member batches exercise pairwise-compatible but N-way-invalid quota,
   threshold, policy, dependency and authority sets across every success/ambiguity/abort/
   compensation/cleanup/reconciliation permutation and reject caller footprint lies;
@@ -20556,15 +20741,18 @@ Deliverables:
   measure exact query, negative-fence, route-closure, conflict, abort/cancellation and
   clone/failover reserve accounting at maximum lineage/route bounds;
 - threshold-safety/reachability vectors and benchmarks measure checked widened quorum
-  arithmetic, safety-only versus reachable admission, `u` withholding, simple `b = u = f`
-  feasibility and joint old/new reachability at maximum decode bounds;
+  arithmetic, safety-only versus reachable admission, `u_total` nonresponse including
+  Byzantine withholding, simple `b = u_total = f` feasibility and joint old/new
+  reachability at maximum decode bounds;
 - pending-effect execution vectors and benchmarks measure atomic-terminal versus fenced-
   dispatch paths, affine owner/fence CAS, durable unknown, duplicate-worker/queue replay,
   exact query, terminal evidence and migration overhead;
 - reserve-close vectors and benchmarks measure complete preflight, active-to-closing CAS,
-  external release/query, clone double-refund contention, migration and terminal credit;
-- threshold eventual-progress vectors and benchmarks measure `b/u` profiles, arbitrary
-  pre-stabilization schedules, fair post-stabilization retry/delivery, coordinator churn,
+  full slice-partition construction, delayed ambiguous/conflict resolution, external
+  release/query, clone double-refund contention, migration and terminal credit;
+- threshold eventual-progress vectors and benchmarks measure `b/u_total` overlap profiles,
+  arbitrary pre-stabilization schedules, resource-premise checks immediately before/after
+  exhaustion, fair post-stabilization retry/delivery, coordinator churn, admitted renewal,
   stable joint reconfiguration and bounded resource/reserve use;
 - independent `sagnir-authority-sha3-256-v1` frame, transaction, logical-state,
   and physical-checkpoint vectors, including genesis/checkpoint anchoring,
@@ -21456,8 +21644,11 @@ Deliverables:
   reserves clone-aggregated closure/abort capacity beyond normal exhaustion, and
   v0.111.148 separates threshold safety/reachability with checked quorum arithmetic;
 - v0.111.149 gives every pending effect one atomic transaction or fenced executor,
-  v0.111.150 closes/refunds recovery reserve exactly once, and v0.111.151 separates `b`
-  from `u` and admits eventual progress only under explicit synchrony/fairness contracts;
+  v0.111.150 closes/refunds recovery reserve exactly once, and v0.111.151 separates
+  threshold safety, reachability and eventual progress;
+- v0.111.152 requires a complete terminal reserve-slice partition before refund,
+  v0.111.153 counts Byzantine withholding inside `u_total`, and v0.111.154 admits
+  temporal progress only while the capacity-at-stabilization premise holds;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -21902,9 +22093,17 @@ Deliverables:
 - v0.111.150 premature close, close-response loss, clone/process double refund, changed
   slices, pending conflict/query/migration, provider cutover, snapshot restore, compaction
   and terminal no-reopen fixtures pass;
-- v0.111.151 `b != u`/`b = u`, arbitrary pre-stabilization scheduling, fair eventual
-  delivery, Byzantine coordinator replacement, bounded retry/resources, unstable/joint
-  reconfiguration, permanent partition and no-asynchronous-time-bound fixtures pass;
+- v0.111.151 `b != u_total`/`b = u_total`, arbitrary pre-stabilization scheduling, fair
+  eventual delivery, Byzantine coordinator replacement, bounded retry/resources,
+  unstable/joint reconfiguration, permanent partition and no-asynchronous-time-bound
+  fixtures pass;
+- v0.111.152 delayed ambiguous/conflict/provider resolution, complete partition,
+  permanent-retention proof, premature close, migration and old-snapshot replay fixtures pass;
+- v0.111.153 no/partial/full Byzantine-withholding overlap, `b <= u_total` claim,
+  old/new joint-set accounting and exceeded-reachability-premise fixtures pass;
+- v0.111.154 stabilization immediately before/at/after capacity exhaustion, temporal
+  fairness, restart-stable charging, admitted renewal, joint-round capacity and explicit
+  unavailable-state fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -22472,15 +22671,18 @@ Deliverables:
   abort certificates use exact rollback-resistant symmetric/asymmetric equal-weight
   quorum profiles with honest intersection and joint or externally fenced reconfiguration;
   safety-only, quorum-reachable and eventually-synchronous-progress classes are distinct;
-  Byzantine safety uses `b`, reachability uses `u`, progress additionally requires fair
-  authenticated delivery/coordinator replacement/stable reconfiguration after eventual
-  synchronization, and widened checked arithmetic rejects infeasible combinations;
+  Byzantine safety uses `b`, reachability uses total nonresponse `u_total` including
+  Byzantine withholding, and progress additionally requires fair authenticated delivery,
+  coordinator replacement, stable reconfiguration and enough authenticated decision/
+  reconciliation capacity at eventual synchronization; widened checked arithmetic rejects
+  infeasible combinations and exhausted resource premises become explicit unavailable state;
   final anchor non-admission is permanently replay-fenced and every old request route is
   closed before a bounded successor generation or mutually exclusive abort may proceed;
   non-borrowable clone-aggregated recovery capacity remains reserved for exact query,
   negative fencing, route closure, conflict retention and safe abort after normal limits,
   then returns unused slices exactly once through active/closing/closed accounting only
-  after every request, route, conflict, migration and provider epoch is terminal;
+  after every request, route, conflict, migration, provider epoch and reserve slice has a
+  complete terminal consumed/refundable/permanently-retained/released disposition;
   delivery separately moves
   through prepared, durably unknown before the first output byte, delivered and
   possession-confirmed states, uses protected pending storage/admitted explicit channels
