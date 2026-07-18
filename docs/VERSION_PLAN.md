@@ -12129,7 +12129,7 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.106 are complete and their provider/fence/effect/
+  v0.111.50 and v0.111.54-v0.111.109 are complete and their provider/fence/effect/
   custody/anchor/evidence/admission/privacy capabilities are admitted; earlier
   binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
@@ -12562,9 +12562,10 @@ Deliverables:
 - `WitnessedComplete` makes threshold/diverse witness co-commit part of acceptance:
   the provider cannot create an accepted entry or `ExecutionEligible` proof until the
   required witness set durably signs the v0.111.106 signature-free
-  `AcceptanceIntentRoot`; canonical `WitnessSetRoot` commits signer identities and
-  signatures, and provider acceptance binds both roots without any transcript signing
-  its own signature result;
+  `AcceptanceIntentRoot`; v0.111.109 requires one checkpoint-verifiable
+  `WitnessAdmissionReceipt` per counted signer, canonical `WitnessSetRoot` commits
+  those receipts, and provider acceptance binds both roots without any transcript
+  signing its own signature result;
 - asynchronous post-acceptance witness publication does not satisfy witnessed
   completeness; threshold loss, partial signatures, split views or stale witness
   epochs keep the operation non-executable rather than downgrading assurance;
@@ -14366,7 +14367,8 @@ Exit criteria:
 ### v0.111.101 - Historical No-Effect Finality Proof
 
 Goal: prove both that no delayed request can execute and that no historical effect was
-already produced before projecting an unknown dispatch to no-effect.
+already produced before projecting a started or dispatch-authorized unknown to
+no-effect.
 
 Deliverables:
 
@@ -14379,8 +14381,8 @@ Deliverables:
   every in-process/downstream effect boundary, client/proxy/queue/provider path,
   version/epoch and coverage evidence proving the historical-outcome statement applies
   to the complete declared effect surface;
-- authoritative `NoEffectFinalityProof` is the domain-separated composition of one
-  verified v0.111.100 `DeliveryClosureProof`, one matching
+- authoritative dispatched `StartedNoEffect` finality is the domain-separated
+  composition of one verified v0.111.100 `DeliveryClosureProof`, one matching
   `ProviderHistoricalEffectOutcome` and one `CompleteEffectBoundaryCoverage`, all for
   the same operation, permit, request, provider epoch and replay-fence lineage;
 - delivery closure proves only that no future delayed copy can newly execute; a replay
@@ -14392,10 +14394,10 @@ Deliverables:
   `AcceptedNeverStarted`, and started or dispatch-authorized state may accept only
   `StartedNoEffect`; incompatible positive evidence projects `Conflicting`;
 - historical-outcome verification returns a general typed
-  `HistoricalOutcomeFinalityProof`, never a boolean; `NoEffectFinalityProof` is
-  constructible only from a prior-state-compatible no-effect variant plus complete
-  closure/coverage, while `Committed`, `Conflicting` and `Unknown` remain their exact
-  typed outcomes;
+  `HistoricalOutcomeFinalityProof`, never a boolean; v0.111.107 gives pre-dispatch
+  variants their separate no-dispatch proof obligations and reserves complete
+  closure/coverage for `StartedNoEffect`, while `Committed`, `Conflicting` and
+  `Unknown` remain their exact typed outcomes;
 - a deduplication record that proves a prior commit is positive committed evidence even
   when it also serves as a replay fence; outcome/closure joins are monotonic and cannot
   discard that fact or prefer a no-effect source by arrival order;
@@ -14433,12 +14435,11 @@ Deliverables:
   consequence_kind, resolution_generation)`; its authenticated leaf is `Vacant`,
   `Active { consequence_id, knowledge_root }` or `Terminal { consequence_id,
   knowledge_root, terminal_kind }`;
-- before minting any consequence capability or reserving provider work, admission
-  performs only an expected-`Vacant` CAS on the exact slot and durably publishes the
-  chosen consequence ID/request commitment; v0.111.105 makes `Terminal` immutable and
-  requires every retry or repeat occurrence to use a new authenticated key;
-  different IDs therefore contend on one authority leaf rather than separate history
-  keys;
+- before minting any consequence capability, admission validates an expected-`Vacant`
+  predecessor on the exact slot and selects the consequence ID/request commitment;
+  v0.111.105 makes `Terminal` immutable, and v0.111.108 atomically publishes the slot
+  with its generation head, history and provider/budget reservation; different IDs
+  therefore contend on one authority transition rather than separate history keys;
 - `EffectEmergencyStateRoot` commits the slot-map root and append-only v0.111.98
   detailed consequence-history root; deterministic exact projection proves every
   active/terminal slot names one matching history entry and no history entry can become
@@ -14549,10 +14550,13 @@ Deliverables:
 - any `NeverAccepted` evidence joined with durable acceptance/start/dispatch roots and
   any `AcceptedNeverStarted` evidence joined with durable start/dispatch roots forms a
   canonical contradiction and projects `Conflicting`, never `ProvenNoEffect`;
-- general `HistoricalOutcomeFinalityProof` is a sum type carrying the prior state,
-  typed provider outcome, v0.111.100 delivery closure, complete v0.111.101 effect-
-  boundary coverage and compatibility decision; committed, conflicting, unknown and
-  incompatible outcomes cannot inhabit a type named no-effect;
+- general `HistoricalOutcomeFinalityProof` is a prior-state-indexed sum type rather
+  than one structure with universally required fields; v0.111.107 defines its exact
+  variants so only started or dispatch-authorized history carries v0.111.100 delivery
+  closure and complete v0.111.101 effect-boundary coverage;
+- pre-dispatch no-effect variants instead carry a final authenticated
+  `NoDispatchAuthorizationProof`; local absence, a missing cache entry or an
+  unobserved dispatch is never accepted as that proof;
 - `NoEffectFinalityProof<NoEffectKind>` has no public constructor from raw evidence;
   the checked projector creates it only for the matching compatible matrix row and
   preserves `NotAccepted`, `AcceptedNeverStarted` or `StartedNoEffect` through policy,
@@ -14597,6 +14601,9 @@ Deliverables:
   consequence_kind)` binds current generation/sequence and terminal slot root; one
   expected-head CAS admits exactly one successor and rejects generation skipping,
   duplicate successors and alternate consequence IDs;
+- v0.111.108 composes generation-head advancement, slot publication, history append,
+  request commitment and capability/budget reservation into one durable authority
+  transaction; none of these structures may advance independently;
 - a retry after `ResolutionProvenNoEffect` additionally consumes the signed policy
   decision, new capability/budget, prior consequence outcome and query closure; other
   terminal kinds remain non-repeatable unless their admitted occurrence policy names a
@@ -14642,10 +14649,11 @@ Deliverables:
 - witnesses sign only a domain-separated transcript containing the exact intent root,
   witness identity/key epoch, suite and witness role; no witness transcript contains
   its own signature, another resulting signature or `WitnessSetRoot`;
-- canonical `WitnessSetRoot` commits signer identities, key epochs, roles, suites and
-  signature bytes in deterministic identity order; duplicate/missing/unauthorized
-  signers, threshold/diversity failure, invalid signatures and alternate ordering are
-  refused before acceptance;
+- canonical `WitnessSetRoot` commits the v0.111.109 durable witness-admission receipts,
+  including signer identity, key epoch, role, suite and signature bytes, in
+  deterministic identity order; duplicate/missing/unauthorized signers, unverifiable
+  durability checkpoints, threshold/diversity failure, invalid signatures and
+  alternate ordering are refused before acceptance;
 - `AcceptedEffectEnvelopePrepared` binds the intent and witness-set roots as separate
   fields; changing threshold, witness set, suite, policy, predecessor, receipt or plan
   creates a new intent and invalidates every signature over the old root;
@@ -14679,6 +14687,156 @@ Exit criteria:
 - Acceptance binds one exact verified witness set to one signature-free intent root.
 - Threshold, signer or transcript substitution cannot preserve acceptance authority.
 
+### v0.111.107 - State-Specific Historical Finality Proofs
+
+Goal: require only evidence that can exist in the operation's authenticated prior
+state while proving pre-dispatch absence from final authority rather than observation.
+
+Deliverables:
+
+- replace any field-uniform historical finality record with a closed canonical sum:
+  `NeverAccepted`, `AcceptedNeverStarted`, `StartedNoEffect`, `Committed`,
+  `Conflicting` and `Unknown`; decoders reject kind/field mismatches and unknown
+  critical variants;
+- `NeverAccepted` binds `PriorExecutionState::PreAcceptanceCandidate`, the exact
+  acceptance-fence proof, `AbortedBeforeAcceptanceProof` and a matching
+  `NoDispatchAuthorizationProof`; it cannot contain or require a dispatch root;
+- `AcceptedNeverStarted` binds `PriorExecutionState::AcceptedNotStarted`, final
+  non-start evidence and a matching `NoDispatchAuthorizationProof`; accepted state
+  alone cannot imply that dispatch authority was absent;
+- `StartedNoEffect` binds `PriorExecutionState::Started` or
+  `DispatchAuthorizedUnknown`, typed started-no-effect evidence, v0.111.100
+  `DeliveryClosureProof` and complete v0.111.101 effect-boundary coverage;
+- `Committed` carries exact positive acceptance/start/result/effect evidence,
+  `Conflicting` carries the minimal complete contradiction set, and `Unknown` retains
+  the known frontier and missing proof obligations without projecting no effect;
+- canonical `NoDispatchAuthorizationProof` is produced only from a final,
+  authenticated execution-slot or dispatch-fence state that makes later authorization
+  impossible under the exact provider namespace/incarnation/epoch; local absence,
+  timeout, non-inclusion in a partial map or an unqueried provider is insufficient;
+- finality verification first proves the prior-state variant, then validates only its
+  legal evidence fields and exact root/epoch lineage; a dispatch-authorization root in
+  either pre-dispatch variant is a contradiction and produces `Conflicting`;
+- policy, cleanup, retry, dependency, sync and status APIs consume the typed sum and
+  cannot erase the distinction by converting all no-effect variants to one untyped
+  boolean or a structure with fabricated empty closure fields;
+- tests and canonical vectors cover every variant, illegal field presence/absence,
+  final execution-slot fences, local-absence refusal, acceptance/dispatch races,
+  delayed dispatch, kind confusion, root/epoch substitution and mixed-version refusal.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-store`
+- state-indexed historical-finality and no-dispatch-fence state-machine model;
+- canonical sum-type, field-legality and dispatch-race vectors.
+
+Exit criteria:
+
+- Pre-dispatch finality never requires or fabricates a dispatch-authorization root.
+- No-dispatch evidence comes from final authenticated authority state, not observation.
+- Only started or dispatch-authorized no-effect finality requires delivery closure.
+
+### v0.111.108 - Atomic Consequence Authority Transition
+
+Goal: publish each consequence generation, slot, history entry and reservation as one
+durable authority decision with no independently authoritative partial state.
+
+Deliverables:
+
+- canonical `ConsequenceGeneration` is an explicit tagged union of
+  `ResolutionGeneration(u64)` and `OccurrenceSequence(u64)`; keys, signatures,
+  storage and APIs preserve the tag and reject cross-kind comparison or substitution;
+- canonical `ConsequenceAuthorityTransition` binds the expected generation head,
+  expected slot-map root/leaf, previous history root, new slot leaf, appended history
+  entry/root, consequence ID/request commitment, exact capability/provider/budget
+  reservation, policy evidence and resulting `EffectEmergencyStateRoot`;
+- one compare-and-publish authority transaction validates all expected predecessors,
+  durably prepares every component and atomically commits the new generation head,
+  slot map, append-only history and reservation; no sequential CAS result is exposed as
+  authority and no component is selected as the winner during recovery;
+- no consequence capability, provider handle, budget child or executable request is
+  returned before the committed transition and all required directory/database/
+  provider durability acknowledgements are verified;
+- prepared transactions are non-authorizing and carry one immutable transaction ID,
+  complete component digests and bounded custody; restart must finish the exact commit
+  or refuse/freeze it, never reconstruct missing authority or advance only one root;
+- provider-side reservations use idempotent prepare/query/commit/abort identities and
+  remain conservatively charged while the outcome is ambiguous; abort is permitted
+  only when authoritative evidence proves no external capability could have escaped;
+- retry and occurrence successors consume the exact terminal predecessor from
+  v0.111.105 and use the matching tagged generation; resolution generations cannot be
+  replayed as repeatable occurrences or vice versa;
+- compaction, migration, restore and sync retain one proof that the generation head,
+  slot leaf, history entry, reservation and emergency composite root came from the same
+  transition; any split, stale or incomparable state freezes the affected scope;
+- tests cover crashes and response loss before/after every prepare and commit point,
+  head-only/slot-only/history-only/reservation-only persistence, competing successors,
+  provider ambiguity, generation-tag confusion, stale restore and partial compaction.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-sync`
+- atomic consequence-authority crash/concurrency state-machine model;
+- tagged-generation and composite-transition canonical vectors.
+
+Exit criteria:
+
+- No generation head, slot, history entry or reservation advances independently.
+- No consequence authority escapes before one durable composite transition commits.
+- Resolution generations and occurrence sequences are distinct canonical identities.
+
+### v0.111.109 - Durable Witness Admission Receipts
+
+Goal: count a witness toward acceptance only after its signed evidence is durably
+admitted under a queryable retention commitment.
+
+Deliverables:
+
+- canonical `WitnessAdmissionReceipt` binds the exact v0.111.106 acceptance-intent
+  root, witness namespace/incarnation, identity/key epoch, role/suite, witness
+  signature, durable journal or checkpoint sequence/root, capacity/retention
+  generation, query/recovery identity and domain-separated durability acknowledgement;
+- witness signing and admission are ordered `IntentVerified -> SignaturePrepared ->
+  Journaled -> DurabilityAcknowledged`; only the final typed receipt may enter a
+  `WitnessSetRoot`, and a signature returned before journal durability is
+  non-authorizing prepared evidence;
+- receipt verification proves checkpoint inclusion/consistency, witness incarnation
+  continuity, active key epoch, capacity reservation and retention horizon under the
+  declared witness assurance profile before threshold or diversity counting;
+- canonical `WitnessSetRoot` commits complete admission receipts in deterministic
+  witness-identity order, not bare identities/signatures; threshold calculation counts
+  only unique receipts whose durability checkpoint and retention generation verify;
+- provider acceptance binds the exact receipt-set root and cannot substitute a valid
+  bare signature, weaker checkpoint, expired retention generation or receipt from a
+  different witness incarnation; response loss queries the receipt identity;
+- compaction and witness key/journal rotation preserve inclusion and consistency proofs
+  through the acceptance retention horizon; lost or unverifiable receipt authority
+  blocks new acceptance and enters explicit recovery for existing accepted history;
+- threshold loss before provider acceptance keeps the operation non-executable;
+  evidence loss after accepted authority is canonical assurance degradation/conflict
+  and never rewrites the historical acceptance or silently lowers policy;
+- privacy profiles disclose only their admitted witness occurrence, checkpoint and
+  query-linkage claims; opaque identifiers and batching do not claim durability that
+  the witness cannot later prove;
+- tests cover signature-before-journal crash, journaled-before-acknowledgement crash,
+  response loss, rollback, cloned incarnation, duplicate receipt, checkpoint fork,
+  compaction, key rotation, retention expiry, threshold loss and mixed-version refusal.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- witness-sign/admit/checkpoint/threshold state-machine model;
+- canonical admission-receipt, checkpoint and receipt-set vectors.
+
+Exit criteria:
+
+- A bare valid witness signature never satisfies witnessed completeness.
+- Every counted witness has verifiable durable admission and retention evidence.
+- Crash, rollback or compaction cannot manufacture or silently erase threshold status.
+
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
 Goal: ensure untrusted remote data cannot influence trusted state before full
@@ -14708,7 +14866,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.106 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.109 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -14746,8 +14904,9 @@ Deliverables:
   stable permit identities, permit-scoped conflict abandonment, consequence-outcome
   knowledge, acyclic dependency admission, delivery-closure proofs, historical no-
   effect finality, authoritative consequence slots and non-circular envelope admission,
-  prior-state-compatible historical outcomes, write-once consequence generations and
-  non-self-referential acceptance witness frontiers,
+  prior-state-compatible historical outcomes, write-once consequence generations,
+  non-self-referential acceptance witness frontiers, state-specific finality proofs,
+  atomic consequence-authority transitions and durable witness-admission receipts,
   admitted authentication suite/provider-capacity mode,
   and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
@@ -14762,7 +14921,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.106 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.109 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -15171,6 +15330,10 @@ Deliverables:
   acceptance/start, never-started evidence refining durable dispatch, terminal slot
   reactivation/overwrite, skipped/forked consequence generation, witness/provider
   signing a self-containing transcript, signer-order/threshold/set-root substitution,
+  pre-dispatch finality requiring/fabricating dispatch closure, local absence proving a
+  dispatch fence, independently advanced consequence head/slot/history/reservation,
+  resolution/occurrence generation-tag substitution, bare witness signature counted
+  before durable admission, checkpoint rollback or expired-retention threshold,
   unknown-effect
   compensation unsafe in either possible world, mutable fence root from late result,
   result-log/status-map splice, provider-collusion completeness claimed without
@@ -15324,7 +15487,9 @@ Deliverables:
   stable lineage permit identities, isolated permit conflict abandonment, explicit
   consequence ambiguity, acyclic dependency admission, typed historical no-effect
   finality with prior-state compatibility, single-active write-once consequence slots,
-  non-circular staged envelope admission and signature-free acceptance witness frontiers,
+  non-circular staged envelope admission, signature-free acceptance witness frontiers,
+  state-specific historical-finality variants, atomic consequence-authority
+  transitions and checkpoint-verifiable durable witness-admission receipts,
   fail-closed post-start
   recovery with distinct started-no-effect knowledge, non-equivocating static-slot
   allocation,
@@ -15395,7 +15560,10 @@ Deliverables:
   late evidence resurrecting custody/repeating cleanup, compensation unsafe in either
   possible world, mutable acceptance root or result-evidence splice, provider-
   collusion completeness without independent evidence, execute-before-receipt/
-  witness, append-only operation/idempotency non-inclusion, dual-identity map/log set
+  witness, state-unavailable historical-finality fields, observational no-dispatch
+  proof, split consequence authority transaction, generation-tag confusion,
+  witness counted before checkpoint-verifiable admission or after retention expiry,
+  append-only operation/idempotency non-inclusion, dual-identity map/log set
   mismatch, premature staged-material cleanup, unresolved-custody share
   exhaustion, custody-age reset or unanchored abandonment destruction, decoder
   substitution, accounting-key retirement before signed final closure, feature
@@ -15500,7 +15668,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.106 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.109 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -15522,7 +15690,7 @@ Deliverables:
   custody/abandonment, immutable acceptance/current-result evidence,
   pre-execution receipt/witness admission, exact feature-witness/operation authority
   composition and externally anchored composite emergency-head publication through
-  v0.111.106, and the
+  v0.111.109, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -16467,7 +16635,9 @@ Deliverables:
   effect-boundary-coverage/no-effect-finality, consequence-slot/occurrence-policy/
   history-projection, staged-envelope-admission/lineage-derivation, prior-state/
   historical-outcome compatibility, consequence-generation-head/write-once-terminal
-  and acceptance-intent/witness-set/provider-statement transcript corpus;
+  and acceptance-intent/witness-set/provider-statement transcript,
+  historical-finality-variant/no-dispatch-proof, tagged consequence generation/
+  composite authority transition and witness-admission-receipt/checkpoint corpus;
 - deterministic fact rule/query-plan, snapshot cursor, immutable-index offset,
   exact cryptographic suite/hybrid transcript, opaque bundle outer/inner
   manifest, and blind-claim corpus;
@@ -16589,7 +16759,8 @@ Deliverables:
   coverage/no-effect-finality/consequence-slot/occurrence-policy/history-projection/
   staged-envelope-admission/lineage-derivation/prior-outcome-compatibility/consequence-
   generation-head/write-once-terminal/acceptance-intent/witness-set/provider-
-  statement/debt target set;
+  statement/historical-finality-variant/no-dispatch-proof/consequence-authority-
+  transition/tagged-consequence-generation/witness-admission-receipt/debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -16673,7 +16844,9 @@ Deliverables:
   closure composed with typed historical outcome/boundary coverage, single-active
   consequence slots and staged non-circular envelope admission, prior-state-compatible
   historical finality, write-once consequence generation heads and signature-free
-  acceptance intent/witness/provider frontiers, plus anchored
+  acceptance intent/witness/provider frontiers, state-specific finality proofs with
+  authenticated no-dispatch fences, atomic generation/slot/history/reservation
+  publication and checkpoint-verifiable witness-admission receipts, plus anchored
   irreducible-conflict abandonment under independent evidence keys/retention,
   append-only classification, two-world-safe compensation/normalization, bounded
   authoritative-time emergency custody/anchored abandonment, governed bridge
@@ -16899,7 +17072,11 @@ Deliverables:
   never-accepted/never-started evidence contradicting durable prior roots, incompatible
   no-effect constructor use, terminal consequence-slot reuse, generation skip/fork,
   compaction overwrite, recursive witness/provider signature transcript, witness order/
-  threshold/set substitution or provider statement self-reference,
+  threshold/set substitution or provider statement self-reference, pre-dispatch
+  finality carrying/fabricating delivery closure, local absence used as a no-dispatch
+  proof, partial consequence head/slot/history/reservation authority, generation-tag
+  confusion, witness signature counted before durable journal/checkpoint admission,
+  witness rollback/retention expiry or bare-signature threshold satisfaction,
   unanchored conflict abandonment, conflict evidence erasure/cross-purpose key use,
   unbounded/uncharged prepared receipts, local-only provider capacity, static-slot
   clone replay, rollbackable provider checkpoint, partitioned double allocation,
@@ -17083,6 +17260,9 @@ Deliverables:
   v0.111.104 prior-state/join/check-compatible/project/conflict boundaries,
   v0.111.105 vacant/active/terminal/successor-head/compact boundaries and
   v0.111.106 intent/sign-witness/build-set/sign-provider/commit-acceptance boundaries,
+  v0.111.107 select-variant/prove-no-dispatch/close-delivery/project-finality
+  boundaries, v0.111.108 prepare-composite/reserve/commit/recover/freeze boundaries
+  and v0.111.109 sign/append/checkpoint/acknowledge/count-receipt boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -17302,7 +17482,11 @@ Deliverables:
   incompatible no-effect constructor, terminal consequence-slot reactivation,
   generation skip/wrap or two successors, terminal compaction overwrite, witness-
   signer permutation/duplication/omission, threshold/suite/set-root substitution,
-  self-referential witness or provider acceptance transcript,
+  self-referential witness or provider acceptance transcript, finality-variant field
+  confusion, local-absence no-dispatch claim, delayed dispatch after a false fence,
+  consequence head/slot/history/reservation split commit, resolution/occurrence tag
+  substitution, witness pre-journal/pre-acknowledgement crash, checkpoint fork,
+  rollback, retention expiry or post-compaction threshold loss,
   unanchored
   conflict abandonment/cleanup, provider/writer collusion under each completeness
   profile,
@@ -17700,7 +17884,9 @@ Deliverables:
 - receipt/witness benchmarks compare capacity reservation, wrapped evidence bytes,
   provider-capacity mode, threshold fanout, ambiguity recovery and terminal compaction
   overhead plus baseline/padded/high-security selected/non-selected/network timing,
-  volume, retry, cover and collusion-observer traces;
+  volume, retry, cover and collusion-observer traces; durable witness admission also
+  measures journal/checkpoint acknowledgement, inclusion/consistency proof, query,
+  rotation, retention and threshold-revalidation costs;
 - provider execution benchmarks measure start-reservation/start durability, effect
   plan/permit entry, per-effect knowledge-map joins, summary projection, durable
   dispatch WAL/CAS/flush, network handoff, query reconciliation, dependency-witness/
@@ -17713,8 +17899,9 @@ Deliverables:
   no-effect-finality projection, consequence slot/history CAS/projection, bounded
   occurrence sequencing, prior-state compatibility/conflict projection, write-once
   generation-head successor/compaction verification, acceptance-intent/witness-set/
-  provider-statement construction/verification and every staged envelope-admission/
-  lineage-derivation step;
+  provider-statement construction/verification, state-specific finality/no-dispatch
+  proof verification, composite consequence-authority transaction/recovery and every
+  staged envelope-admission/lineage-derivation step;
   delivery-profile benchmarks distinguish prepared/authorized/
   handed-off states, local dispatch, provider idempotency, remote invocation, semantic-
   effect and deduplication-detail/replay-fence retention/compaction/migration costs;
@@ -18307,6 +18494,9 @@ Deliverables:
 - v0.111.104 enforces prior-state-compatible historical finality, v0.111.105 makes
   consequence generations write-once with one successor, and v0.111.106 defines
   signature-free acceptance intent/witness/provider frontiers;
+- v0.111.107 gives each historical-finality state only its legal proof obligations,
+  v0.111.108 atomically publishes every consequence-authority component, and
+  v0.111.109 counts only durably admitted witness receipts toward acceptance;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -18629,6 +18819,12 @@ Deliverables:
   compaction, migration, stale restore and retry-policy fixtures pass;
 - v0.111.106 canonical signer order, missing/duplicate signer, threshold/diversity/
   suite/set substitution, predecessor race and self-reference fixtures pass;
+- v0.111.107 typed historical-finality variant, illegal-field, final no-dispatch
+  fence, delayed-dispatch, race and local-absence-refusal fixtures pass;
+- v0.111.108 composite consequence transaction, every crash boundary, partial-root,
+  reservation ambiguity, competing successor and generation-tag fixtures pass;
+- v0.111.109 witness pre-journal/pre-acknowledgement crash, rollback, checkpoint fork,
+  compaction, rotation, expiry and threshold-loss fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -19071,9 +19267,10 @@ Deliverables:
   validated/receipt/policy-signature/prepared/accepted/active/eligible stages; lineage
   identity derives from the reserved operation/proposal/plan genesis before receipts,
   acceptance authenticates that identity, and no non-authorizing stage can execute;
-  witnesses sign one signature-free `AcceptanceIntentRoot`, canonical signer/signature
-  bytes form a separate `WitnessSetRoot`, and provider acceptance binds both through an
-  unsigned provider statement so no signature transcript contains its own result;
+  witnesses sign one signature-free `AcceptanceIntentRoot`; each counted signature
+  must have a checkpoint-verifiable `WitnessAdmissionReceipt`, canonical receipts form
+  a separate `WitnessSetRoot`, and provider acceptance binds both through an unsigned
+  provider statement so no signature transcript contains its own result;
   the active envelope permits only narrowing, cancellation or target instantiation,
   while widening creates a fresh causally linked operation with full admission and no
   inherited `Started`; every record uses stable lineage/birth-generation/permit
@@ -19088,6 +19285,10 @@ Deliverables:
   permit/kind/resolution generation and bounded occurrence policies govern repeatable
   actions; each slot is strictly `Vacant -> Active -> Terminal`, terminal leaves are
   immutable, and retries/repeats advance one checked successor generation/sequence;
+  resolution generations and occurrence sequences are distinct tagged identities, and
+  one durable `ConsequenceAuthorityTransition` atomically publishes the expected/new
+  generation head, slot, history append, request, reservation and emergency root before
+  any consequence capability escapes;
   no terminal resolution, cleanup, reopening or release precedes terminal evidence;
   every permit is durable
   `DispatchPrepared`, then durable `OutcomeUnknown`, before external handoff,
@@ -19095,14 +19296,15 @@ Deliverables:
   at-most-once remote invocation and exactly-once semantic effect while binding the
   claim to provider/key epoch, deduplication lifetime, compaction/migration behavior
   and a permanent replay fence for delayed queues, backups and offline clones;
-  `ProvenNoEffect` after dispatch requires one `NoEffectFinalityProof` combining a
-  `DeliveryClosureProof` over every admitted proxy, queue, retry/dead-letter layer,
-  provider epoch and replay fence with typed provider historical no-effect evidence and
-  complete effect-boundary coverage; committed/conflicting/unknown historical outcomes
-  remain those states, closure or a deduplication tombstone alone selects none, and the
-  prior-state matrix permits dispatch-authorized state to refine only through
-  `StartedNoEffect`; `NeverAccepted` or `AcceptedNeverStarted` against durable dispatch
-  roots becomes conflict; each
+  historical finality is a state-indexed sum: pre-acceptance `NeverAccepted` and
+  accepted-but-not-started `AcceptedNeverStarted` require an authenticated final
+  `NoDispatchAuthorizationProof`, while only started or dispatch-authorized
+  `StartedNoEffect` requires a `DeliveryClosureProof` over every admitted proxy, queue,
+  retry/dead-letter layer, provider epoch and replay fence plus complete effect-boundary
+  coverage; committed/conflicting/unknown historical outcomes remain those states,
+  closure, local absence or a deduplication tombstone alone selects none, and
+  `NeverAccepted` or `AcceptedNeverStarted` against durable dispatch roots becomes
+  conflict; each
   dependency
   consumes or borrows its declared typed outcome witness, while data-dependent targets
   remain within a precommitted bounded derivation domain, and wider targets require a
