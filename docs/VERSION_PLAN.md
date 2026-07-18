@@ -12129,7 +12129,7 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.118 are complete and their provider/fence/effect/
+  v0.111.50 and v0.111.54-v0.111.120 are complete and their provider/fence/effect/
   custody/anchor/evidence/admission/privacy capabilities are admitted; earlier
   binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
@@ -15101,9 +15101,9 @@ Deliverables:
 - any omitted, duplicated, unknown, conflicting, stale-generation or incompletely
   covered inventory entry blocks aggregate no-effect; a current generation with no
   active effects cannot hide an old `OutcomeUnknown` permit;
-- v0.111.117 atomically binds the inventory/event root to current permit-state,
-  effect-knowledge and dispatch-state maps plus the active composite head; every
-  authority-changing permit transition publishes one consistent successor checkpoint;
+- v0.111.117 binds the inventory/event root to current permit-state, effect-knowledge
+  and dispatch-state maps plus the expected prior composite head; v0.111.119 then
+  publishes one resulting composite head that binds the consistent successor checkpoint;
 - v0.111.118 bounds transitions, evidence, bytes and verification work; duplicate
   evidence cannot append authority, and compaction may replace old detail only with
   bounded-depth proof-preserving immutable summaries that remain enumerable and bound
@@ -15238,34 +15238,39 @@ Deliverables:
 - canonical `LineagePermitStateCheckpoint` binds `EffectPlanLineageRoot`, append-only
   `LineagePermitInventoryRoot` and event count, current permit-state map root,
   effect-knowledge map root, dispatch-state map root, executor generation, predecessor
-  checkpoint root and exact active `EffectEmergencyStateRoot`/composite head;
+  checkpoint root and expected prior `EffectEmergencyStateRoot`/composite head; it
+  explicitly excludes the resulting composite-head root;
 - every authority-changing permit admission, amendment, dispatch, evidence join,
-  revocation, terminalization or tombstone transition atomically commits the inventory
-  append, all affected map successors and one checkpoint successor under the expected
-  predecessor/composite-head CAS or leaves the complete prior checkpoint authoritative;
+  revocation, terminalization or tombstone transition prepares the inventory append,
+  all affected map successors and one inert checkpoint successor under the expected
+  predecessor/prior-composite CAS; v0.111.119 then constructs a new emergency composite
+  head that binds the checkpoint root and activates the complete transition;
 - canonical projection proves every inventory admission/transition through the event
   count is reflected exactly in the permit-state, effect-knowledge and dispatch maps,
   and every authoritative map leaf has one matching inventory lineage;
-- `AcceptedStartedNoEffectProof` consumes the exact checkpoint selected by the active
-  composite head and complete proofs for its inventory projection; independently
-  supplied or merely mutually hash-consistent roots have no finality authority;
+- `AcceptedStartedNoEffectProof` consumes the exact checkpoint transitively selected by
+  the active composite head and complete proofs for its inventory projection; the
+  checkpoint never selects its resulting head, and independently supplied or merely
+  mutually hash-consistent roots have no finality authority;
 - checkpoint verification rejects stale inventory with newer knowledge/dispatch maps,
   new inventory with stale maps, omitted transition suffixes, executor-generation
-  splice, unrelated composite head, predecessor fork and rollback;
+  splice, checkpoint prepared against the wrong prior composite head, resulting head
+  with different map roots, mutual-root construction, predecessor fork and rollback;
 - startup, sync, partial clone, archive, compaction and restore verify checkpoint
   ancestry/current-head selection before permitting finality, cleanup, retry,
   compensation, dependency reopening or new permit authority;
 - mixed-version peers unable to parse the checkpoint remain verify/refuse-only for the
   affected lineage and cannot advertise equivalent current state from older roots;
-- tests cover crashes after each event/map/checkpoint write, inventory/map splice,
-  suffix omission, simultaneous evidence/amendment, stale active head, checkpoint fork,
-  executor rollover, compaction, restore rollback and mixed-version refusal.
+- tests cover crashes after each event/map/checkpoint/head write, inventory/map splice,
+  suffix omission, simultaneous evidence/amendment, stale prior head, checkpoint fork,
+  checkpoint/resulting-head mutual reference, executor rollover, circular compaction
+  summary, restore rollback and mixed-version refusal.
 
 Verification:
 
 - `cargo test -p sagnir-store`
 - `cargo test -p sagnir-sync`
-- inventory/maps/checkpoint/composite-head atomicity state-machine model;
+- inventory/maps/checkpoint preparation and acyclic head-publication state-machine model;
 - canonical checkpoint, projection and rollback vectors.
 
 Exit criteria:
@@ -15299,12 +15304,16 @@ Deliverables:
 - genuine conflict detail beyond the live bound moves to a separately keyed, encrypted,
   append-only conflict-evidence archive with its own item/byte/work/retention bounds;
   archive summaries preserve contradiction commitments needed by current authority;
+- every permit reserves one non-borrowable fixed-size v0.111.120 evidence-saturation
+  leaf and independently accounted authentication budget at admission; ordinary
+  history, archive, amendments and other permits cannot consume this emergency capacity;
 - amendment and reconciliation attempts consume persistent rate/work budgets before
   provider query or append; restart, identity churn, failed attempts and duplicate
   evidence cannot reset budgets or create free verification work;
 - hard-limit exhaustion never drops an admitted permit, conflict or unknown outcome;
-  it blocks new amendments/evidence-producing work, preserves read/query/recovery and
-  requires governed lineage closure/abandonment or a fresh causally linked operation;
+  when a minimally authenticated structurally valid candidate cannot be fully admitted,
+  v0.111.120 atomically marks the affected scope saturated before any earlier finality
+  or cleanup authority remains usable; untrusted/unvalidated overflow creates no marker;
 - finality verification declares exact item/byte/proof/depth budgets and returns typed
   `ResourceLimit` without a partial no-effect result or cached authority; high-resource
   hosts may parallelize within the same deterministic authoritative work bounds;
@@ -15324,6 +15333,119 @@ Exit criteria:
 - Duplicate evidence cannot grow authoritative lineage history.
 - Finality verification has protocol-fixed item, byte, depth and work ceilings.
 - Limit exhaustion preserves every admitted uncertainty and returns no partial proof.
+
+### v0.111.119 - Acyclic Lineage Checkpoint Publication
+
+Goal: publish lineage checkpoints and emergency composite heads without either
+canonical commitment depending on its own resulting root.
+
+Deliverables:
+
+- canonical construction order is `PriorCompositeHead ->
+  LineagePermitStateCheckpoint -> NewEmergencyCompositeHead -> ExternalPublication ->
+  LocalActivation`; every stage is typed and only the final activated head is authority;
+- `LineagePermitStateCheckpoint` binds expected prior composite head, predecessor
+  checkpoint, resulting inventory/event root/count, resulting permit-state/effect-
+  knowledge/dispatch-state map roots and executor generation, but contains no field
+  derived from `NewEmergencyCompositeHead`;
+- `NewEmergencyCompositeHead` binds the checkpoint root, expected prior composite head,
+  the exact same resulting map/root tuple or one canonical tuple commitment, and every
+  other resulting custody/resolution/dependency authority root; mismatched checkpoint/
+  head tuples are unconstructible through checked APIs and rejected by decoders;
+- the active-head selector identifies the externally published and locally activated
+  new composite head, which transitively identifies its checkpoint; no checkpoint,
+  local cache, map root or status field selects the resulting head independently;
+- checkpoint preparation and new-head construction are inert durable stages with one
+  transaction ID and bounded custody; external publication and local activation reuse
+  v0.111.67-v0.111.68 expected-head reconciliation and cannot expose a half transition;
+- response loss queries the exact external new-head identity; recovery may finish the
+  prepared checkpoint/head publication or retain the complete prior active head, never
+  synthesize a missing root, rebase the checkpoint or select by arrival order;
+- canonical commitment-dependency validation rejects checkpoint/resulting-head mutual
+  references, direct/indirect fixed points, wrong prior head, cross-lineage checkpoint,
+  alternate resulting map tuple and head/checkpoint generation substitution;
+- compaction summaries bind covered prior checkpoint/head ranges and resulting logical
+  map commitments without containing the physical summary root that contains them;
+  each summary uses an explicit acyclic predecessor graph and bounded verification depth;
+- tests and vectors cover checkpoint containing resulting head, mutual-root fixed point,
+  wrong prior head, new head with different maps, external response loss, local-
+  activation crash, competing head CAS, circular summary and mixed-version refusal.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-store`
+- checkpoint/head/publication/activation crash state-machine model;
+- canonical acyclic commitment graph and mismatch vectors.
+
+Exit criteria:
+
+- A checkpoint never commits to the composite head that commits to that checkpoint.
+- The active head selects exactly one transitively bound checkpoint and resulting maps.
+- Recovery cannot construct, rebase or activate a commitment fixed point.
+
+### v0.111.120 - Evidence Admission Saturation Fence
+
+Goal: fail closed when authenticated contradictory evidence cannot fit in bounded live
+or archive storage without allowing untrusted overflow to revoke authority.
+
+Deliverables:
+
+- every admitted permit owns a bounded preallocated, non-borrowable sequence of
+  `EvidenceAdmissionState` leaves; each generation moves only `Healthy -> Saturated ->
+  Resolved`, and any later saturation uses the next higher preallocated generation;
+  bytes, WAL slots and expected-root transition budget are reserved before permit/
+  effect authority and cannot be consumed by ordinary evidence/archive;
+- canonical `EvidenceAdmissionSaturated` binds affected lineage/permit, authenticated
+  source identity and provider namespace/incarnation/epoch, candidate evidence-class
+  commitment, current knowledge/inventory/archive/checkpoint roots, exhausted item/
+  byte/work/retention dimensions, emergency budget generation and recovery/governance
+  identity without claiming the candidate's unadmitted semantic outcome;
+- before marker publication, bounded authentication and structural framing validate an
+  admitted source, signature/MAC suite, provider epoch, object kind, lengths and exact
+  candidate commitment using an independent emergency evidence-admission budget;
+  semantic outcome processing may remain incomplete;
+- malformed, unauthenticated, stale-source or over-budget public bytes are rejected or
+  quarantined under ordinary abuse limits and cannot create a saturation marker, change
+  authority roots or consume another permit's non-borrowable marker slot;
+- when a minimally valid candidate cannot be fully admitted, one expected-head CAS uses
+  v0.111.117-v0.111.119 to append the saturation transition, update the fixed leaf and
+  publish a new active composite head before returning resource refusal;
+- `Saturated` blocks finality, cleanup, retry/new generation, compensation selection,
+  dependency reopening, authority-summary projection and custody/key/quota release for
+  the affected scope; read, bounded query, evidence recovery and governance remain;
+- every pre-saturation proof/token binds an older active composite head and is rejected;
+  caches, offline peers, restored snapshots and delayed commands must observe the active
+  saturation leaf before consuming finality or consequence authority;
+- additional candidates while saturated cannot amplify fixed authority state; they use
+  separately bounded quarantine/archive recovery capacity, while the first marker's
+  candidate commitment and blocked state remain immutable;
+- unavailable/corrupt preallocated leaf or exhausted reserved transition capacity is
+  `EvidenceAdmissionUnavailable` and fails closed for the complete lineage/provider
+  scope; public authentication-budget exhaustion alone rate-limits that source and
+  cannot manufacture saturation, while admitted providers retain separate reserved lanes;
+- recovery expands/repairs archive capacity, fully admits and projects every retained
+  candidate, then appends `EvidenceAdmissionSaturationResolved` under a new expected
+  head; it never deletes the marker, reopens its generation or restores a pre-
+  saturation proof by fiat, and the next generation becomes healthy only through a
+  separately authenticated transition after all blocked evidence is reconciled;
+- tests cover archive-full legitimate conflict, malformed and valid-signature overflow
+  floods, independent budget isolation, unavailable/exhausted emergency reserve,
+  restart, stale proof/token reuse, offline peer, delayed archive expansion, multiple
+  candidates, resolution ordering and failure before/after every marker publication.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- evidence-authenticate/saturate/block/recover state-machine model;
+- adversarial overflow, stale-authority and canonical saturation-marker vectors.
+
+Exit criteria:
+
+- Unadmittable authenticated evidence blocks older outcome authority without being lost.
+- Untrusted overflow cannot create a saturation fence or consume its reserved slot.
+- Saturation recovery fully admits evidence before any blocked authority can resume.
 
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
@@ -15354,7 +15476,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.118 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.120 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -15400,6 +15522,8 @@ Deliverables:
   wide permit inventory finality and pre-commit consequence abort fencing,
   activation-delivery finality, authoritative lineage permit-state checkpoints and
   bounded permit-inventory/finality work,
+  acyclic checkpoint/composite-head publication and evidence-admission saturation
+  fencing,
   admitted authentication suite/provider-capacity mode,
   and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
@@ -15414,7 +15538,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.118 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.120 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -15836,7 +15960,9 @@ Deliverables:
   commit/abort dual successor or ordinary abort after local authority commit, negative
   provider query used without activation delivery closure, admission/effect outcome
   collapse, inventory/current-map splice, omitted checkpoint suffix, checkpoint
-  rollback, duplicate-evidence history amplification or unbounded finality work,
+  rollback, duplicate-evidence history amplification, unbounded finality work,
+  checkpoint/resulting-head commitment cycle, wrong-prior checkpoint, unadmittable
+  authenticated contradiction leaving old authority usable, or untrusted saturation,
   unknown-effect
   compensation unsafe in either possible world, mutable fence root from late result,
   result-log/status-map splice, provider-collusion completeness claimed without
@@ -16079,7 +16205,9 @@ Deliverables:
   ordinary abort after committed authority, negative activation query used as finality,
   activation/effect outcome collapse, inventory/map/checkpoint splice, omitted event
   suffix, checkpoint rollback, duplicate-evidence append amplification or unbounded
-  permit-history/finality verification,
+  permit-history/finality verification, checkpoint/resulting-head fixed point,
+  checkpoint rebase, missing saturation fence after authenticated overflow, stale
+  pre-saturation proof reuse or unauthenticated saturation-marker creation,
   append-only operation/idempotency non-inclusion, dual-identity map/log set
   mismatch, premature staged-material cleanup, unresolved-custody share
   exhaustion, custody-age reset or unanchored abandonment destruction, decoder
@@ -16185,7 +16313,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.118 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.120 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -16207,7 +16335,7 @@ Deliverables:
   custody/abandonment, immutable acceptance/current-result evidence,
   pre-execution receipt/witness admission, exact feature-witness/operation authority
   composition and externally anchored composite emergency-head publication through
-  v0.111.118, and the
+  v0.111.120, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -17159,7 +17287,8 @@ Deliverables:
   statement/checkpoint/acknowledgement/receipt, provider-activation-unknown,
   lineage-permit-inventory/projection, local-abort-fence/provider-abort,
   activation-finality/closure, lineage-permit-state-checkpoint/map projection and
-  bounded inventory-summary/conflict-archive corpus;
+  bounded inventory-summary/conflict-archive, acyclic checkpoint/composite-head and
+  evidence-admission-saturation marker corpus;
 - deterministic fact rule/query-plan, snapshot cursor, immutable-index offset,
   exact cryptographic suite/hybrid transcript, opaque bundle outer/inner
   manifest, and blind-claim corpus;
@@ -17286,7 +17415,8 @@ Deliverables:
   finality-vector/inert-provider-reservation/provider-activation-receipt/witness-
   statement/durability-acknowledgement/provider-activation-unknown/lineage-permit-
   inventory/abort-fence/provider-abort-receipt/activation-finality/activation-closure/
-  lineage-permit-state-checkpoint/inventory-summary/conflict-archive/debt target set;
+  lineage-permit-state-checkpoint/inventory-summary/conflict-archive/acyclic-checkpoint-
+  head/evidence-admission-saturation/debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -17376,8 +17506,9 @@ Deliverables:
   reservation/activation, and non-recursive checkpoint-verifiable witness-admission
   receipts, durable unknown-before-provider-activation ordering, append-only lineage-
   wide permit inventory finality and pre-commit local/provider abort fencing,
-  activation-delivery finality, atomic inventory/current-map/composite checkpoints and
-  bounded permit-history/finality work, plus anchored
+  activation-delivery finality, acyclic prior-head checkpoint/resulting-head
+  publication, bounded permit-history/finality work and evidence-admission saturation
+  fencing, plus anchored
   irreducible-conflict abandonment under independent evidence keys/retention,
   append-only classification, two-world-safe compensation/normalization, bounded
   authoritative-time emergency custody/anchored abandonment, governed bridge
@@ -17811,6 +17942,8 @@ Deliverables:
   v0.111.116 activation-layer-close/outcome/join/project/refuse boundaries,
   v0.111.117 event/maps/checkpoint/composite-CAS/rollback boundaries and
   v0.111.118 charge/deduplicate/append/summarize/archive/refuse boundaries,
+  v0.111.119 prior-head/checkpoint/new-head/external-publish/local-activate boundaries
+  and v0.111.120 authenticate/saturate/block/recover/refuse boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -18048,6 +18181,9 @@ Deliverables:
   fence loss, activated-with-unknown-effect, inventory/map/composite-head splice,
   omitted event suffix, checkpoint rollback, duplicate evidence flood, transition/
   conflict growth, summary-depth overflow and partial finality on resource refusal,
+  checkpoint/resulting-head fixed point, wrong prior head, mismatched resulting maps,
+  circular compaction summary, archive-full legitimate conflict, untrusted overflow,
+  unavailable saturation slot, stale pre-saturation proof and delayed archive recovery,
   unanchored
   conflict abandonment/cleanup, provider/writer collusion under each completeness
   profile,
@@ -18467,8 +18603,9 @@ Deliverables:
   recovery, durable activation-unknown CAS/flush, inert provider reserve/activate/
   query, activation-delivery closure/finality, local abort fence/provider abort
   reconciliation, atomic lineage checkpoint publication/projection, duplicate-evidence
-  canonicalization, bounded summary/conflict archival and every staged envelope-
-  admission/lineage-derivation step;
+  canonicalization, bounded summary/conflict archival, acyclic checkpoint/new-head
+  construction/publication and evidence-authenticate/saturate/block/recover costs plus
+  every staged envelope-admission/lineage-derivation step;
   delivery-profile benchmarks distinguish prepared/authorized/
   handed-off states, local dispatch, provider idempotency, remote invocation, semantic-
   effect and deduplication-detail/replay-fence retention/compaction/migration costs;
@@ -19073,6 +19210,8 @@ Deliverables:
 - v0.111.116 requires complete activation-delivery closure for non-activation finality,
   v0.111.117 binds inventory and all current permit maps in the active checkpoint, and
   v0.111.118 bounds permit history, conflict retention and finality work;
+- v0.111.119 makes checkpoint/resulting-composite publication acyclic, and v0.111.120
+  preallocates a fail-closed saturation fence for authenticated unadmittable evidence;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -19421,6 +19560,12 @@ Deliverables:
 - v0.111.118 duplicate/equivalent evidence flood, exact transition/byte/work limits,
   conflict archive, summary depth, restart budget and partial-result refusal fixtures
   pass;
+- v0.111.119 checkpoint/resulting-head cycle, wrong prior head, map-tuple mismatch,
+  external publication response loss, activation crash and circular-summary fixtures
+  pass;
+- v0.111.120 archive-full authenticated conflict, untrusted overflow, independent
+  emergency budget, unavailable marker slot, stale proof, restart/offline peer and
+  delayed saturation-recovery fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -19905,10 +20050,13 @@ Deliverables:
   historical finality is a state-indexed sum: pre-acceptance `NeverAccepted` and
   accepted-but-not-started `AcceptedNeverStarted` require an authenticated final
   `NoDispatchAuthorizationProof`; accepted-started plans consume the exact active
-  `LineagePermitStateCheckpoint` atomically binding `EffectPlanLineageRoot`, append-only
-  inventory/event root and count, permit-state/effect-knowledge/dispatch-state maps,
-  executor generation, predecessor and active composite head, then prove every permit
-  ever admitted across every generation: `Ready` or durably revoked
+  `LineagePermitStateCheckpoint` transitively selected by the active resulting
+  composite head: the checkpoint binds `EffectPlanLineageRoot`, append-only inventory/
+  event root and count, permit-state/effect-knowledge/dispatch-state maps, executor
+  generation, predecessor and expected prior composite head but never its resulting
+  head, while the resulting head binds the checkpoint and exact resulting map tuple;
+  finality then proves every permit ever admitted across every generation: `Ready` or
+  durably revoked
   `DispatchPrepared` permits require final no-dispatch proof,
   `DispatchAuthorizedUnknown` permits require a `DeliveryClosureProof` over every
   admitted proxy, queue, retry/dead-letter layer, provider epoch and replay fence plus
@@ -19919,7 +20067,12 @@ Deliverables:
   blocks aggregate no-effect finality; permit transitions, evidence, encoded bytes,
   conflict retention, amendment/reconciliation frequency and finality work obey
   protocol hard bounds, duplicate evidence appends no authority, and bounded-depth
-  summaries plus a separately bounded conflict archive preserve exact roots; each
+  summaries plus a separately bounded conflict archive preserve exact roots; every
+  permit preallocates a non-borrowable `EvidenceAdmissionState` leaf so a minimally
+  authenticated contradiction that cannot fit publishes `EvidenceAdmissionSaturated`
+  under a new acyclic checkpoint/head and blocks finality, cleanup, retry, compensation,
+  dependency reopening and custody release until full admission and governed recovery,
+  while unauthenticated overflow cannot create that marker; each
   dependency
   consumes or borrows its declared typed outcome witness, while data-dependent targets
   remain within a precommitted bounded derivation domain, and wider targets require a
