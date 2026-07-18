@@ -12129,7 +12129,7 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.148 are complete and their provider/fence/effect/
+  v0.111.50 and v0.111.54-v0.111.151 are complete and their provider/fence/effect/
   custody/anchor/evidence/admission/privacy capabilities are admitted; earlier
   binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
@@ -15692,6 +15692,8 @@ Deliverables:
   revalidation, permit safe post-non-admission abort and fix exact threshold assumptions;
   v0.111.146-v0.111.148 atomically order recipient validation with effect consumption,
   reserve revalidation recovery capacity and separate threshold safety from availability;
+  v0.111.149-v0.111.151 fence pending-effect executors, close/refund recovery reserves
+  and distinguish quorum reachability from eventual progress under explicit assumptions;
 - tests cover two restored clones consuming one grant, disjoint/overlapping ranges,
   hardware-counter rollback, provider deduplication expiry, permanent replay fencing,
   threshold double-spend, process/device identity churn, double local quota release,
@@ -16993,7 +16995,8 @@ Deliverables:
 - canonical `ConsumeIfCurrentRecipient` atomically verifies the presented recipient/key
   epoch is in the expected current set, compares slot/effect/idempotency/request fields,
   moves `Unused -> EffectPending` and records the result/query identity before the first
-  semantic effect or downstream handoff;
+  semantic effect or downstream handoff; `EffectPending` remains non-dispatching until
+  v0.111.149 selects atomic terminal execution or one fenced executor lifecycle;
 - a queued, retried, prevalidated or restored request cannot carry membership authority
   past this CAS; the terminal executor revalidates the exact expected set root at
   consumption, and a stale root returns conflict/refusal before effect execution;
@@ -17020,7 +17023,8 @@ Deliverables:
 - tests pause after membership validation, commit exclusive replacement, then resume
   effect; reverse the race, queue/delay old requests, restore clones, race concurrent
   additions/consumers, lose effect responses, migrate providers and exercise hardware/
-  threshold split-transaction refusal.
+  threshold split-transaction refusal, plus duplicate internal executors, process death
+  after `EffectPending`, queue redelivery and stale executor generations under v0.111.149.
 
 Verification:
 
@@ -17063,7 +17067,8 @@ Deliverables:
   restart, recipient transition or provider migration neither multiplies nor resets it;
 - each recovery action consumes or conservatively retains its typed reserve slice before
   work/network output; response loss and ambiguity remain charged while exact query
-  reuses the same operation identity and cannot allocate a replacement slice;
+  reuses the same operation identity and cannot allocate a replacement slice; v0.111.150
+  defines the only authenticated close/refund path for unused terminal reserve capacity;
 - route closure may use only the precommitted bounded route inventory and its reserve;
   an unexpected route/epoch freezes the grant and records conflict without converting
   the reserve into unbounded discovery or ordinary activation capacity;
@@ -17078,7 +17083,8 @@ Deliverables:
 - tests exhaust every normal dimension individually and together, then prove exact query,
   negative-fence publication, all-route closure, conflict retention, abort fence,
   cancellation and cancellation query remain available; clone/Sybil, response-loss,
-  unexpected-route, reserve-corruption and failover cases remain bounded/fail closed.
+  unexpected-route, reserve-corruption and failover cases remain bounded/fail closed;
+  v0.111.150 adds close-response loss, clone double-refund and close-time migration.
 
 Verification:
 
@@ -17096,43 +17102,43 @@ Exit criteria:
 - Recovery reserve is preallocated, non-borrowable and clone-aggregated.
 - Missing recovery capacity refuses issuance or leaves the grant inert without overclaim.
 
-### v0.111.148 - Threshold Safety, Availability And Checked Arithmetic
+### v0.111.148 - Threshold Safety, Quorum Reachability And Checked Arithmetic
 
-Goal: distinguish safe threshold configurations from configurations that can also make
-progress under the declared fault bound, without arithmetic overflow.
+Goal: distinguish safe threshold configurations from configurations whose quorum remains
+reachable under a declared withholding bound, without claiming scheduler/network progress.
 
 Deliverables:
 
-- every protected threshold capability declares one availability class:
-  `SafetyOnly` or `FaultTolerantProgress { unavailable_or_withholding: f }`, bound into
+- every protected threshold capability declares one reachability class:
+  `SafetyOnly` or `QuorumReachable { unavailable_or_withholding: u }`, bound into
   configuration roots, shares, certificates, provider policy and CLI/audit output;
-- all classes retain v0.111.145 safety equations; a symmetric progress profile also
-  requires `q <= N - f`, while an asymmetric profile requires both
-  `q_activation <= N - f` and `q_abort <= N - f` so either decision can complete with
-  up to `f` unavailable or Byzantine-withholding participants;
+- all classes retain v0.111.145 safety equations; a symmetric reachability profile also
+  requires `q <= N - u`, while an asymmetric profile requires both
+  `q_activation <= N - u` and `q_abort <= N - u` so either quorum can be assembled with
+  up to `u` unavailable or withholding participants;
 - configuration admission derives and verifies the combined feasible region rather than
-  assuming safety implies availability; symmetric/equal-weight Byzantine progress under
-  these assumptions requires `N > 3f`, and asymmetric profiles must satisfy every
-  same-kind, cross-kind and per-decision progress inequality simultaneously;
-- a safe configuration whose quorum exceeds `N - f` is admitted only as `SafetyOnly`;
-  it makes no bounded-progress or fault-tolerant availability claim, and policies may
-  require progress capability and refuse safety-only providers before grant issuance;
+  assuming safety implies reachability; when the same simple bound is used for Byzantine
+  safety and withholding (`b = u = f`), symmetric feasibility requires `N > 3f`;
+  asymmetric profiles satisfy every same-kind, cross-kind and reachability inequality;
+- a safe configuration whose quorum exceeds `N - u` is admitted only as `SafetyOnly`;
+  `QuorumReachable` claims only enough potentially responsive participants, not eventual
+  message delivery, fair scheduling or progress; v0.111.151 defines any stronger claim;
 - decode first enforces protocol-fixed maxima for `N`, `f`, quorum fields, participant
   count and configuration bytes; all `2q`, `N + f`, mixed-quorum sums, subtractions and
   old/new joint checks use widened checked arithmetic with explicit overflow/underflow
   refusal and no wrapping, saturation or host-width dependence;
-- joint-consensus availability is evaluated under both old and new configurations and
+- joint-consensus reachability is evaluated under both old and new configurations and
   the declared simultaneous fault/partition model; a transition may remain safety-only
-  even when each isolated configuration normally claims progress;
+  even when each isolated configuration has a reachable quorum;
 - externally fenced stop-and-transfer states its availability assumptions separately;
   unavailability never weakens quorum safety, permits local fallback or selects a partial
   activation/abort certificate;
-- capability negotiation, status and release evidence report safety class, progress
+- capability negotiation, status and release evidence report safety class, reachability
   class, exact equations, arithmetic suite, reconfiguration mode and observed degraded/
   unavailable state without treating a liveness failure as equivocation or no effect;
 - tests cover minimum/maximum decoded values, widened multiply/add/subtract boundaries,
   malicious overflow encodings, `N = 3f`, `N > 3f`, safe-but-unavailable quorums,
-  symmetric/asymmetric progress, withholding participants, joint old/new availability,
+  symmetric/asymmetric reachability, withholding participants, joint old/new reachability,
   safety-only policy refusal and deterministic cross-platform vectors.
 
 Verification:
@@ -17142,14 +17148,197 @@ Verification:
 - `cargo test -p sagnir-store`
 - `cargo test -p sagnir-policy`
 - `cargo test -p sagnir-sync`
-- decode/check-safety/check-progress/reconfigure/degrade state-machine model;
+- decode/check-safety/check-reachability/reconfigure/degrade state-machine model;
 - maximum-width arithmetic and Byzantine withholding integration suite.
 
 Exit criteria:
 
-- Safety and progress claims are separate, explicit and mechanically verified.
-- Progress profiles remain live with the declared unavailable/withholding participants.
+- Safety and quorum-reachability claims are separate, explicit and mechanically verified.
+- Reachable profiles can assemble a quorum under the declared withholding bound only.
 - Quorum arithmetic cannot wrap, saturate or depend on host integer width.
+
+### v0.111.149 - Fenced Grant Pending-Effect Execution
+
+Goal: ensure one `EffectPending` grant state cannot be executed by multiple provider
+workers, restored processes or queue consumers.
+
+Deliverables:
+
+- protected grant execution declares one closed mode in `GrantTerminalAuthorityState`:
+  `AtomicTerminalEffect` or `FencedDispatch`; unknown, mixed or runtime-selected modes
+  refuse before `ConsumeIfCurrentRecipient`;
+- `AtomicTerminalEffect` performs recipient validation, slot consumption and the complete
+  semantic effect inside the same rollback-resistant provider transaction, publishing
+  pending/terminal query identity before response; no downstream queue, worker or device
+  is outside that atomic boundary;
+- `FencedDispatch` uses the authenticated lifecycle `EffectPending ->
+  DispatchAuthorizedUnknown -> (EffectTerminal | EffectConflicting)` and inherits
+  v0.111.88, v0.111.95, v0.111.127 and v0.111.132 without weakening any boundary;
+- the `EffectPending` successor binds one affine dispatch authority, executor generation,
+  fencing token, complete request/effect commitment, downstream idempotency/replay-fence
+  identity, provider/queue path, query route and expected result domain;
+- one expected-state CAS consumes that affine authority and publishes/flushes
+  `DispatchAuthorizedUnknown` before any downstream byte, queue visibility, device call
+  or effect handoff; competing workers and restored processes fail the generation/fence
+  comparison before accessing a dispatch-capable handle;
+- before dispatch authorization, a dead executor may be replaced only after
+  `PendingExecutorFenced` durably revokes its generation and proves no
+  `DispatchAuthorizedUnknown` successor exists; replacement preserves the same request,
+  effect/idempotency identity and slot and cannot create another pending effect;
+- once `DispatchAuthorizedUnknown` exists, crash, timeout, cancellation or process death
+  permits exact result query only, never redispatch or executor-generation replacement;
+  provider/queue redelivery is admitted only when every copy carries the same permanent
+  downstream idempotency identity and the terminal executor returns one semantic result;
+- final result publication compares the pending/dispatch generation, records exact
+  authenticated outcome evidence and never resets recipient, slot, dispatch or replay-
+  fence state; divergent terminal evidence becomes `EffectConflicting` and freezes use;
+- proxy, queue, retry/dead-letter, failover and downstream layers inherit durable unknown,
+  delivery closure and permanent replay-fence retention; automatic retries outside the
+  declared path or an endpoint without exact query/deduplication refuse protected mode;
+- hardware is `AtomicTerminalEffect` only when slot consumption and semantic effect are
+  one hardware transaction; emitted tokens/handles/signatures follow v0.111.132/
+  v0.111.141 and the complete fenced downstream path instead;
+- provider migration/reconfiguration carries pending executor generation, dispatch
+  authority/fence, unknown state, replay map, queue inventory, result and query route
+  before serving dispatch or query; stale epochs cannot dispatch;
+- tests crash after the composite CAS but before owner publication, before/after durable
+  dispatch unknown, during handoff/effect/result publication, race provider workers,
+  restore process/VM state, redeliver queues, replay dead letters, replace pre-dispatch
+  executors, use stale generations and migrate/fail over every path layer.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- pending/owner-fence/dispatch-unknown/query/terminal state-machine model;
+- duplicate-worker, process-death, queue-redelivery and provider-failover suite.
+
+Exit criteria:
+
+- `EffectPending` has one atomic effect or one fenced affine dispatch owner.
+- No stale worker or restored process can hand off an already-owned pending effect.
+- Post-dispatch uncertainty resolves by exact query, never redispatch.
+
+### v0.111.150 - Recovery Reserve Terminal Closure And Refund
+
+Goal: return unused revalidation recovery capacity exactly once only after every
+operation and delayed route is terminally closed.
+
+Deliverables:
+
+- canonical reserve lifecycle is `RecoveryReserveActive -> RecoveryReserveClosing ->
+  RecoveryReserveClosed`; each state binds grant lineage, initial/reserved/consumed/
+  ambiguous/remaining slices, accounting provider/epoch, closure operation identity,
+  predecessor and resulting local/external accounting roots;
+- close preflight proves every activation/revalidation generation is admitted-terminal or
+  permanently negative-fenced, every route has v0.111.100 closure, cancellation or
+  activation result is reconciled and no pending conflict, query, executor, recipient-
+  set migration, provider migration or delayed provider epoch can consume reserve;
+- `RecoveryReserveClosing` atomically consumes all remaining close/refund authority and
+  is durably flushed before the external accounting release request; clones, restored
+  stores and concurrent cleanup cannot start another closure or refund;
+- the external provider atomically compares the exact reserve/accounting predecessor and
+  publishes one authenticated `RecoveryReserveReleaseReceipt` for only the verified
+  unused slices; spent, ambiguous, conflict-retention and unavailable-provider slices
+  remain charged until their own terminal proof exists;
+- response loss while closing remains charged and query-only; exact retry/query returns
+  the original release result, while changed slice counts, roots, grant, provider epoch
+  or operation identity is conflict and never a second refund;
+- `RecoveryReserveClosed` reconciles that receipt under one local expected-root CAS,
+  records the returned provider/global capacity and is terminal; it cannot reopen,
+  replenish ordinary attempts or be replayed as release for another grant/provider;
+- provider migration/failover during closure carries active/closing state, every slice,
+  closure operation, release result and old query/refusal route before successor capacity
+  can be credited; missing continuity leaves the reserve closing and charged;
+- reserve prefix compaction retains terminal operation/fence/route summaries and the
+  unique accounting release receipt needed to prevent clone double refunds and stale-
+  epoch release after archive/restore;
+- privacy profiles expose no exact reserve usage or conflict/route count beyond admitted
+  buckets, while encrypted exact accounting remains authoritative for closure;
+- tests attempt close with every pending condition, lose close/release responses, race
+  clones and processes for double refund, alter remaining slices, migrate providers in
+  `Active`/`Closing`/response-lost states, restore old snapshots, compact receipts and
+  prove terminal no-reopen/no-recredit behavior.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- active/preflight/closing/release-query/closed accounting state-machine model;
+- clone double-refund, close-response-loss and migration integration suite.
+
+Exit criteria:
+
+- Recovery reserve is refunded only after complete terminal closure.
+- One authenticated accounting transition returns each unused slice at most once.
+- Closing response loss remains charged and query-only across clone and migration.
+
+### v0.111.151 - Threshold Reachability And Eventual Progress Contract
+
+Goal: separate Byzantine safety, quorum reachability and eventual protocol progress
+under explicit network, scheduler, reconfiguration and resource assumptions.
+
+Deliverables:
+
+- canonical `ThresholdFaultModel` separates `byzantine_or_equivocating: b` from
+  `unavailable_or_withholding: u`; safety intersections use `b`, quorum reachability uses
+  `u`, and a simple profile may commit `b = u = f` without making equality implicit;
+- v0.111.145 equations become symmetric `2q > N + b` and asymmetric
+  `2q_activation > N + b`, `2q_abort > N + b`,
+  `q_activation + q_abort > N + b`; v0.111.148 reachability remains
+  `q <= N - u` for each required decision, all under widened checked arithmetic;
+- capability classes are `SafetyOnly`, `QuorumReachable` and
+  `EventuallySynchronousProgress`; the first two make no scheduler/message-delivery
+  liveness claim even when enough participants exist;
+- `EventuallySynchronousProgress` commits an eventual-synchrony model: after an unknown
+  stabilization point, authenticated messages among correct connected participants are
+  eventually delivered, replay/substitution is rejected, and the selected configuration
+  remains stable long enough for one bounded decision/reconciliation round;
+- fair retry/backoff and coordinator/leader replacement ensure no correct ready request
+  is starved after stabilization; coordinator identity grants no extra decision authority,
+  replacement preserves request/configuration roots and Byzantine leaders cannot consume
+  unbounded attempts or prevent eventual fair selection forever;
+- protocol-fixed message, retry, coordinator-change, in-flight-request, byte/work and
+  retained-evidence budgets apply before and after stabilization; dedicated decision/
+  reconciliation reserves prevent ordinary floods from blocking already admitted work,
+  while exhausted assumptions produce explicit unavailable state rather than false progress;
+- partitions, perpetual message loss, unstable reconfiguration, insufficient authenticated
+  delivery or unfair scheduling preserve safety but invalidate the progress capability;
+  no bounded-time progress claim is made in a fully asynchronous or indefinitely
+  partitioned system;
+- joint consensus proves safety/reachability under both configurations and requires an
+  admitted overlap stability interval for eventual progress; externally fenced transfer
+  declares its separate connectivity/coordinator assumptions and never falls back locally;
+- capability negotiation, policy, CLI/status and release evidence report `b`, `u`, safety,
+  reachability, eventual-synchrony assumptions, resource bounds and current
+  `Healthy`/`Degraded`/`Unavailable`/`Recovering` progress state without treating delay as
+  equivocation, abort, no effect or permission to weaken quorum;
+- tests separate `b != u`, simple `b = u`, Byzantine leaders, withholding/crash faults,
+  pre-stabilization arbitrary delay/reorder/duplication, post-stabilization fair delivery,
+  coordinator replacement, retry exhaustion, resource floods, unstable/joint
+  reconfiguration, permanent partition and recovery without any asynchronous time bound.
+
+Verification:
+
+- `cargo test -p sagnir-codec`
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- safety/reachability/synchrony/retry/reconfigure/progress state-machine model;
+- deterministic scheduler, Byzantine coordinator, partition and recovery suite.
+
+Exit criteria:
+
+- Safety uses `b`; quorum reachability uses independently declared `u`.
+- Eventual progress is claimed only under explicit eventual-synchrony and fairness assumptions.
+- Fully asynchronous or indefinitely partitioned execution has no bounded-time progress claim.
 
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
@@ -17180,7 +17369,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.148 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.151 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -17235,8 +17424,9 @@ Deliverables:
   paths, bounded semantic-projection N-way batch independence, enforceable recipient-set
   transitions, bounded negative-fenced revalidation/post-non-admission abort and exact
   rollback-resistant threshold profiles, atomic recipient consumption, protected
-  revalidation recovery reserves and checked safety/availability profiles through
-  v0.111.148,
+  revalidation recovery reserves, checked safety/reachability profiles, fenced pending-
+  effect execution, reserve closure/refund and explicit eventual-progress assumptions
+  through v0.111.151,
   admitted authentication suite/provider-capacity mode,
   and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
@@ -17251,7 +17441,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.148 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.151 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -17688,7 +17878,9 @@ Deliverables:
   permanent negative fencing/complete route closure, unbounded head-churn generations,
   missing abort after final non-admission, participant rollback, unsafe asymmetric or
   weighted quorum, recipient-check/set-replace/effect-use races, ordinary exhaustion
-  blocking negative closure or abort, unsafe threshold progress claims or quorum-
+  blocking negative closure or abort, duplicate/stale pending-effect executor, premature/
+  duplicate reserve refund, unsafe threshold progress claims without synchrony/fairness
+  or conflated Byzantine/unavailable bounds, quorum-
   arithmetic wraparound, scoped authorization without named-provider replay fencing,
   exportable hardware output
   misclassified as inert, downstream hardware-token replay, unbounded/escaped
@@ -18051,7 +18243,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.148 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.151 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -18082,8 +18274,9 @@ Deliverables:
   migration, threshold non-equivocation, scoped final-provider authorization,
   enforceable recipient-set transitions, bounded negative-fenced revalidation,
   post-non-admission abort, exact rollback-resistant threshold profiles, atomic recipient
-  consumption, protected revalidation recovery and checked threshold availability through
-  v0.111.148, and the
+  consumption, protected revalidation recovery, checked threshold reachability, fenced
+  pending-effect execution, reserve closure/refund and eventual-progress contracts through
+  v0.111.151, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -19047,8 +19240,9 @@ Deliverables:
   lifecycle-safe recipient migration, threshold decision certificate/configuration and
   scoped-authorization final-provider, recipient-set transition, anchor-negative-fence/
   revalidation lineage, post-non-admission abort, exact threshold-profile, atomic
-  recipient-consumption, revalidation-recovery-reserve and threshold safety/availability
-  corpus;
+  recipient-consumption, revalidation-recovery-reserve, threshold safety/reachability,
+  fenced pending-effect execution, recovery-reserve closure/refund and threshold
+  eventual-progress corpus;
 - deterministic fact rule/query-plan, snapshot cursor, immutable-index offset,
   exact cryptographic suite/hybrid transcript, opaque bundle outer/inner
   manifest, and blind-claim corpus;
@@ -19186,7 +19380,8 @@ Deliverables:
   threshold-decision-certificate/scoped-authorization-contract/recipient-set-transition/
   anchor-negative-fence/revalidation-lineage/post-non-admission-abort/exact-threshold-
   profile/atomic-recipient-consume/revalidation-recovery-reserve/threshold-safety-
-  availability/debt target set;
+  reachability/fenced-pending-effect/recovery-reserve-close/threshold-eventual-progress/
+  debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -19290,7 +19485,9 @@ Deliverables:
   threshold decisions, final-provider-consumed scoped authorization, enforced bounded
   recipient sets, permanently closed/bounded anchor revalidation, safe post-non-admission
   abort, exact rollback-resistant threshold profiles, atomic recipient/effect
-  consumption, protected recovery capacity and checked threshold safety/availability,
+  consumption, protected recovery capacity, checked threshold safety/reachability,
+  fenced pending-effect execution, exactly-once reserve refund and explicit eventual-
+  synchrony progress,
   plus anchored
   irreducible-conflict abandonment under independent evidence keys/retention,
   append-only classification, two-world-safe compensation/normalization, bounded
@@ -19546,7 +19743,9 @@ Deliverables:
   lineage, no abort racing a successor generation, and no threshold share from unsafe/
   weighted/custom or rollbackable participant state, no recipient validation separated
   from terminal effect consumption, no normal exhaustion blocking query/closure/conflict/
-  abort recovery, and no threshold progress claim without checked `q <= N - f` bounds,
+  abort recovery, no duplicate/stale executor after `EffectPending`, no premature or
+  duplicate recovery-reserve refund, and no threshold reachability/progress claim without
+  checked `q <= N - u` plus its declared synchrony/fairness/resource assumptions,
   unanchored conflict abandonment, conflict evidence erasure/cross-purpose key use,
   unbounded/uncharged prepared receipts, local-only provider capacity, static-slot
   clone replay, rollbackable provider checkpoint, partitioned double allocation,
@@ -19771,7 +19970,10 @@ Deliverables:
   v0.111.145 configure/checkpoint/decide/reconfigure/refuse boundaries,
   v0.111.146 compare-composite/replace-or-add/consume/result boundaries,
   v0.111.147 reserve/exhaust/query/close/abort/reconcile boundaries and
-  v0.111.148 decode/check-safety/check-progress/reconfigure boundaries,
+  v0.111.148 decode/check-safety/check-reachability/reconfigure boundaries,
+  v0.111.149 pending/owner-fence/dispatch-unknown/query/terminal boundaries,
+  v0.111.150 active/preflight/closing/release-query/closed boundaries and
+  v0.111.151 safety/reachability/synchrony/retry/progress boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -19950,6 +20152,9 @@ Deliverables:
 - queued and cloned old-recipient requests pause after membership proof while an
   exclusive replacement races terminal consumption; only the shared composite CAS can
   authorize replacement or `EffectPending`, never both;
+- after `EffectPending`, competing provider workers, restored processes, queue/dead-letter
+  redelivery and stale executor generations race every pre-dispatch/unknown/result crash
+  point; one affine fenced owner dispatches and all post-unknown recovery is query-only;
 - repeated head churn delays old activation requests through every proxy/queue/failover
   route and exhausts generation/byte/work/receipt bounds; no successor or abort proceeds
   before permanent negative fencing and complete old-route closure;
@@ -19959,6 +20164,9 @@ Deliverables:
 - every ordinary revalidation dimension is exhausted before negative-fence query,
   all-route closure, conflict retention and abort/cancellation query; clone-aggregated
   non-borrowable recovery slices remain available and cannot authorize another attempt;
+- reserve closure races pending queries/conflicts/migrations, cloned double refunds and
+  provider response loss/cutover; `Closing` remains charged until one authenticated
+  release receipt yields one terminal local/global accounting credit;
 - one hardware output is replayed through proxy, queue, retry/dead-letter restore,
   failover and downstream services; terminal hardware effects or final-provider replay
   fences permit one semantic result and incomplete paths remain ambiguous;
@@ -19971,9 +20179,12 @@ Deliverables:
 - threshold tests cover every symmetric/asymmetric equation boundary, participant-state
   rollback, duplicate aliases, weighted/custom refusal, old/new joint consensus and
   externally fenced transfer under both configurations' fault bounds;
-- threshold availability tests withhold up to `f` participants, distinguish safety-only
-  from progress profiles and exercise maximum-width checked sums/products/subtractions,
-  overflow encodings and joint-configuration availability;
+- threshold reachability tests withhold up to `u` participants, distinguish safety-only
+  from reachable profiles and exercise maximum-width checked sums/products/subtractions,
+  overflow encodings and joint-configuration reachability;
+- eventual-progress schedules separate Byzantine `b` from unavailable `u`, permit
+  arbitrary pre-stabilization delay and require fair authenticated delivery/coordinator
+  replacement only after stabilization; permanent partitions preserve safety/no progress;
 - three-plus-member batches exercise pairwise-compatible but N-way-invalid quota,
   threshold, policy, dependency and authority sets across every success/ambiguity/abort/
   compensation/cleanup/reconciliation permutation and reject caller footprint lies;
@@ -20344,9 +20555,17 @@ Deliverables:
 - revalidation-recovery-reserve vectors and benchmarks exhaust ordinary dimensions then
   measure exact query, negative-fence, route-closure, conflict, abort/cancellation and
   clone/failover reserve accounting at maximum lineage/route bounds;
-- threshold-safety/availability vectors and benchmarks measure checked widened quorum
-  arithmetic, safety-only versus progress admission, `f` withholding, `N = 3f` boundary
-  and joint old/new availability at maximum decode bounds;
+- threshold-safety/reachability vectors and benchmarks measure checked widened quorum
+  arithmetic, safety-only versus reachable admission, `u` withholding, simple `b = u = f`
+  feasibility and joint old/new reachability at maximum decode bounds;
+- pending-effect execution vectors and benchmarks measure atomic-terminal versus fenced-
+  dispatch paths, affine owner/fence CAS, durable unknown, duplicate-worker/queue replay,
+  exact query, terminal evidence and migration overhead;
+- reserve-close vectors and benchmarks measure complete preflight, active-to-closing CAS,
+  external release/query, clone double-refund contention, migration and terminal credit;
+- threshold eventual-progress vectors and benchmarks measure `b/u` profiles, arbitrary
+  pre-stabilization schedules, fair post-stabilization retry/delivery, coordinator churn,
+  stable joint reconfiguration and bounded resource/reserve use;
 - independent `sagnir-authority-sha3-256-v1` frame, transaction, logical-state,
   and physical-checkpoint vectors, including genesis/checkpoint anchoring,
   non-circular signing frontiers, physical-compaction logical-root preservation,
@@ -21235,7 +21454,10 @@ Deliverables:
   rollback-resistant symmetric/asymmetric threshold profiles;
 - v0.111.146 atomically validates recipients while consuming the effect, v0.111.147
   reserves clone-aggregated closure/abort capacity beyond normal exhaustion, and
-  v0.111.148 separates threshold safety/progress with checked quorum arithmetic;
+  v0.111.148 separates threshold safety/reachability with checked quorum arithmetic;
+- v0.111.149 gives every pending effect one atomic transaction or fenced executor,
+  v0.111.150 closes/refunds recovery reserve exactly once, and v0.111.151 separates `b`
+  from `u` and admits eventual progress only under explicit synchrony/fairness contracts;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -21672,8 +21894,17 @@ Deliverables:
   route-closure, conflict-retention, abort-fence, cancellation/query and clone/failover
   reserve-isolation fixtures pass;
 - v0.111.148 maximum-width checked arithmetic, overflow/underflow, `N = 3f`, `N > 3f`,
-  safe-only, symmetric/asymmetric progress, withholding, joint-consensus availability
+  safe-only, symmetric/asymmetric reachability, withholding, joint-consensus reachability
   and policy-refusal fixtures pass;
+- v0.111.149 duplicate executor, process death at every pending/dispatch boundary, stale
+  generation, queue/dead-letter redelivery, exact query, downstream replay fence,
+  hardware path and provider migration fixtures pass;
+- v0.111.150 premature close, close-response loss, clone/process double refund, changed
+  slices, pending conflict/query/migration, provider cutover, snapshot restore, compaction
+  and terminal no-reopen fixtures pass;
+- v0.111.151 `b != u`/`b = u`, arbitrary pre-stabilization scheduling, fair eventual
+  delivery, Byzantine coordinator replacement, bounded retry/resources, unstable/joint
+  reconfiguration, permanent partition and no-asynchronous-time-bound fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -22240,13 +22471,16 @@ Deliverables:
   and a local abort fence is the mutually exclusive successor; threshold activation/
   abort certificates use exact rollback-resistant symmetric/asymmetric equal-weight
   quorum profiles with honest intersection and joint or externally fenced reconfiguration;
-  safety-only and fault-tolerant-progress classes are distinct, progress quorums remain
-  reachable with `f` unavailable/withholding participants, and widened checked arithmetic
-  rejects overflow or infeasible `N/f/q` combinations;
+  safety-only, quorum-reachable and eventually-synchronous-progress classes are distinct;
+  Byzantine safety uses `b`, reachability uses `u`, progress additionally requires fair
+  authenticated delivery/coordinator replacement/stable reconfiguration after eventual
+  synchronization, and widened checked arithmetic rejects infeasible combinations;
   final anchor non-admission is permanently replay-fenced and every old request route is
   closed before a bounded successor generation or mutually exclusive abort may proceed;
   non-borrowable clone-aggregated recovery capacity remains reserved for exact query,
-  negative fencing, route closure, conflict retention and safe abort after normal limits;
+  negative fencing, route closure, conflict retention and safe abort after normal limits,
+  then returns unused slices exactly once through active/closing/closed accounting only
+  after every request, route, conflict, migration and provider epoch is terminal;
   delivery separately moves
   through prepared, durably unknown before the first output byte, delivered and
   possession-confirmed states, uses protected pending storage/admitted explicit channels
@@ -22261,7 +22495,9 @@ Deliverables:
   membership and bounded transitions, fanout, retained bytes and verification work;
   terminal use verifies current recipient membership and records `EffectPending` in the
   same composite CAS that recipient-set changes contend on, so cached/queued old requests
-  cannot cross the effect boundary after exclusive replacement;
+  cannot cross the effect boundary after exclusive replacement; pending execution is
+  either terminal inside that atomic transaction or moves through one affine fenced
+  executor generation, durable dispatch-unknown-before-handoff and query-only recovery;
   cloneable local tokens grant no protected authority, and
   pure-local irreversible effects require independently proven exclusive idempotent
   ownership or wait for reconnection; the later-revocation limitation is declared; each
