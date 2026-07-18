@@ -12129,7 +12129,7 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.168 are complete and their provider/fence/effect/
+  v0.111.50 and v0.111.54-v0.111.169 are complete and their provider/fence/effect/
   custody/anchor/evidence/admission/privacy capabilities are admitted; earlier
   binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
@@ -15692,7 +15692,7 @@ Deliverables:
   revalidation, permit safe post-non-admission abort and fix exact threshold assumptions;
   v0.111.146-v0.111.148 atomically order recipient validation with effect consumption,
   reserve revalidation recovery capacity and separate threshold safety from availability;
-  v0.111.149-v0.111.168 fence pending-effect executors, close/refund recovery reserves,
+  v0.111.149-v0.111.169 fence pending-effect executors, close/refund recovery reserves,
   require complete reserve-slice disposition, define total-nonresponsive fault sets and
   make eventual progress conditional on explicit temporal/resource assumptions plus one
   affine worst-case capacity reservation per admitted request, permanent negative
@@ -15701,7 +15701,8 @@ Deliverables:
   bounded pause-lineage closure capacity, non-widening resume compatibility, fresh
   dispatch authorization separation, durable anchor-admission reconciliation, immutable
   semantic dispatch, persistent fail-closed anchor lifecycle handling, non-circular
-  authorized envelopes and endpoint-enforced abandonment race semantics;
+  authorized envelopes, endpoint-enforced abandonment races and leaf-scoped composite
+  outcome projection;
 - tests cover two restored clones consuming one grant, disjoint/overlapping ranges,
   hardware-counter rollback, provider deduplication expiry, permanent replay fencing,
   threshold double-spend, process/device identity churn, double local quota release,
@@ -18351,10 +18352,11 @@ Deliverables:
   AnchorAdmissionReceipt(SemanticDispatchRoot) -> AuthorizedDispatchEnvelope`; no format,
   API, digest or documentation uses ambiguous "whole request" language across layers;
 - inner `SemanticDispatchIntent` contains the exact operation/request/reservation,
-  consequence/effect bytes, immutable input/object roots, endpoint/provider/hardware
-  namespace and epoch, downstream idempotency key, resource identity/charge, result
-  schema/decoder/domain, codec/suite revision and protected custody generation fixed by
-  v0.111.165, but contains no receipt, proof chain, channel binding or transport auth;
+  one v0.111.169 stable consequence/effect leaf and its bytes, immutable input/object
+  roots, one logical endpoint/provider/hardware idempotency domain and epoch, downstream
+  idempotency key, resource identity/charge, result schema/decoder/domain, codec/suite
+  revision and protected custody generation fixed by v0.111.165, but contains no receipt,
+  proof chain, channel binding or transport authentication;
 - domain-separated `SemanticDispatchRoot` commits the complete canonical inner bytes and
   schema revision using independent test vectors; receipt placeholders, zero/sentinel
   receipt fields, self-referential hashes, post-hash field filling and cyclic transcript
@@ -18410,12 +18412,12 @@ from executing at terminal endpoints.
 Deliverables:
 
 - canonical `DispatchAnchorAbandonmentAssurance::{EndpointEnforced, LocalAuthorityOnly}`
-  is fixed by policy/profile before admission and recorded in semantic intent, anchor
-  receipt, every endpoint capability descriptor, custody/accounting and abandonment state;
-  unknown, downgraded or mixed assurance classes fail closed;
-- `EndpointEnforced` requires every terminal provider/hardware/quota/key/custody/
-  filesystem idempotency domain for the admitted effect to support a permanent
-  `ConsequenceAbandonmentFence` that binds admission/semantic root, endpoint namespace/
+  is fixed per v0.111.169 semantic-effect leaf before admission and recorded in semantic
+  intent, anchor receipt, endpoint capability descriptor, custody/accounting and
+  abandonment state; unknown, downgraded or mixed assurance classes fail closed;
+- `EndpointEnforced` requires the leaf's one terminal provider/hardware/quota/key/custody/
+  filesystem logical idempotency domain and all routes/replicas for that domain to support a
+  permanent `ConsequenceAbandonmentFence` that binds admission/semantic root, endpoint namespace/
   epoch, consumption identity, complete effect/dependency/resource scope, fence generation
   and governance authorization;
 - each terminal endpoint atomically chooses exactly one successor under its permanent
@@ -18423,8 +18425,8 @@ Deliverables:
   authoritative/reconciles forward, or `ConsequenceAbandonmentFence` wins and that exact
   admission is permanently refused without execution; local ordering, message arrival or
   governance timestamp cannot substitute for the endpoint's atomic result;
-- a fence certificate is enforceable only after authenticated receipts prove every
-  terminal route/idempotency domain, failover replica and migration successor installed
+- a leaf fence certificate is enforceable only after authenticated receipts prove every
+  route, failover replica and migration successor for its one idempotency domain installed
   the same fence or is permanently retired behind an equivalent denial boundary; partial
   propagation, offline/unqueryable endpoints and provider assertions remain pending and
   cannot claim execution prevention, release custody or close accounting;
@@ -18432,17 +18434,18 @@ Deliverables:
   terminal routes or provider rollback are explicit endpoint equivocation/conflict;
   evidence is retained, related authority remains disabled and no clean no-effect/refund
   claim is manufactured;
-- if consumption wins at any required endpoint before fencing, governance abandonment
-  cannot retroactively invalidate it; all heads and local state reconcile the exact
-  in-flight/terminal effect forward and any remaining fence work prevents duplicates only;
+- if consumption wins in the leaf's idempotency domain before fencing, governance
+  abandonment cannot retroactively invalidate it; all heads and local state reconcile that
+  exact in-flight/terminal leaf forward and remaining route fences prevent duplicates only;
 - `LocalAuthorityOnly` abandonment permanently disables local/current Sagnir authority,
   retries, replacement admissions and dependent consequences but explicitly records that
   a stale clone/endpoint may still execute the admitted effect; it never authorizes safe
   resource/key/custody release, refund, no-effect evidence or global execution-prevention
   claims, even after timeout or local route closure;
-- policies requesting resource release or global prevention must require
-  `EndpointEnforced` plus complete fence receipts and refuse profiles/endpoints unable to
-  provide them before protected admission; permissive UI cannot upgrade local-only claims;
+- policies requesting leaf resource release or non-execution proof require
+  `EndpointEnforced` plus a complete leaf fence certificate and refuse endpoints unable to
+  provide it before admission; operation-wide claims additionally require the complete
+  v0.111.169 leaf map and aggregate outcome; permissive UI cannot upgrade either claim;
 - migration/failover preserves the consume-or-fence predecessor and blocks a new endpoint
   epoch until the old domain proves consumption, installs/transfers the fence or remains
   conservatively possible; a new route cannot escape an old winning fence or duplicate a
@@ -18470,6 +18473,85 @@ Exit criteria:
 - Enforceable abandonment has one endpoint-atomic consume-or-fence result everywhere.
 - A consumption winner remains authoritative; a fence winner is permanently refused.
 - Local-only abandonment makes no global prevention, no-effect or safe-release claim.
+
+### v0.111.169 - Leaf-Scoped Dispatch And Composite Outcome Projection
+
+Goal: prevent endpoint-local consume-or-fence winners from being misrepresented as one
+atomic result for a multi-effect operation.
+
+Deliverables:
+
+- one `SemanticDispatchIntent` represents exactly one bounded, stable terminal semantic-
+  effect leaf, one `EffectPermitId`, one consequence/effect commitment and one logical
+  terminal idempotency domain; multiple transport routes/failover replicas may implement
+  that same domain but one intent cannot span independently consumable endpoint domains;
+- composite operations precommit a canonical bounded `CompositeDispatchPlan` with ordered
+  stable leaf identities, dependency edges and aggregate root; every leaf owns a separate
+  semantic root, anchor admission/idempotency identity, consume-or-fence state, typed
+  resource/custody charge, result schema/domain, evidence, retention and dependency identity;
+- callers/providers cannot hide multiple terminal effects inside one leaf, reuse one
+  admission across leaves or split one admitted leaf after root publication; dynamic
+  discovery must remain inside one precommitted leaf domain or create a newly admitted
+  causally linked operation under the existing non-widening rules;
+- each plan generation freezes a complete authenticated `EndpointRouteInventoryRoot` per
+  leaf before fence propagation, covering logical idempotency domain, routes, provider/
+  hardware epochs, failover replicas, migration successors and permanent-retirement
+  proofs; count/byte/work bounds and protected closure capacity are preallocated;
+- route addition, failover activation, endpoint migration and provider-epoch replacement
+  contend on the exact plan/inventory generation. A successor inventory cannot activate
+  until each old route proves consumption, fence installation/transfer or conservative
+  unresolved retention, so no endpoint can appear outside a completed fence certificate;
+- authoritative per-leaf outcomes use the existing v0.111.87 `EffectKnowledgeMap` and
+  v0.111.91 resolution map rather than a scalar operation winner; each leaf records
+  consumed-pending/terminal, fenced-before-consumption, unknown, conflict and local-only-
+  possibly-executable knowledge with exact endpoint/fence/receipt evidence;
+- deterministic non-authorizing aggregate projection reports `AllLeavesFencedNoExecution`
+  only when every required leaf has a complete endpoint-enforced fence before consumption,
+  `FullyExecuted` only when every required leaf is consumed and terminal, `EffectsPartial`
+  for a complete mixture of consumed and fenced terminal leaves, and
+  `EffectsAmbiguous { known_partial }` whenever any required leaf remains unknown,
+  conflicting or partially fenced; `known_partial` is authenticated true when known leaves
+  already include both consumed and fenced winners, and leaf outcomes are never discarded;
+- dependencies, compensation and emergency resolution consume exact leaf witnesses:
+  fenced/no-execution leaves cannot satisfy committed-effect dependencies, consumed leaves
+  remain authoritative even when siblings were fenced, and partial compensation follows
+  v0.111.91 per-permit rules without pretending irreversible effects rolled back;
+- resource, quota, custody, key and retention accounting is partitioned per leaf; release/
+  refund requires that leaf's exact terminal disposition and ownership proof, while shared
+  or unresolved resources remain conservatively charged. Aggregate completion cannot
+  release a leaf hidden by partial/ambiguous summary state;
+- base Sagnir makes no all-or-none execution claim across independent idempotency domains.
+  A policy requiring such semantics refuses unless a separately versioned/admitted
+  distributed transaction protocol provides durable prepare, one authoritative decision,
+  participant fencing, crash/partition recovery and terminal proof; a collection of local
+  endpoint CAS winners, coordinator memory or best-effort compensation is insufficient;
+  v0.111.129 all-or-none batch admission/publication does not imply all-or-none execution;
+- checkpoint, compaction, archive, restore, sync and migration preserve the complete leaf/
+  inventory maps, aggregate projection inputs and mixed outcomes; mixed-version peers that
+  understand only scalar consumed/fenced state are read-only/refuse for affected plans;
+- privacy-preserving status reports fully executed, all fenced, partial, ambiguous and
+  local-only assurance using admitted buckets without exposing leaf count, endpoint/route
+  inventory, effect membership, dependencies, charges or stable cross-peer identifiers;
+- tests produce split fence/consumption winners, multiple consumed/fenced/unknown mixes,
+  route creation during fencing, migration/failover during propagation, coordinator crash,
+  offline endpoint recovery, stale inventory generations, partial compensation/dependency
+  evaluation, shared custody/refund attempts and unsupported all-or-none requests.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- leaf-plan/inventory/consume-or-fence/aggregate/dependency/accounting composition model;
+- split-winner, route-race, migration, recovery and partial-effect integration suite.
+
+Exit criteria:
+
+- Every semantic intent has one effect leaf and one logical idempotency domain.
+- Mixed leaf winners remain explicit partial or ambiguous state, never a global winner.
+- All-or-none multi-domain claims require a separately admitted distributed transaction.
 
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
@@ -18500,7 +18582,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.168 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.169 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -18563,7 +18645,7 @@ Deliverables:
   dispatch authority, bounded pause-lineage closure capacity, non-widening resume,
   fresh dispatch authorization, durable anchor reconciliation, immutable semantic
   dispatch, persistent anchor lifecycle, non-circular execution envelopes and explicit
-  endpoint abandonment assurance through v0.111.168,
+  endpoint abandonment assurance plus leaf-scoped composite outcomes through v0.111.169,
   admitted authentication suite/provider-capacity mode,
   and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
@@ -18578,7 +18660,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.168 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.169 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -19380,7 +19462,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.168 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.169 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -19418,7 +19500,8 @@ Deliverables:
   closure reserves, request-local pause/eligibility, atomic pause/dispatch authority and
   bounded pause closure, non-widening resume, fresh dispatch authorization, durable
   anchor reconciliation, immutable semantic dispatch and persistent anchor lifecycle
-  plus non-circular envelopes/endpoint abandonment assurance through v0.111.168, and the
+  plus non-circular envelopes, endpoint abandonment assurance and leaf-scoped outcome
+  projection through v0.111.169, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -20391,7 +20474,7 @@ Deliverables:
   widening resume-compatibility, fresh-dispatch-authorization separation and durable
   dispatch-anchor-admission reconciliation, immutable semantic-dispatch and persistent
   anchor-lifecycle/scope-abandonment, non-circular intent/receipt/envelope and endpoint
-  consume-versus-abandonment-fence corpus;
+  consume-versus-abandonment-fence plus leaf-plan/inventory/mixed-outcome corpus;
 - deterministic fact rule/query-plan, snapshot cursor, immutable-index offset,
   exact cryptographic suite/hybrid transcript, opaque bundle outer/inner
   manifest, and blind-claim corpus;
@@ -20539,7 +20622,8 @@ Deliverables:
   current-authorization/progress-dispatch-anchor-unknown/progress-dispatch-anchor-admitted/
   progress-anchor-negative-fence/progress-semantic-dispatch-commitment/progress-anchor-
   lifecycle/progress-anchor-scope-abandonment/progress-semantic-intent-root/progress-
-  authorized-dispatch-envelope/progress-consume-abandon-fence/debt target set;
+  authorized-dispatch-envelope/progress-consume-abandon-fence/progress-dispatch-leaf-plan/
+  progress-endpoint-inventory/progress-composite-outcome/debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -20659,7 +20743,9 @@ Deliverables:
   governed permanent scope disablement without non-admission/refund inference; inner
   semantic intent remains receipt-free while a post-admission outer envelope binds receipt/
   consumption/channel evidence, and abandonment either atomically fences every endpoint
-  against consumption or remains explicitly local-only with possible execution retained,
+  against consumption or remains explicitly local-only with possible execution retained;
+  each intent has one effect leaf/idempotency domain, composite operations retain stable
+  per-leaf outcomes/inventories and never infer all-or-none from endpoint-local winners,
   plus anchored
   irreducible-conflict abandonment under independent evidence keys/retention,
   append-only classification, two-world-safe compensation/normalization, bounded
@@ -20946,7 +21032,11 @@ Deliverables:
   receipt or outer semantic injection, no endpoint accepting an outer root without
   independently hashing the inner intent, no global abandonment claim without complete
   terminal consume-or-fence receipts, no local-only abandonment releasing resources, and
-  no post-handoff query-only request returning to dispatch-capable state,
+  no multi-domain intent, mixed leaf outcome collapsed to globally consumed/fenced, route
+  added outside the fenced inventory generation, aggregate summary authorizing leaf
+  dependency/compensation/release or all-or-none claim without a separately admitted
+  distributed transaction, and no post-handoff query-only request returning to dispatch-
+  capable state,
   unanchored conflict abandonment, conflict evidence erasure/cross-purpose key use,
   unbounded/uncharged prepared receipts, local-only provider capacity, static-slot
   clone replay, rollbackable provider checkpoint, partitioned double allocation,
@@ -21192,7 +21282,8 @@ Deliverables:
   semantic-stage/freeze/root-bind/anchor/consume/result boundaries and v0.111.166
   checkpoint/compact/archive/migrate/restore/retain/abandon/late-evidence boundaries,
   v0.111.167 intent/root/receipt/envelope/endpoint-verify boundaries and v0.111.168
-  assurance-select/fence-propagate/consume-or-fence/conflict/reconcile boundaries,
+  assurance-select/fence-propagate/consume-or-fence/conflict/reconcile boundaries, plus
+  v0.111.169 leaf-plan/freeze-inventory/consume-or-fence/project-partial/reconcile boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -21453,6 +21544,10 @@ Deliverables:
   cross-receipt substitution and outer semantic injection; cloned receipts race endpoint-
   enforced abandonment across failover/offline/migrating routes, producing one consumption
   winner, one complete fence winner or explicit local-only/partial-fence uncertainty;
+- composite plans split terminal effects into stable leaves and produce all-fenced, all-
+  executed, mixed-partial and unresolved-ambiguous schedules; route creation/migration
+  races frozen inventories, coordinator crashes and offline recovery while dependency,
+  compensation, shared custody and refund logic consume only exact leaf witnesses;
 - three-plus-member batches exercise pairwise-compatible but N-way-invalid quota,
   threshold, policy, dependency and authority sets across every success/ambiguity/abort/
   compensation/cleanup/reconciliation permutation and reject caller footprint lies;
@@ -21888,6 +21983,10 @@ Deliverables:
   aggregate complete terminal-route receipts, retain partial/offline uncertainty, detect
   equivocation and compare enforced versus local-only custody/accounting costs at maximum
   endpoint, failover, migration and dependency scopes;
+- leaf-scoped dispatch vectors and benchmarks measure bounded plan/leaf construction,
+  endpoint-route inventory freezing/update proofs, per-leaf admission/charge/result maps,
+  all-fenced/all-executed/mixed/ambiguous projection, route/failover contention and exact
+  dependency/compensation/accounting verification at maximum leaf/route/fanout bounds;
 - independent `sagnir-authority-sha3-256-v1` frame, transaction, logical-state,
   and physical-checkpoint vectors, including genesis/checkpoint anchoring,
   non-circular signing frontiers, physical-compaction logical-root preservation,
@@ -22800,7 +22899,8 @@ Deliverables:
   admission, and v0.111.166 preserves every persistent anchor state or permanently disables
   its affected scope without inferring non-admission or refund; v0.111.167 removes receipt
   cycles with an inner intent/root and outer authorized envelope, while v0.111.168 gives
-  abandonment explicit endpoint-enforced versus local-only semantics;
+  abandonment explicit endpoint-enforced versus local-only semantics; v0.111.169 scopes
+  each intent to one terminal leaf/domain and preserves mixed composite outcomes;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -23299,6 +23399,10 @@ Deliverables:
 - v0.111.168 endpoint consume-versus-fence races, stale clone, failover, offline endpoint,
   partial propagation, delayed receipt, route migration/recovery, equivocation and enforced-
   versus-local-only release/refusal fixtures pass;
+- v0.111.169 one-leaf/one-domain admission, bounded composite plan, frozen endpoint-route
+  inventory, split fence/consume winners, all four aggregate outcomes, route-add/migration/
+  coordinator/offline-recovery races, partial compensation/dependency/shared-custody/
+  refund and unsupported all-or-none fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -23906,9 +24010,14 @@ Deliverables:
   proof/consumption/channel envelope that cannot alter semantics and is independently
   rehashed by the endpoint; global abandonment requires a permanent fence that atomically
   beats consumption in every terminal idempotency domain, while local-only abandonment
-  preserves possible execution and cannot release resources; policy denial, revocation,
-  head advancement or saturation wins only before admission, while later changes preserve
-  the in-flight consequence and connectivity never proves stabilization;
+  preserves possible execution and cannot release resources; each intent names exactly one
+  terminal effect leaf/logical idempotency domain, composite operations freeze bounded
+  leaf/route inventories and retain per-leaf consumed/fenced/unknown/conflict state;
+  aggregate all-fenced, fully-executed, partial and ambiguous projections cannot replace
+  leaf witnesses, and multi-domain all-or-none claims require a separately admitted
+  distributed transaction; policy denial, revocation, head advancement or saturation wins
+  only before admission, while later changes preserve the in-flight consequence and
+  connectivity never proves stabilization;
   final anchor non-admission is permanently replay-fenced and every old request route is
   closed before a bounded successor generation or mutually exclusive abort may proceed;
   non-borrowable clone-aggregated recovery capacity remains reserved for exact query,
