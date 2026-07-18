@@ -11673,8 +11673,9 @@ Deliverables:
   `EmergencyFencedPendingEffect`, preserving encrypted payload/reconstruction bytes,
   decoder/schema, wrappers/keys, staging commitment, retention policy and full quota;
 - bridge outcomes map to `EmergencyResolvedAdopted`,
-  `EmergencyResolvedNotExecuted` or `EmergencyResolvedCompensated`; no scheduler,
-  timeout, disconnect, local deletion or fence-only transition can create them;
+  `EmergencyResolvedNotExecuted`, `EmergencyResolvedCompensated` or the v0.111.59
+  `EmergencyResolvedNormalized`; no scheduler, timeout, disconnect, local deletion
+  or fence-only transition can create them;
 - `EmergencyFencedPendingEffect` remains decryptable to admitted recovery authority
   for the declared emergency horizon, with renewal/abandonment governed by
   v0.111.56, and cannot execute, become a new handoff, satisfy a different operation
@@ -11683,6 +11684,9 @@ Deliverables:
   bridge and dependency roots, then authenticates deletion of every managed staged
   encryption instance and wrapper able to recover its DEK before releasing physical
   capacity or retiring decoder/key support;
+- normalized cleanup preserves `ExecutionKnowledge::Unknown`, requires the exact
+  normalization receipt and keeps every history-sensitive dependency blocked under
+  v0.111.59 even when admitted current-state dependencies reopen;
 - staged generations use independently accountable keys/encryption instances; a
   shared wrapping key cannot be destroyed while another live or unresolved staged
   payload depends on it, and wrapper deletion alone is not called payload erasure;
@@ -11887,7 +11891,7 @@ Deliverables:
 - canonical `ProviderNamespaceFenceReceipt` binds provider/service identity and
   capability profile, old namespace/lease/incarnation, atomic fence generation,
   provider consistency mode, final accepted-operation sequence/high-watermark,
-  ordered operation accumulator root, operation count and predecessor receipt/root;
+  v0.111.61 append-log/map roots, operation count and predecessor receipt/root;
 - fence activation and accepted-operation snapshot share one provider linearization
   point: every operation is either rejected after that point or included in the
   final sequence/root; no response timing, local process ordering or later inventory
@@ -11901,12 +11905,15 @@ Deliverables:
 - provider capability admission declares linearizability/consistency assumptions,
   accumulator/proof suite, maximum inventory/proof work, query authorization and
   retention horizon for final receipts and negative-operation proofs;
+- completeness assurance is conditional on the selected v0.111.60 profile; a
+  provider-signed root alone is only `ProviderAssertedComplete` and cannot detect a
+  provider/writer pair that consistently omits an accepted operation;
 - local reconciliation compares journal/admission-ledger/provider sets against the
   final root; provider-accepted operations absent locally become durable
   `ProviderAcceptedLocalUnknown` records before any new-incarnation authority opens;
 - local-only operations absent from the provider root remain non-execution candidates
-  only when a retained authenticated non-inclusion proof covers their exact ID,
-  sequence/range, namespace and fence generation;
+  only when a retained v0.111.61 authenticated-map non-inclusion proof covers their
+  exact ID, namespace and fence generation and its map/log projection proof is valid;
 - missing pages, weak/eventual consistency, proof gaps, unsupported negative-query
   retention, accumulator conflict or an unverifiable provider freezes the entire
   affected authority/provider scope, not merely dependencies of locally known work;
@@ -11922,13 +11929,15 @@ Verification:
 - `cargo test -p sagnir-crypto`
 - `cargo test -p sagnir-store`
 - atomic fence/snapshot/accumulator/pagination state-machine model;
-- adversarial provider and compromised-writer integration suite;
+- adversarial provider and compromised-writer integration suite within each declared
+  v0.111.60 assurance boundary;
 - canonical receipt and inclusion/range/non-inclusion vectors.
 
 Exit criteria:
 
-- Every provider-accepted old operation is included in one authenticated final set
-  created atomically with the namespace fence.
+- Within the selected v0.111.60 assurance boundary, every observed provider-accepted
+  old operation is included in one authenticated final set created atomically with
+  the namespace fence; provider assertion remains conditional on provider honesty.
 - Local journal completeness is never trusted as provider-operation completeness.
 - If the provider cannot prove the final set and retain its negative-query evidence,
   the complete affected authority/provider scope remains frozen.
@@ -11962,6 +11971,9 @@ Deliverables:
 - conditional normalization commits a provider-attested common terminal state and
   preserves historical `EffectUnknown`; only dependencies explicitly bound to that
   normalized state may reopen, while unrelated uncertainty remains blocked;
+- v0.111.59 represents execution knowledge and authority resolution as independent
+  axes and supplies the normalized terminal custody outcome; this milestone alone
+  cannot relabel normalized unknown execution as committed or not executed;
 - when no safe two-world normalization exists, the operation remains irreducibly
   `EffectUnknown`; retry, inverse compensation, promotion, cleanup-based inference
   and governance risk acceptance cannot convert uncertainty into execution truth;
@@ -12007,6 +12019,9 @@ Deliverables:
   current payload/key/decoder generations, measured capacity, new retention horizon,
   policy/authority epoch and predecessor renewal before any key/schema/decoder or
   backup-retention horizon expires;
+- v0.111.62 binds that horizon to one process `ClockEpoch` plus admitted persistent
+  authoritative time/frontier evidence, reserves renewal capacity before the safety
+  margin and externally anchors abandonment before physical destruction;
 - renewal authority is independent of the blocked writer and verifies readability,
   key/wrapper recovery, decoder availability, integrity, quota and provider-retention
   evidence; failure enters `CustodyExpiryRequired` before material becomes unusable;
@@ -12110,7 +12125,7 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.56 are complete and their provider/fence/effect/
+  v0.111.50 and v0.111.54-v0.111.62 are complete and their provider/fence/effect/
   custody capabilities are admitted; earlier binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
   profile composition pass for the selected platform/storage observer profile;
@@ -12131,6 +12146,8 @@ Deliverables:
 - generated compile-time/runtime capability tables and tests keep CLI/daemon/library
   behavior identical; help/status reports inactive paths without exposing private
   roots, operation presence or profile-sensitive activity;
+- v0.111.63 makes the state permissions normative and requires unforgeable typed
+  capabilities at every key, network, provider, staging and authority API boundary;
 - tests cover every intermediate version/state, missing dependency, parse-only
   object, forged activation evidence, downgrade/rollback, mixed peers, profile loss,
   config bypass and atomic activation crash.
@@ -12150,6 +12167,278 @@ Exit criteria:
   profile capabilities and release evidence are present.
 - Mixed-version and rollback states fail read-only without weakening existing
   authority or privacy claims.
+
+### v0.111.59 - Dual-Axis Emergency Resolution
+
+Goal: separate knowledge of historical execution from resolution of current
+authority so safe normalization can terminate custody without inventing history.
+
+Deliverables:
+
+- canonical emergency state contains independent `ExecutionKnowledge` values
+  `Unknown`, `Committed(effect_commitment)` and `ProvenNotExecuted`, plus
+  `AuthorityResolution` values `Blocked`, `Adopted`, `Compensated`, `Normalized`
+  and `Abandoned`;
+- valid-pair rules are explicit: `Adopted` requires `Committed`, ordinary
+  `Compensated` requires `Committed`, `Normalized` may retain `Unknown`, and
+  `Abandoned` preserves the current execution knowledge without asserting an effect;
+- append-only execution-knowledge transitions and authority-resolution transitions
+  have separate roots/leaf versions, while one composed emergency checkpoint binds
+  both axes, the v0.111.54 provider set, old/new incarnations and policy epoch;
+- canonical `EmergencyResolvedNormalized` binds the v0.111.55 atomic normalization
+  receipt/current-state commitment, preserved `ExecutionKnowledge::Unknown`, exact
+  dependency closure, journal/admission-ledger/provider roots, custody generation,
+  policy root and expected prior resolution leaf;
+- dependency declarations distinguish current-state dependencies from history-
+  sensitive dependencies; only exact current-state dependencies proven against the
+  normalized state may reopen, while audit, causality, billing, replay, compliance
+  or other history-sensitive dependencies remain blocked under unknown execution;
+- after normalized-state receipt, dependency closure and journal/ledger/provider
+  roots reconcile, `EmergencyResolvedNormalized` is a terminal custody outcome under
+  v0.111.50 and may authorize authenticated staged-material cleanup/quota release;
+- cleanup preserves both the permanent unknown-execution classification and the
+  normalization/cleanup evidence; it cannot relabel the outcome as adopted,
+  compensated or proven not executed;
+- state transitions reject invalid axis combinations, stale roots, normalization
+  receipt substitution, dependency-class downgrade, repeated cleanup or reopening a
+  history-sensitive dependency through a current-state alias;
+- status/proofs report both axes without collapsing `Unknown + Normalized` into a
+  misleading success/failure classification or exposing private effect details;
+- tests cover every valid/invalid pair, normalized cleanup, current-state reopening,
+  history-sensitive refusal, late committed/non-execution evidence, concurrent axis
+  transitions, rollback, compaction and backup restore.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- dual-axis knowledge/resolution/dependency/custody state-machine model;
+- normalized cleanup and mixed-dependency integration suite;
+- canonical composed-checkpoint and transition vectors.
+
+Exit criteria:
+
+- Safe normalization can terminate physical custody while preserving unknown
+  historical execution permanently.
+- Current-state dependency reopening never implies that a history-sensitive
+  dependency is resolved.
+- Every cleanup outcome is represented without misclassifying execution knowledge.
+
+### v0.111.60 - Provider Fence Completeness Assurance Profiles
+
+Goal: state which independent observation, if any, makes a provider fence complete
+when provider equivocation or provider/writer collusion is in scope.
+
+Deliverables:
+
+- canonical assurance levels are `ProviderAssertedComplete`,
+  `HardwareMonotonicComplete`, `WitnessedComplete` and `ReceiptComplete`, each with a
+  distinct suite/profile ID, evidence format, trust assumption and claim boundary;
+- `ProviderAssertedComplete` accepts the v0.111.54 provider-signed atomic fence/set
+  only under an honest linearizable-provider assumption; documentation, status and
+  proofs state that consistent provider/writer omission is undetectable;
+- `HardwareMonotonicComplete` binds acceptance/fence roots to an admitted attested
+  append-only counter/log with device identity, measured implementation, monotonic
+  generation, rollback/clone resistance, attestation freshness and revocation roots;
+- `WitnessedComplete` requires independent witnesses or a threshold/diversity set to
+  commit each admitted acceptance frontier and final fence root; witness receipts,
+  consistency proofs, equivocation evidence and unavailable-threshold behavior are
+  canonical and bounded;
+- `ReceiptComplete` requires every semantically accepted submission to produce an
+  externally retained client/witness receipt before success, and reconciles the
+  complete retained receipt set against the final fence roots; missing, duplicated,
+  conflicting or unretained receipts prevent completeness;
+- the selected assurance profile, threat boundary and evidence roots are committed
+  in provider capability, private descriptor, emergency fence and activation matrix;
+  negotiation cannot silently replace a stronger profile with provider assertion;
+- protected recovery where provider equivocation is in scope requires hardware-
+  monotonic, witnessed or receipt completeness; provider assertion may remain an
+  explicitly weaker profile but cannot satisfy that protected policy;
+- combining mechanisms states exact independence: provider-controlled hardware,
+  nominally distinct provider witnesses or provider-retained receipts do not become
+  an independent observation merely through labels;
+- failure/unavailability preserves frozen/read-only scope and evidence; it never
+  falls back to provider assertion, treats a missing witness as no operation or
+  allows local operator acceptance to upgrade assurance;
+- adversarial tests claim detection only when an independent observation point sees
+  the omitted operation; provider/writer collusion under `ProviderAssertedComplete`
+  is documented as an assumption counterexample, not a detected attack.
+
+Verification:
+
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- assurance-profile/trust-boundary/threshold state-machine model;
+- hardware, witness, retained-receipt and collusion integration suite;
+- canonical assurance evidence and downgrade vectors.
+
+Exit criteria:
+
+- Every completeness claim names the observer and assumption that supports it.
+- Protected recovery refuses provider assertion when provider equivocation is in
+  scope.
+- No test or documentation claims detection of collusion without independent
+  evidence.
+
+### v0.111.61 - Dual-Root Provider Operation Set
+
+Goal: retain ordered acceptance history while providing bounded logarithmic exact
+operation-ID membership and non-inclusion proofs.
+
+Deliverables:
+
+- `ProviderNamespaceFenceReceipt` binds two independently domain-separated roots:
+  an append-log root ordered by provider acceptance sequence and an authenticated
+  map/set root keyed by `(namespace, operation_id)`;
+- append entries and map leaves bind provider sequence, operation ID, idempotency
+  key, old lease/incarnation, request/effect commitment and current result state;
+- a canonical projection/consistency proof establishes that both roots contain the
+  same complete unique accepted-operation multiset/count at the fence generation;
+  neither root alone can establish full fence completeness;
+- operation IDs are unique within the namespace and idempotency keys map to exactly
+  one request/effect commitment; duplicate ID, duplicate key with changed request,
+  sequence alias or map/log disagreement is terminal conflict;
+- authenticated map pages use the admitted bounded uniquely represented map
+  construction and provide logarithmic inclusion/non-inclusion proofs independent of
+  append-log length; unbounded inventory scan is never required for exact ID absence;
+- ordered append-log consistency proofs retain acceptance order, high-watermark and
+  append-only continuity; a valid map proof cannot reorder or omit sequence history;
+- projection proof generation/verification is chunked, resumable and quota-charged,
+  with exact log/map roots, counts, frontier, page set, work budget and transcript
+  committed before fence activation completes;
+- pruning/compaction preserves append consistency witnesses, map proofs or a signed
+  replacement checkpoint through the negative-query/dispute horizon; decoder loss
+  cannot turn absence into a valid non-inclusion result;
+- provider capability/assurance profiles declare supported map/log suites and proof
+  limits; unsupported dual-root proof keeps the affected scope frozen rather than
+  falling back to linear scan or provider Boolean answers;
+- tests cover map/log omission, duplicate operation/idempotency keys, sequence alias,
+  inconsistent counts, projection splice, stale non-inclusion, page amplification,
+  interrupted proof build, compaction and million-operation logarithmic bounds.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-store`
+- dual-root/projection/uniqueness state-machine model;
+- canonical append/map/inclusion/non-inclusion/consistency vectors;
+- large-operation-set proof and update benchmarks.
+
+Exit criteria:
+
+- Exact operation-ID absence is proven logarithmically against a committed map root.
+- Append order and map membership represent one identical unique accepted set.
+- No provider Boolean answer, linear scan or one-root proof satisfies protected
+  fence completeness.
+
+### v0.111.62 - Authoritative Emergency Custody Time
+
+Goal: make custody renewal resistant to restart/clock rollback and make unresolved
+abandonment externally irreversible before destroying recovery material.
+
+Deliverables:
+
+- in-process custody duration uses only one random `ClockEpoch` and admitted
+  monotonic source; persisted monotonic instants are never compared across process,
+  reboot, suspend semantics or clock-source replacement;
+- each custody generation records creation/renewal authoritative frontier or time-
+  checkpoint commitment, cumulative admitted age, current process `ClockEpoch`,
+  local elapsed observation and policy-defined renewal/expiry margins;
+- persistent renewal horizon binds an admitted authoritative time/frontier sequence,
+  freshness/consistency proof and predecessor custody root; local wall clock,
+  filesystem timestamps and reconstructed cross-process duration cannot extend it;
+- restart, rollback, backup restore, process churn, local clock movement and cloned
+  state preserve the maximum admitted cumulative age/earliest deadline or create an
+  explicit conflict; they cannot reset renewal eligibility or custody charges;
+- renewal reserves maximum required key/decoder/provider/storage/backup capacity and
+  authority work before a policy-defined safety margin preceding the current horizon;
+  late or partially provisioned renewal refuses and enters `CustodyExpiryRequired`;
+- canonical `AbandonedUnresolved` is committed under independent threshold authority
+  to the externally witnessed emergency namespace with expected prior fence,
+  execution-knowledge, resolution, custody and provider roots before any payload,
+  wrapper, key or decoder material is destroyed;
+- abandonment response loss reconciles the external anchor before destruction;
+  externally anchored but locally missing abandonment is recovered forward, while
+  local-only abandonment never authorizes cleanup or capacity release;
+- restored backups/old processes verify the emergency anchor before opening custody
+  material and permanently refuse execution/re-enable when a later abandonment root
+  covers their generation;
+- anchor conflict, split view, unavailable authority or stale frontier preserves
+  material/charges and blocked scope; no local timeout or storage pressure substitutes
+  for authoritative renewal or abandonment;
+- tests cover restart/suspend/clock rollback, cross-`ClockEpoch`, stale/partitioned
+  time authority, safety-margin exhaustion, renewal capacity race, anchor response
+  loss, split view, destroy-before-anchor and pre-abandonment backup restore.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- custody clock/frontier/renewal/abandonment-anchor state-machine model;
+- process/reboot/rollback and external-anchor fault-injection suite;
+- renewal safety-margin/capacity benchmarks.
+
+Exit criteria:
+
+- No local or reconstructed clock can extend emergency custody after restart.
+- Renewal reserves complete capacity before the existing horizon's safety margin.
+- Custody bytes are never destroyed for unresolved abandonment before an externally
+  reconciled irreversible emergency-namespace transition exists.
+
+### v0.111.63 - Typed Feature Activation Capabilities
+
+Goal: enforce activation-matrix permissions through unforgeable Rust capabilities
+rather than scattered Boolean checks at authority boundaries.
+
+Deliverables:
+
+- normative capability table defines exact permissions:
+  `ParseOnly` permits bounded decode into inert data only, with no secret/key access,
+  network/provider call, policy decision, durable write or authority capability;
+  `VerifyOnly` permits authenticated/query-only work under separate fixed budgets
+  and non-authoritative reports, with no provider mutation or authority-root update;
+  `ModelComplete` grants no runtime capability;
+  `WritePrepared` permits quota-charged non-authoritative encrypted staging only,
+  with no external effect, active-root publication or authority-visible reference;
+  `AuthorityActive` permits only transitions explicitly admitted by its feature entry;
+- sealed, non-constructible, non-`Clone` Rust capability types represent each state
+  and carry feature/revision/matrix root, policy/profile/provider epochs, operation
+  budget lease and lifetime/generation proof where required;
+- constructors remain private to one audited activation verifier that checks the
+  signed matrix/root/dependency evidence; deserialization, `unsafe`, default values,
+  test helpers, feature flags and downstream crates cannot mint a stronger token;
+- APIs for key access, network/query, provider mutation, durable staging, active-root
+  publication, recovery/compensation and protected claims require the minimum typed
+  capability in their signatures rather than accepting a Boolean or enum alone;
+- capability transitions consume the prior token and return a narrower or stronger
+  token only after the corresponding durable matrix transition; cancellation, panic,
+  restart and response ambiguity cannot duplicate or retain stale authority tokens;
+- `ParseOnly` decoders remain `no_std` compatible and receive only bounded immutable
+  bytes/work budgets; `VerifyOnly` provider queries use separate read-only handles;
+  `WritePrepared` storage is namespaced, quota-held and unreachable by active indexes;
+- compile-fail tests prove lower capabilities cannot call stronger APIs, while
+  runtime/property tests cover token replay, stale roots, cross-feature substitution,
+  serialization forgery, mixed binaries, panic/unwind and concurrent activation;
+- generated matrix/capability tables are checked for completeness against every
+  feature entry and public authority API; release gates reject untyped authority
+  entry points or runtime checks that bypass typed ownership;
+- diagnostics/status may inspect redacted capability metadata but never gain the
+  capability itself or expose private roots/operation presence;
+- threat model documents the trusted Rust/FFI boundary and audits every `unsafe` or
+  external callback that could bypass capability ownership.
+
+Verification:
+
+- `cargo test -p sagnir-core`
+- `cargo test -p sagnir-store`
+- compile-fail capability/API suite;
+- activation-token transition/duplication state-machine model;
+- public API and `unsafe` boundary audit.
+
+Exit criteria:
+
+- Lower activation states cannot invoke stronger side effects by construction.
+- Every authority-changing public API requires an unforgeable state-specific token.
+- Matrix rollback, serialization or runtime configuration cannot manufacture active
+  authority.
 
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
@@ -12180,7 +12469,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.58 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.63 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -12198,9 +12487,10 @@ Deliverables:
   resolution, emergency material retirement, handoff traffic privacy, observer-
   scoped discovery cover, retention-verification accounting/key lifecycle, atomic
   provider fence completeness, safe effect classification/compensation, bounded
-  unresolved custody, signed accounting-epoch closure, feature activation gating,
-  admitted authentication suite/provider-capacity mode, and one reconciled active
-  store quarantine key,
+  unresolved custody, signed accounting-epoch closure, dual-axis normalization,
+  provider completeness assurance, dual-root operation proofs, authoritative custody
+  time/abandonment and typed feature activation capabilities, admitted authentication
+  suite/provider-capacity mode, and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
   authorized-realm metadata key, and converts it into the candidate's durable
   quota charge while
@@ -12213,7 +12503,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.58 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.63 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -12507,9 +12797,11 @@ Deliverables:
   restart-persistent bounded handoff recovery/required blocking, priority debt and
   spam bounds plus immutable payload staging, measured handoff-staging traces,
   independently authorized emergency incarnation fencing, post-fence effect
-  classification/bridge blocking and terminal staged-material retirement, atomic
-  provider fence/set completeness, two-world-safe compensation, bounded unresolved
-  custody/abandonment and feature activation states;
+  classification/bridge blocking and terminal staged-material retirement, independent
+  execution-knowledge/authority-resolution axes, atomic provider fence/set
+  completeness with explicit assurance profiles and dual append/map roots, two-
+  world-safe compensation, bounded authoritative-time custody/anchored abandonment
+  and typed feature activation capabilities;
   retrievability states bind private tags/keys to exact ciphertext generations
   across copy-on-write migration, relocation and rotation under purpose-separated
   retention-verification accounting with explicit key provisioning/rotation and
@@ -12566,10 +12858,14 @@ Deliverables:
   handoff recovery, non-resumable handoff, undurable staged payload, unmeasured
   handoff staging, authority-unavailable bypass, unfenced emergency incarnation,
   provider-accepted operation omitted from the fenced set, retry/adoption past
-  `EffectUnknown`, unknown-effect compensation unsafe in either possible world,
-  premature emergency material cleanup, unresolved-custody realm/global quota
-  escape, mutable/dynamic decoder substitution, accounting-key retirement before
-  signed final closure, incomplete authority-feature activation, coordinator-cover
+  `EffectUnknown`, normalized cleanup that rewrites execution knowledge or reopens a
+  history-sensitive dependency, unknown-effect compensation unsafe in either possible
+  world, provider-collusion completeness claimed without independent observation,
+  append-root-only operation-ID non-inclusion, map/log projection mismatch,
+  premature emergency material cleanup, unresolved-custody realm/global quota escape,
+  restart/clock-reset custody age, destruction before anchored abandonment, mutable/
+  dynamic decoder substitution, accounting-key retirement before signed final
+  closure, incomplete or untyped authority-feature activation, coordinator-cover
   overclaim, retention-accounting key ambiguity, cross-log
   duplicate grant,
   ledger rollback/
@@ -12690,11 +12986,13 @@ Deliverables:
   purpose-separated maintenance-frontier anchors, post-reconciliation satisfaction/
   exact lease CAS plus ordinary next-writer handoffs and bounded recovery-required
   blocking with immutable staged payloads, measured handoff staging, emergency-
-  incarnation fencing, atomic provider operation-set fences, append-only effect
+  incarnation fencing, dual-axis emergency resolution, atomic provider operation-set
+  fences with assurance profiles and consistent append/map roots, append-only effect
   classification, two-world-safe compensation, post-fence effect bridges, bounded
-  emergency custody/abandonment, terminal material retirement and activation-matrix
-  gates, cross-log reconciliation, limited caller receipts, durable FIFO/debt
-  fairness and spam bounds under partitions, crashes, sustained appends and restart;
+  authoritative-time emergency custody/anchored abandonment, normalized/terminal
+  material retirement and typed activation gates, cross-log reconciliation, limited
+  caller receipts, durable FIFO/debt fairness and spam bounds under partitions,
+  crashes, sustained appends and restart;
 - model invariants for no lost encryption instance, no semantic/index
   completeness gap, no Byzantine manifest omission accepted, no hidden
   compartment disclosure, no endpoint-placement overwrite, no clock-derived
@@ -12741,11 +13039,14 @@ Deliverables:
   non-resumable/unstaged handoff, handoff-recovery reset, unavailable-authority
   bypass, forged emergency fence, late-result application outside the effect bridge,
   provider-accepted operation absent from the fenced set, retry/dependent progress
-  under `EffectUnknown`, compensation unsafe in either possible world, premature
-  staged-material cleanup, unresolved-custody share exhaustion, decoder substitution,
-  accounting-key retirement before signed final closure, parse/model-only feature
-  authority, handoff-trace or coordinator-cover overclaim, retention-key lifecycle
-  bypass,
+  under `EffectUnknown`, normalized cleanup relabeling execution or reopening history-
+  sensitive dependencies, compensation unsafe in either possible world, provider-
+  collusion completeness without independent evidence, append-only non-inclusion,
+  map/log set mismatch, premature staged-material cleanup, unresolved-custody share
+  exhaustion, custody-age reset or unanchored abandonment destruction, decoder
+  substitution, accounting-key retirement before signed final closure, lower-state/
+  forged typed capability authority, handoff-trace or coordinator-cover overclaim,
+  retention-key lifecycle bypass,
   duplicate cross-log
   grant, rollback
   priority erasure, phantom ticket blocking forever or ticket-spam
@@ -12845,7 +13146,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.58 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.63 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -12862,8 +13163,9 @@ Deliverables:
   private retrievability-metadata migration, durable payload staging, emergency
   incarnation recovery, post-fence effect resolution/emergency material retirement,
   handoff traffic privacy, observer-scoped discovery cover, retention-accounting key/
-  epoch closure, atomic provider fence completeness, safe compensation, bounded
-  emergency custody and feature activation gating through v0.111.58, and the
+  epoch closure, atomic provider fence completeness/assurance/dual-root proofs, safe
+  compensation/dual-axis normalization, bounded authoritative-time emergency
+  custody/abandonment and typed feature activation through v0.111.63, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -12880,12 +13182,13 @@ Deliverables:
   asserted-only protected retention, inconsistent/overlapping endpoint budget,
   invalid-auth capacity conflict, `WriterHandoffRecoveryRequired`, unavailable
   handoff conversion authority, mixed/private-proof metadata failure, unstaged/
-  non-resumable handoff, incomplete provider fence set, emergency-fence/effect
-  ambiguity, unsafe unknown-effect compensation, pending/over-quota emergency
-  custody, decoder/renewal/abandonment conflict, retention-accounting key/epoch-
-  closure conflict, required handoff/discovery-privacy degradation, unsupported
-  coordinator privacy, inactive/unknown critical feature, exhausted/unverifiable
-  capacity or
+  non-resumable handoff, incomplete/under-assured/inconsistent provider fence set,
+  emergency knowledge/resolution ambiguity, unsafe unknown-effect compensation,
+  normalized cleanup/dependency conflict, pending/over-quota emergency custody,
+  decoder/authoritative-renewal/anchored-abandonment conflict, retention-accounting
+  key/epoch-closure conflict, required handoff/discovery-privacy degradation,
+  unsupported coordinator privacy, missing typed activation capability, inactive/
+  unknown critical feature, exhausted/unverifiable capacity or
   rotation/writer-accounting state refuse transfer,
   preserve existing candidate presence/
   quota, and never trigger automatic reprovisioning, budget refill or plaintext
@@ -13886,9 +14189,10 @@ Deliverables:
   consistency proof/current terminal state/completion CAS/maintenance frontier/
   purpose-separated frontier anchor/frontier-satisfaction/lease-CAS/journal-result/
   payload-staging/traffic-profile/ordinary-handoff/recovery-epoch/required-blocking/
-  emergency-incarnation/provider-fence-set/accumulator-proof/effect-classification/
-  bridge/conditional-normalization/custody-renewal/abandonment/material-retirement/
-  activation-matrix/debt target set;
+  emergency-incarnation/provider-fence-set/assurance/append-map-projection/inclusion-
+  proof/execution-knowledge/authority-resolution/bridge/conditional-normalization/
+  normalized-cleanup/custody-clock-renewal/anchored-abandonment/material-retirement/
+  activation-matrix/typed-capability/debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -13955,10 +14259,12 @@ Deliverables:
   maintenance-frontier anchoring, current-ledger satisfaction/lease CAS, durable
   immutable payload staging/ordinary next-writer handoff with bounded recovery-
   required blocking, measured staging traffic, independently authorized emergency
-  incarnation fencing, atomic provider fence/set proofs, append-only effect
-  classification, two-world-safe compensation/normalization, bounded emergency
-  custody/abandonment, governed bridge blocking, terminal staged-material retirement,
-  activation-matrix gating, cross-log result reconciliation and atomic cleanup;
+  incarnation fencing, provider completeness-assurance profiles, consistent append-
+  log/authenticated-map fence roots, independent execution-knowledge/resolution axes,
+  append-only classification, two-world-safe compensation/normalization, bounded
+  authoritative-time emergency custody/anchored abandonment, governed bridge
+  blocking, normalized/terminal staged-material retirement, activation-matrix/typed-
+  capability gating, cross-log result reconciliation and atomic cleanup;
 - composition of the history-independent map algorithm/pages with authority
   active/covered-fence/exception/archive roots, a permanent low-sequence
   exception plus later archival, exact replay refusal, checkpoint rollback
@@ -14142,12 +14448,14 @@ Deliverables:
   reuse, unanchored/unsatisfied maintenance frontier, stale satisfaction lease CAS,
   grant-only satisfaction, ordinary-handoff overtake, recovery-budget reset or
   authority-unavailable bypass, non-resumable/unstaged handoff, unmeasured handoff
-  traffic, unfenced emergency transition, incomplete provider fence set, late-result
+  traffic, unfenced emergency transition, incomplete/under-assured provider fence
+  set, append/map projection mismatch or append-only non-inclusion, late-result
   application outside the governed bridge, retry/dependent progress under
-  `EffectUnknown`, compensation unsafe in either possible world, unresolved custody
-  exceeding realm/global shares, mutable decoder substitution, premature emergency
-  material/key/quota retirement, parse/model-only feature authority, duplicate
-  cross-log result, rollback
+  `EffectUnknown`, normalized cleanup rewriting knowledge/history dependencies,
+  compensation unsafe in either possible world, unresolved custody exceeding realm/
+  global shares, custody-age reset or unanchored abandonment, mutable decoder
+  substitution, premature emergency material/key/quota retirement, lower-state or
+  forged typed-capability authority, duplicate cross-log result, rollback
   priority loss or unbounded ticket/debt/spam denial, no
   unmanaged-backup recoverability
   claim, no opaque cleanup of published data, no partial durable
@@ -14273,6 +14581,11 @@ Deliverables:
   v0.111.56 reserve/retain/renew/decoder/abandon/release boundaries,
   v0.111.57 finalize/close/archive/anchor/destroy boundaries,
   v0.111.58 prepare/activate/negotiate/refuse/rollback boundaries,
+  v0.111.59 knowledge/resolve/normalize/reconcile/cleanup boundaries,
+  v0.111.60 accept/attest/witness/receipt/fence/downgrade boundaries,
+  v0.111.61 append/map/project/prove/compact boundaries,
+  v0.111.62 clock/frontier/reserve/renew/anchor/destroy boundaries,
+  v0.111.63 parse/verify/stage/activate/consume-token boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -14458,15 +14771,20 @@ Deliverables:
   negative-proof omission, weak provider consistency, commit-immediately-before-
   fence, false non-execution evidence, `EffectUnknown` retry/dependent/conflicting
   progress, bridge split view, unsafe inverse, conditional-normalization state race,
-  classification rewrite, cross-realm unresolved-custody exhaustion, renewal loss,
-  mutable decoder substitution, abandoned-scope reenable, premature staged-key/
-  payload/quota retirement, emergency cleanup response loss, handoff staging size/
-  timing/backup correlation, cover-staging exhaustion, active coordinator real-
-  budget observation, false blind-cover claim, retention-accounting key provisioning/
-  rotation ambiguity, non-empty/forked epoch closure, partial audit rewrap, restored
-  closed key, parse-only feature activation, matrix stripping/downgrade, competing
-  emergency/maintenance activation, unanchored maintenance and caller-receipt
-  overclaim,
+  normalized cleanup/knowledge rewrite/history-sensitive reopening, classification
+  rewrite, provider/writer collusion under each completeness profile, hardware rollback,
+  witness/receipt omission, assurance downgrade, append/map root mismatch, duplicate
+  operation/idempotency key, stale map non-inclusion, projection splice, cross-realm
+  unresolved-custody exhaustion, restart/clock-reset age, late renewal reservation,
+  abandonment-anchor loss/rollback, mutable decoder substitution, abandoned-scope
+  reenable, premature staged-key/payload/quota retirement, emergency cleanup response
+  loss, handoff staging size/timing/backup correlation, cover-staging exhaustion,
+  active coordinator real-budget observation, false blind-cover claim, retention-
+  accounting key provisioning/rotation ambiguity, non-empty/forked epoch closure,
+  partial audit rewrap, restored closed key, lower-capability key/network/provider/
+  publication calls, token forgery/replay/duplication, parse-only feature activation,
+  matrix stripping/downgrade, competing emergency/maintenance activation, unanchored
+  maintenance and caller-receipt overclaim,
   cross-log response ambiguity, ticket spam/phantom/debt/restart races, unmanaged-
   backup restore after key
   retirement, privacy-profile change, quota-refund, padding-budget, cross-purpose
@@ -14818,11 +15136,14 @@ Deliverables:
   lease-CAS records, ordinary next-writer handoff/result/debt transitions,
   handoff-recovery epoch/resource/required-state transitions, anchored roots/limited
   receipts, immutable payload-staging/traffic profiles, emergency-incarnation/fence/
-  late-result transitions, atomic provider fence-set receipts/accumulator proofs,
-  append-only `EffectUnknown`/`Committed`/`ProvenNotExecuted`, governed effect bridges,
-  committed-effect compensation/two-world normalization, bounded custody/renewal/
-  abandonment, staged-material destruction/quota release, activation matrices,
-  rollback refusal, phantom cleanup, spam ceilings, fairness and ledger compaction;
+  late-result transitions, dual execution-knowledge/authority-resolution axes,
+  normalized terminal cleanup/dependency classes, provider completeness assurance/
+  attestation/witness/receipt evidence, consistent append-log/map roots/projection/
+  inclusion/non-inclusion proofs, governed effect bridges, committed-effect
+  compensation/two-world normalization, bounded authoritative-time custody/renewal/
+  anchored abandonment, staged-material destruction/quota release, activation
+  matrices/typed capabilities, rollback refusal, phantom cleanup, spam ceilings,
+  fairness and ledger compaction;
 - handoff privacy benchmarks compare baseline/padded/high-security size, timing,
   timestamp and backup-block traces plus emergency-retention overhead; discovery
   benchmarks compare complete active-coordinator views for real/cover operations;
@@ -15338,8 +15659,8 @@ Deliverables:
   verified and descriptor-bound before activation, then rotate copy-on-write while
   pending challenge/accounting evidence retains old epochs;
 - v0.111.54 one atomic provider transition fences the old namespace and commits the
-  final accepted-operation high-watermark/accumulator with complete bounded proofs;
-  unverifiable completeness freezes the entire affected provider/authority scope;
+  final accepted-operation high-watermark and dual roots with complete bounded
+  proofs; unverifiable completeness freezes the affected provider/authority scope;
 - v0.111.55 classification is append-only, ordinary compensation requires a proven
   committed effect, and unknown effects normalize only through an atomic operation
   proven safe in both possible worlds; irreducible uncertainty remains blocked;
@@ -15352,6 +15673,21 @@ Deliverables:
 - v0.111.58 machine-readable activation states keep authority paths inactive until
   every format/model/provider/profile/closure dependency is admitted, and mixed or
   rolled-back binaries remain read-only;
+- v0.111.59 execution knowledge and authority resolution are independent; normalized
+  unknown execution terminates custody only after exact root reconciliation, reopens
+  current-state dependencies only and preserves history-sensitive blocking;
+- v0.111.60 completeness claims identify provider-asserted, hardware-monotonic,
+  witnessed or receipt evidence; protected recovery refuses provider assertion when
+  provider equivocation is in scope and never claims collusion detection without an
+  independent observer;
+- v0.111.61 fence receipts bind consistent ordered append-log and authenticated
+  operation-ID map roots with uniqueness/projection proofs, preserving logarithmic
+  inclusion/non-inclusion and exact sequence history;
+- v0.111.62 custody age survives restart under `ClockEpoch` plus authoritative
+  frontier/time evidence, renewal reserves before its safety margin, and unresolved
+  abandonment is externally reconciled before destruction;
+- v0.111.63 normative state permissions are enforced by sealed non-forgeable Rust
+  capability types required by key, network, provider, staging and authority APIs;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -15565,6 +15901,21 @@ Deliverables:
 - v0.111.58 parse/verify/model/write/active states, missing dependency, forged
   activation, mixed versions, matrix stripping, provider/profile downgrade,
   repository rollback and atomic activation-crash fixtures pass;
+- v0.111.59 valid/invalid axis pairs, normalized terminal cleanup, current-state
+  reopen, history-sensitive refusal, late knowledge refinement, rollback and
+  composed-checkpoint fixtures pass;
+- v0.111.60 provider/writer collusion, attested counter rollback/clone, witness
+  threshold/equivocation, retained-receipt omission, assurance downgrade and
+  assumption-reporting fixtures pass;
+- v0.111.61 append/map root, operation/idempotency uniqueness, projection/count,
+  logarithmic inclusion/non-inclusion, page amplification, interrupted build and
+  compaction fixtures pass;
+- v0.111.62 process/reboot/clock rollback, stale authoritative frontier, age reset,
+  renewal safety-margin capacity, abandonment anchor response loss/split view and
+  destroy-before-anchor fixtures pass;
+- v0.111.63 compile-fail permission, private constructor, token consume/replay/
+  duplication, stale/cross-feature root, serialization forgery, panic/restart and
+  public authority-API audit fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -15749,7 +16100,10 @@ Deliverables:
   write-prepared and authority-active states; emergency recovery, protected handoff,
   coordinator-private discovery and protected retention accounting remain read-only
   until every named closure/provider/profile dependency is active, and mixed/older
-  binaries cannot strip or downgrade that floor;
+  binaries cannot strip or downgrade that floor; sealed non-forgeable Rust
+  capabilities enforce that parse has no keys/network/writes, verify is query-only,
+  modeled has no runtime power, prepared writes only charged non-authoritative
+  staging, and only admitted active tokens reach authority-changing APIs;
 - reproducible model assurance with exact bounds, assumptions, property classes,
   reductions, explored-state coverage, resources, seeds/configuration, and
   completion status;
@@ -15961,19 +16315,24 @@ Deliverables:
   while operator-confirmed independent threshold emergency recovery may fence the
   entire old incarnation, quarantine late results and activate a linked new
   journal/ledger incarnation without reusing identifiers or operation authority;
-  one atomic provider transition fences acceptance and commits the final old-
-  namespace sequence/accumulator plus complete inventory/proofs; unverifiable set
-  completeness freezes the whole affected provider/authority scope; each included
-  operation follows append-only classification: `Unclassified` -> `EffectUnknown`
-  -> (`Committed` | `ProvenNotExecuted`) -> `BridgeResolved`; unknown effects block
-  dependent/conflicting authority; ordinary compensation requires proven commit,
-  while unknown effects normalize only through an atomic provider operation proven
+  one atomic provider transition fences acceptance and commits final ordered append-
+  log and operation-ID map roots with uniqueness/projection proofs and logarithmic
+  non-inclusion; its completeness claim is provider-asserted, hardware-monotonic,
+  witnessed or receipt-backed, and protected recovery requires independent evidence
+  when provider equivocation is in scope; unverifiable completeness freezes the
+  whole affected provider/authority scope; execution knowledge and authority
+  resolution remain independent, so normalization may terminate custody and reopen
+  only proven current-state dependencies while permanently preserving unknown
+  execution and history-sensitive blocking; ordinary compensation requires proven
+  commit, while unknown effects normalize only through an atomic provider operation
   safe in both possible worlds, and irreducible uncertainty stays blocked; staged
   bytes, immutable hash-bound decoder, keys and quota remain within checked realm/
-  global custody shares under authoritative renewal until terminal reconciliation;
-  governed abandonment may reclaim physical storage but permanently preserves
-  `EffectUnknown` and disables the scope; authenticated cleanup preserves permanent
-  commitment/resolution evidence; caller receipts expose only caller-relative
+  global custody shares; renewal binds one process `ClockEpoch` and persistent
+  authoritative time/frontier evidence without restart age reset; governed
+  abandonment anchors externally before destruction, permanently preserves unknown
+  execution and disables the scope; authenticated normalized/terminal cleanup
+  preserves permanent commitment/resolution evidence; caller receipts expose only
+  caller-relative
   rollback and cannot replace
   system-wide anchoring or require a ticket to repair the ledger;
 - durable quarantine candidate metadata uses a purpose-separated
