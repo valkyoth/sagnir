@@ -11686,8 +11686,9 @@ Deliverables:
   capacity or retiring decoder/key support;
 - normalized cleanup preserves `ExecutionKnowledge::Unknown`, requires the exact
   normalization receipt and keeps every history-sensitive dependency blocked under
-  v0.111.59 even when admitted current-state dependencies reopen; v0.111.67 requires
-  the authoritative composite-head CAS before cleanup or reopening;
+  v0.111.59 even when admitted current-state dependencies reopen; v0.111.67 prepares
+  the composite-head CAS and v0.111.68 requires external reconciliation plus local
+  activation before cleanup or reopening;
 - staged generations use independently accountable keys/encryption instances; a
   shared wrapping key cannot be destroyed while another live or unresolved staged
   payload depends on it, and wrapper deletion alone is not called payload erasure;
@@ -12126,8 +12127,9 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.67 are complete and their provider/fence/effect/
-  custody capabilities are admitted; earlier binaries may parse/verify evidence only;
+  v0.111.50 and v0.111.54-v0.111.72 are complete and their provider/fence/effect/
+  custody/anchor/evidence/admission/privacy capabilities are admitted; earlier
+  binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
   profile composition pass for the selected platform/storage observer profile;
 - coordinator-private discovery remains inactive until v0.111.52 names a reviewed
@@ -12185,9 +12187,10 @@ Deliverables:
   `Compensated` requires `Committed`, `Normalized` may retain `Unknown`, and
   `Abandoned` preserves the current execution knowledge without asserting an effect;
 - append-only execution-knowledge transitions and authority-resolution transitions
-  produce separate immutable prepared roots/leaves; v0.111.67 makes only one
-  expected-head-CAS composed emergency checkpoint authoritative across both axes,
-  provider/result roots, dependencies, custody and policy epoch;
+  produce separate immutable prepared roots/leaves; v0.111.67 makes only one locally
+  committed expected-head-CAS candidate across both axes, provider/result roots,
+  dependencies, custody and policy epoch; v0.111.68 requires external reconciliation
+  before that candidate becomes active or permits side effects;
 - canonical `EmergencyResolvedNormalized` binds the v0.111.55 atomic normalization
   receipt/current-state commitment, preserved `ExecutionKnowledge::Unknown`, exact
   dependency closure, journal/admission-ledger/provider roots, custody generation,
@@ -12212,7 +12215,8 @@ Deliverables:
   transitions, rollback, compaction and backup restore.
 - late evidence semantics are normative under v0.111.67: knowledge may advance after
   normalization, but custody/cleanup cannot resurrect and history-sensitive reopening
-  requires a distinct governed composed-head resolution.
+  requires a distinct governed composed-head resolution; v0.111.69 requires the
+  knowledge leaf to be a valid projection of the exact result-evidence checkpoint.
 
 Verification:
 
@@ -12487,6 +12491,9 @@ Deliverables:
 - effect classification, emergency composite heads and bridge/normalization/cleanup
   decisions bind immutable acceptance roots plus the exact current result-evidence
   checkpoint; neither acceptance nor result evidence can substitute for the other;
+- v0.111.69 defines the deterministic projection from this result checkpoint into
+  emergency execution knowledge; a checkpoint/knowledge pair that cannot satisfy
+  that projection is never admissible as one composite head;
 - compaction retains independent append consistency, current-status proofs, conflict
   evidence and acceptance-to-result linkage through the dispute/retention horizon;
 - tests cover late result after fence, stale `result_state_at_fence`, acceptance-root
@@ -12530,6 +12537,9 @@ Deliverables:
 - prepared receipts absent from a final accepted-operation set reconcile through a
   terminal `AbortedBeforeAcceptance` or remain explicit uncertainty; deletion, age
   or provider non-inclusion alone cannot prove non-execution after eligibility;
+- v0.111.71 reserves and charges bounded prepared-receipt capacity before external
+  preparation, and v0.111.72 applies a declared independent observer/privacy profile
+  to every receipt and witness exchange;
 - `WitnessedComplete` makes threshold/diverse witness co-commit part of acceptance:
   the provider cannot create an accepted entry or `ExecutionEligible` proof until the
   required witness set durably signs the exact acceptance commitment/frontier;
@@ -12576,10 +12586,11 @@ Deliverables:
   exact purpose/subject/action/resource-scoped v0.23.4 one-operation capability,
   matching `FeatureActiveWitness`, durable budget/reservation lease and expected
   authority root/generation; omission of any input is a type/API error or refusal;
-- an internal operation-specific composition token may be minted only by consuming
-  or borrowing those exact inputs after context equality and freshness checks; no
-  public generic authority supertype, widening conversion or reusable ambient token
-  exists;
+- an internal operation-specific composition token may borrow only the
+  `FeatureActiveWitness` and immutable policy metadata; the one-operation capability,
+  durable budget/reservation lease and expected-root guard move by value into the
+  token after context equality and freshness checks under v0.111.70; no public
+  generic authority supertype, widening conversion or reusable ambient token exists;
 - feature witnesses cannot widen scope, extend lifetime, replace possession proof,
   change quorum/policy, reset budget, alter expected root or convert one operation
   capability into another;
@@ -12614,10 +12625,10 @@ Exit criteria:
 - Every authority operation remains exact, one-use, budgeted and expected-root-bound.
 - No feature witness widens or converts authority across operations or contexts.
 
-### v0.111.67 - Authoritative Composite Emergency Head
+### v0.111.67 - Atomic Composite Emergency Head Preparation
 
-Goal: publish execution knowledge, authority resolution and late evidence through one
-authoritative head so partial axis updates never control cleanup or dependency state.
+Goal: compose execution knowledge, authority resolution and late evidence into one
+atomic prepared head so partial axis updates can never become an authority candidate.
 
 Deliverables:
 
@@ -12628,12 +12639,17 @@ Deliverables:
   resolution root/leaf, immutable acceptance roots, current v0.111.64 result-evidence
   checkpoint, dependency classification/root, custody/cleanup state, policy epoch,
   writer/provider incarnations and expected authority generation;
-- one WAL-backed expected-head CAS publishes the complete new composite checkpoint;
-  cleanup, dependency reopening, bridge/normalization decisions, sync/export and
-  status proofs consume only that committed head;
-- crash or cancellation before the CAS leaves both prior axes, result checkpoint,
-  custody and dependencies authoritative; prepared leaves remain inert, bounded and
-  recoverable/collectable without arrival-order selection;
+- v0.111.69 requires the knowledge leaf and exact result-evidence checkpoint to
+  satisfy one canonical `EffectEvidenceProjection`; mismatch is a hard refusal;
+- one WAL-backed expected-head CAS prepares the complete new composite checkpoint;
+  v0.111.68 publishes its exact root through the established external-anchor
+  transaction before local activation; cleanup, dependency reopening, bridge/
+  normalization decisions, sync/export and status proofs consume only an externally
+  reconciled and locally activated head;
+- crash or cancellation before local activation leaves both prior axes, result
+  checkpoint, custody and dependencies authoritative; prepared or externally pending
+  leaves remain inert, bounded and recoverable without arrival-order selection under
+  v0.111.68;
 - `Unknown + Normalized` may later advance to `Committed + Normalized` or
   `ProvenNotExecuted + Normalized` through a new composed-head CAS binding admitted
   late evidence; normalization and its earlier cleanup remain immutable/idempotent;
@@ -12668,6 +12684,244 @@ Exit criteria:
 - History-sensitive dependencies reopen only through a distinct governed resolution
   that binds the full normalized history.
 
+### v0.111.68 - Externally Anchored Composite Emergency Publication
+
+Goal: make an emergency composite head authoritative only after its exact durable
+bytes and external publication have been reconciled before local activation.
+
+Deliverables:
+
+- reuse the v0.111.20 external-anchor transaction substrate, capability checks,
+  idempotent query protocol, dual-slot/predecessor continuity and recovery-copy
+  accounting; this milestone introduces no independent anchoring protocol;
+- canonical lifecycle is `CompositePrepared -> ExternalAnchorPending ->
+  ExternalAnchorReconciled -> LocalActivated -> SideEffectsAllowed`, with every
+  transition binding one operation ID, prior active head, exact composite root,
+  expected external predecessor/generation, policy epoch and local incarnation;
+- complete canonical composite bytes, referenced prepared leaves and a recovery
+  manifest become durable and authenticated before any external compare-and-swap;
+  an external anchor cannot point at bytes that no admitted recovery path can fetch;
+- the dedicated emergency-head anchor namespace commits the exact composite root,
+  predecessor, external generation, operation ID and admitted suite/provider profile;
+  another namespace, local root or semantically equivalent reconstruction cannot
+  satisfy publication;
+- lost, timeout or contradictory external responses produce a query-only
+  reconciliation capability; recovery queries the operation ID and expected
+  predecessor and cannot issue a fresh compare-and-swap, rebase or select by arrival;
+- an externally advanced head with complete staged bytes recovers forward through
+  `ExternalAnchorReconciled` and local activation; a local-only prepared or locally
+  cached head remains inert and cannot be exported as authoritative;
+- local activation uses one WAL expected-head CAS that binds the reconciled external
+  receipt; a competing local writer, restored clone, stale generation or changed
+  composite bytes fails without undoing an externally committed head;
+- cleanup, reopening, compensation, normalization, sync/export, retention release
+  and every other authority-changing consequence require a non-cloneable
+  `SideEffectsAllowed` token minted only after external reconciliation and local
+  activation of that exact root;
+- abandonment, compaction and prepared-material cleanup preserve external receipts,
+  recovery manifests, operation outcomes and predecessor continuity; cleanup cannot
+  erase evidence needed to recover an externally visible head;
+- tests cover every crash boundary, response loss, external-only commit, local-only
+  preparation, stale predecessor, competing host, restored clone, split view,
+  changed staged bytes, local activation failure and duplicate side-effect attempt.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- external-anchor/composite-publication state-machine model;
+- provider response-loss, crash and multi-host recovery integration suite;
+- canonical lifecycle, anchor and reconciliation vectors.
+
+Exit criteria:
+
+- No local emergency-head write alone can authorize cleanup, reopening or export.
+- Every externally visible composite root has complete durable recovery material.
+- Ambiguous publication is reconciled by query and never by repeating authority.
+
+### v0.111.69 - Effect Evidence Projection
+
+Goal: prove that emergency execution knowledge is exactly supported by the bound
+immutable acceptance and current result-evidence checkpoint.
+
+Deliverables:
+
+- canonical `EffectEvidenceProjection` binds operation/namespace, immutable
+  acceptance roots and proof, exact v0.111.64 result checkpoint/status proof,
+  projected v0.111.59 knowledge leaf, evidence policy and predecessor projection;
+- the normative projection matrix permits no knowledge stronger than its evidence:
+  `Committed` requires the exact admitted result/effect commitment,
+  `ProvenNotExecuted` requires the final provider fence plus exact operation
+  non-inclusion evidence, and unresolved evidence projects `Unknown`;
+- any differently committed, internally contradictory, cross-source contradictory
+  or fence/result-inconsistent evidence projects `Conflicting`; conflict cannot be
+  reduced to `Unknown`, selected by source priority or resolved by arrival order;
+- `Pending`, `NoResultAtFence` and incomplete prepared evidence remain blocking
+  `Unknown` and carry an explicit refinement obligation; staleness or timeout cannot
+  strengthen them into committed or non-executed knowledge;
+- deterministic projection depends only on canonical admitted evidence and policy,
+  not local time, map iteration, process order, provider response order or cache state;
+- every v0.111.67 composite-head preparation and v0.111.68 external publication
+  verifies and commits the exact projection proof; a stale result checkpoint,
+  substituted knowledge leaf or omitted conflict makes the entire head inadmissible;
+- late evidence appends a new result checkpoint and projection before a new composite
+  publication; it never edits an old projection or silently upgrades an active head;
+- status and proof output report source evidence, projection result and pending/
+  conflict state without exposing private effect material beyond the active profile;
+- tests exhaust the projection matrix, stale/pending refinement, final-fence
+  non-inclusion, conflicting commitments, source reordering, late evidence,
+  checkpoint substitution and composite-publication races.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-store`
+- result-evidence/knowledge projection state-machine model;
+- canonical projection and invalid-combination vectors.
+
+Exit criteria:
+
+- Execution knowledge never exceeds the evidence committed by the same head.
+- Conflicting or stale evidence cannot become authority through ordering or timeout.
+- Composite publication rejects every invalid evidence/knowledge pairing.
+
+### v0.111.70 - Affine Operation Token Composition
+
+Goal: ensure composing feature state with operation authority transfers every
+one-use authority input exactly once and cannot duplicate execution permission.
+
+Deliverables:
+
+- `FeatureActiveWitness` and immutable policy descriptors may be borrowed for context
+  validation because they carry no operation authority; borrowing them never extends
+  their freshness or creates an owned authority capability;
+- the exact one-operation capability, durable budget/reservation lease and
+  expected-root compare-and-swap guard are affine inputs moved by value into one
+  sealed, non-`Clone`, non-serializable operation token;
+- the operation token owns the complete purpose, subject, action, resource, store,
+  realm, feature, operation ID, budget, expected root/generation, policy/provider
+  epochs and expiry context; no input can be recovered, split or recomposed;
+- an authority-changing API consumes the token exactly once and returns only a typed
+  terminal result or query-only reconciliation token; success, refusal, cancellation,
+  panic and provider ambiguity cannot return an executable authority token;
+- ambiguity moves the operation ID, provider request digest and remaining recovery
+  budget into a non-executable reconciliation token that permits only status query,
+  evidence import and terminal resolution, never fresh execution or root rebasing;
+- FFI and service boundaries reconstruct a token from independently authenticated,
+  durably reserved server-side inputs and never deserialize an owned Rust capability;
+- compile-fail tests reject borrowed operation capabilities, copied budget leases,
+  reused expected-root guards, token cloning/serialization and double composition;
+- concurrency and cancellation tests race two composition/execution attempts and
+  prove at most one token and one provider-side operation can become eligible.
+
+Verification:
+
+- `cargo test -p sagnir-core`
+- `cargo test -p sagnir-store`
+- compile-fail affine-input and reconciliation-token suite;
+- operation-token ownership/concurrency state-machine model.
+
+Exit criteria:
+
+- Borrowing non-authorizing context can never duplicate affine operation authority.
+- Every capability, budget lease and expected-root guard has exactly one terminal
+  ownership path.
+- Ambiguous execution leaves query authority only, never a retryable execution token.
+
+### v0.111.71 - Bounded Prepared Receipt Admission
+
+Goal: bound independent receipt preparation without deleting evidence for an
+operation that might have reached execution eligibility.
+
+Deliverables:
+
+- a durable receipt-capacity reservation is acquired and charged before contacting
+  an external receipt store or witness; no prepared external evidence may exist
+  without a corresponding local aggregate reservation and operation ID;
+- limits cover count, bytes, verification work and concurrency per operation,
+  principal, realm, witness/receipt authority and global store; aggregate accounting
+  spans reconnects, sessions, replicas, identities and recipient fanout so Sybil or
+  retry behavior cannot multiply capacity;
+- provider timeout, response loss, process restart and uncertain preparation retain
+  the full charge until idempotent query proves a terminal state; ambiguity never
+  refunds capacity merely because local receipt bytes are absent;
+- prepared-receipt lifetime uses v0.111.62 authoritative time, admitted policy epoch
+  and a signed expiry frontier; wall-clock age, reboot, suspended time or local
+  administrator edits cannot expire authority evidence;
+- `AbortedBeforeAcceptance` is admitted only after the receipt authority, immutable
+  accepted-operation set and execution-eligibility state reconcile that the exact
+  operation never reached eligibility; reconciliation is idempotent and append-only;
+- terminal abort evidence may compact into a bounded authenticated summary after its
+  dispute/retention frontier; prepared, ambiguous or possibly eligible evidence is
+  never deleted, downgraded or summarized as non-execution to recover space;
+- separate reserved capacity for fence closure, receipt reconciliation and emergency
+  recovery prevents ordinary prepared-receipt saturation from blocking the operations
+  needed to establish terminal truth and release capacity;
+- quota refusal is local resource state only and cannot become shared evidence of
+  rejection, non-acceptance or non-execution; status reports the charged dimension and
+  recovery action without revealing unrelated principals or operations;
+- tests cover receipt floods, byte/work amplification, threshold fanout, Sybil and
+  reconnect aggregation, response loss, restart, authoritative expiry, abort races,
+  eligibility uncertainty, terminal compaction and recovery-capacity exhaustion.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- prepared-receipt quota/lifecycle state-machine model;
+- receipt-store ambiguity, restart and abuse integration suite;
+- count/byte/work/concurrency accounting benchmarks.
+
+Exit criteria:
+
+- Receipt preparation consumes bounded capacity before external state can be created.
+- Ambiguous or possibly eligible evidence is retained until terminal truth is proven.
+- Saturation cannot consume the reserved capacity required to fence and reconcile.
+
+### v0.111.72 - Receipt And Witness Traffic Privacy Profiles
+
+Goal: declare and enforce what receipt and witness observers can learn from
+pre-execution evidence traffic independently of other coordinator privacy controls.
+
+Deliverables:
+
+- normative receipt/witness observer matrix covers source and relay visibility,
+  operation timing, volume, size class, retries, participant/threshold set, policy
+  profile, success/failure shape, retention, logs, backups and colluding observers;
+- protocol messages and stored indexes use opaque domain-separated commitments and
+  endpoint-scoped correlation handles; raw operation IDs, paths, realms, semantic
+  commitments or reusable cross-recipient identifiers are prohibited unless the
+  selected profile explicitly requires and documents them;
+- baseline, padded and high-security profiles declare exact padding buckets, batch/
+  schedule behavior, cover rate, retry cadence, relay assumptions, retention and
+  unavoidable leakage; profile names never imply stronger guarantees than measured;
+- padding and cover traffic receive independent capacity and cannot become receipt,
+  witness, acceptance, execution-eligibility or non-execution evidence; exhaustion
+  cannot borrow v0.111.71 reconciliation/fence reserves or silently drop real traffic;
+- cover, batching, relay or schedule failure causes an explicit permanent privacy-
+  assurance degradation for the affected transcript; later recovery cannot relabel
+  already observable traffic as protected;
+- receipt/witness logs, metrics, diagnostics, tracing and operator views are
+  purpose-scoped, authenticated, retention-bounded and free of secret identifiers;
+  external provider logs and backup behavior remain declared residual risk;
+- collusion analysis covers provider plus receipt store, witness subsets, relays,
+  coordinators, network observers and storage observers; this profile is distinct
+  from and cannot inherit claims from coordinator/discovery cover alone;
+- tests compare traces for real, cover, retry, rejection, threshold failure,
+  cancellation and restart; observer classifiers, identifier-correlation checks and
+  fault injection verify every admitted profile and degradation transition.
+
+Verification:
+
+- `cargo test -p sagnir-sync`
+- receipt/witness observer and profile-degradation state-machine model;
+- traffic-trace differential and collusion-analysis suite;
+- metadata/log leakage review.
+
+Exit criteria:
+
+- Every receipt/witness deployment states its observer leakage and residual risk.
+- Opaque evidence traffic cannot be correlated through reusable protocol identifiers.
+- Loss of required cover or scheduling permanently downgrades the affected claim.
+
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
 Goal: ensure untrusted remote data cannot influence trusted state before full
@@ -12697,7 +12951,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.67 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.72 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -12718,8 +12972,10 @@ Deliverables:
   unresolved custody, signed accounting-epoch closure, dual-axis normalization,
   provider completeness assurance, dual-root operation proofs, authoritative custody
   time/abandonment, immutable acceptance/result roots, pre-execution receipt/witness
-  admission, feature-witness/operation authorization composition and authoritative
-  composite emergency heads, admitted authentication suite/provider-capacity mode,
+  admission, feature-witness/operation authorization composition, externally anchored
+  composite emergency heads, effect-evidence projection, affine operation-token
+  ownership, bounded prepared-receipt admission and receipt/witness traffic privacy,
+  admitted authentication suite/provider-capacity mode,
   and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
   authorized-realm metadata key, and converts it into the candidate's durable
@@ -12733,7 +12989,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.67 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.72 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -13028,12 +13284,14 @@ Deliverables:
   spam bounds plus immutable payload staging, measured handoff-staging traces,
   independently authorized emergency incarnation fencing, post-fence effect
   classification/bridge blocking and terminal staged-material retirement, independent
-  execution-knowledge/authority-resolution axes under one composite-head CAS,
+  execution-knowledge/authority-resolution axes under one externally anchored
+  composite-head lifecycle with deterministic result-evidence projection,
   immutable acceptance roots plus append-only result evidence, atomic provider set
   completeness with explicit assurance profiles/dual-identity append/map roots and
-  pre-execution receipt/witness eligibility, two-world-safe compensation, bounded
+  bounded pre-execution receipt/witness eligibility and observer profiles,
+  two-world-safe compensation, bounded
   authoritative-time custody/anchored abandonment and non-authorizing feature
-  witnesses composed with exact operation capabilities/budgets/expected roots;
+  witnesses composed with affine operation capabilities/budgets/expected roots;
   retrievability states bind private tags/keys to exact ciphertext generations
   across copy-on-write migration, relocation and rotation under purpose-separated
   retention-verification accounting with explicit key provisioning/rotation and
@@ -13092,17 +13350,22 @@ Deliverables:
   provider-accepted operation omitted from the fenced set, retry/adoption past
   `EffectUnknown`, normalized cleanup that rewrites execution knowledge or reopens a
   history-sensitive dependency, axis/prepared-leaf authority without composed-head
-  CAS, late evidence resurrecting custody or repeating cleanup, unknown-effect
+  external reconciliation/local activation, local-only emergency side effects,
+  result-evidence/knowledge projection mismatch, late evidence resurrecting custody
+  or repeating cleanup, unknown-effect
   compensation unsafe in either possible world, mutable fence root from late result,
   result-log/status-map splice, provider-collusion completeness claimed without
   independent observation, execution before retained receipt/witness co-commit,
+  uncharged/unbounded prepared receipts, ambiguity refund, Sybil capacity reset,
+  unsafe prepared-evidence deletion or receipt/witness observer overclaim,
   append-root-only operation/idempotency non-inclusion, dual-identity map/log
   projection mismatch,
   premature emergency material cleanup, unresolved-custody realm/global quota escape,
   restart/clock-reset custody age, destruction before anchored abandonment, mutable/
   dynamic decoder substitution, accounting-key retirement before signed final
-  closure, feature-state witness used as operation authority, missing exact operation
-  capability/budget/expected root, incomplete or untyped activation, coordinator-
+  closure, feature-state witness used as operation authority, borrowed/duplicated
+  affine operation capability/budget/expected root, executable ambiguity token,
+  incomplete or untyped activation, coordinator-
   cover overclaim, retention-accounting key ambiguity, cross-log
   duplicate grant,
   ledger rollback/
@@ -13224,12 +13487,15 @@ Deliverables:
   exact lease CAS plus ordinary next-writer handoffs and bounded recovery-required
   blocking with immutable staged payloads, measured handoff staging, emergency-
   incarnation fencing, dual-axis emergency resolution under one authoritative
-  composite head, immutable acceptance/current-result evidence separation, atomic
+  externally anchored composite head with exact result-evidence projection,
+  immutable acceptance/current-result evidence separation, atomic
   provider operation-set fences with assurance profiles, consistent dual-identity
-  append/map roots and pre-execution receipt/witness admission, append-only effect
+  append/map roots, bounded pre-execution receipt/witness admission and declared
+  receipt/witness observer profiles, append-only effect
   classification, two-world-safe compensation, post-fence effect bridges, bounded
   authoritative-time emergency custody/anchored abandonment, normalized/terminal
-  material retirement, and feature witnesses composed with exact operation authority,
+  material retirement, and feature witnesses composed with affine exact operation
+  authority inputs and query-only ambiguous reconciliation,
   cross-log reconciliation, limited caller receipts, durable FIFO/debt fairness and
   spam bounds under partitions, crashes, sustained appends and restart;
 - model invariants for no lost encryption instance, no semantic/index
@@ -13388,7 +13654,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.67 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.72 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -13409,7 +13675,8 @@ Deliverables:
   compensation/dual-axis normalization, bounded authoritative-time emergency
   custody/abandonment, immutable acceptance/current-result evidence,
   pre-execution receipt/witness admission, exact feature-witness/operation authority
-  composition and composite emergency-head publication through v0.111.67, and the
+  composition and externally anchored composite emergency-head publication through
+  v0.111.72, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -13428,13 +13695,16 @@ Deliverables:
   handoff conversion authority, mixed/private-proof metadata failure, unstaged/
   non-resumable handoff, incomplete/under-assured/inconsistent provider fence set,
   mutable acceptance/result-root or identity-index conflict, execute-before-receipt/
-  witness ambiguity, emergency axis/composite-head ambiguity, unsafe unknown-effect
+  witness ambiguity, unbounded/uncharged prepared receipts, unsafe receipt evidence
+  collection, receipt/witness privacy degradation, emergency axis/composite-head
+  external-anchor or result-projection ambiguity, unsafe unknown-effect
   compensation, normalized cleanup/late-evidence/dependency conflict, pending/over-
   quota emergency custody,
   decoder/authoritative-renewal/anchored-abandonment conflict, retention-accounting
   key/epoch-closure conflict, required handoff/discovery-privacy degradation,
-  unsupported coordinator privacy, feature-witness/operation-capability/root/budget
-  mismatch, inactive/unknown critical feature, exhausted/unverifiable capacity or
+  unsupported coordinator privacy, feature-witness/affine operation-capability/root/
+  budget mismatch or executable ambiguity token, inactive/unknown critical feature,
+  exhausted/unverifiable capacity or
   rotation/writer-accounting state refuse transfer,
   preserve existing candidate presence/
   quota, and never trigger automatic reprovisioning, budget refill or plaintext
@@ -14437,9 +14707,11 @@ Deliverables:
   payload-staging/traffic-profile/ordinary-handoff/recovery-epoch/required-blocking/
   emergency-incarnation/provider-fence-set/assurance/dual-identity-append-map/
   acceptance-result-log/status-map/receipt-witness-eligibility/execution-knowledge/
-  authority-resolution/composite-head/bridge/conditional-normalization/normalized-
+  authority-resolution/effect-evidence-projection/composite-prepare/external-anchor/
+  local-activation/side-effect-gate/bridge/conditional-normalization/normalized-
   cleanup/custody-clock-renewal/anchored-abandonment/material-retirement/activation-
-  matrix/feature-witness/operation-capability/budget/root-composition/debt target set;
+  matrix/feature-witness/affine-operation-token/query-reconciliation/prepared-receipt-
+  quota/receipt-witness-privacy-profile/debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -14507,13 +14779,16 @@ Deliverables:
   immutable payload staging/ordinary next-writer handoff with bounded recovery-
   required blocking, measured staging traffic, independently authorized emergency
   incarnation fencing, provider completeness-assurance profiles with pre-execution
-  receipt/witness eligibility, immutable acceptance append/map roots plus separately
+  bounded receipt/witness eligibility and observer-profile states, immutable
+  acceptance append/map roots plus separately
   chained result log/status roots, dual-identity uniqueness, independent execution-
-  knowledge/resolution prepared axes under one authoritative composite-head CAS,
+  knowledge/resolution prepared axes under deterministic effect-evidence projection
+  and one externally anchored composite-head activation lifecycle,
   append-only classification, two-world-safe compensation/normalization, bounded
   authoritative-time emergency custody/anchored abandonment, governed bridge
   blocking, normalized/terminal staged-material retirement, and non-authorizing
-  feature witnesses composed with exact operation capability/budget/expected root,
+  feature witnesses composed with affine operation capability/budget/expected-root
+  ownership, query-only ambiguity reconciliation, bounded prepared-receipt capacity,
   cross-log result reconciliation and atomic cleanup;
 - composition of the history-independent map algorithm/pages with authority
   active/covered-fence/exception/archive roots, a permanent low-sequence
@@ -14702,13 +14977,16 @@ Deliverables:
   set, mutable acceptance root, result-log/status splice, append/map projection
   mismatch, one-identity-only uniqueness or append-only non-inclusion, execution
   before independent receipt/witness eligibility, late-result application outside
-  the governed bridge, axis root without composed-head CAS, retry/dependent progress
+  the governed bridge, axis root without effect-evidence projection or externally
+  reconciled composite-head activation, local-only side effects, retry/dependent progress
   under `EffectUnknown`, normalized cleanup rewriting knowledge/history dependencies,
   late evidence resurrecting custody/repeating cleanup, compensation unsafe in either
   possible world, unresolved custody exceeding realm/global shares, custody-age reset
   or unanchored abandonment, mutable decoder substitution, premature emergency
-  material/key/quota retirement, feature witness used as sole/widened authorization
-  or without budget/expected root, duplicate cross-log result, rollback
+  material/key/quota retirement, unbounded/uncharged prepared receipts, receipt-
+  witness privacy overclaim, feature witness used as sole/widened authorization,
+  duplicated affine capability/budget/root input or executable ambiguity token,
+  duplicate cross-log result, rollback
   priority loss or unbounded ticket/debt/spam denial, no
   unmanaged-backup recoverability
   claim, no opaque cleanup of published data, no partial durable
@@ -14843,6 +15121,11 @@ Deliverables:
   v0.111.65 receipt-prepare/retain/accept/witness/execute/abort boundaries,
   v0.111.66 witness/authorize/reserve/root-check/compose/consume boundaries,
   v0.111.67 prepare-axis/publish-head/reopen/late-evidence/cleanup boundaries,
+  v0.111.68 composite-prepare/external-CAS/query-reconcile/local-activate/side-effect
+  boundaries, v0.111.69 evidence-project/refine/conflict/publish boundaries,
+  v0.111.70 affine-move/compose/consume/query-only-reconcile boundaries,
+  v0.111.71 receipt-capacity-reserve/prepare/charge/abort/compact boundaries and
+  v0.111.72 pad/batch/cover/degrade/log-retain privacy boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -15029,10 +15312,14 @@ Deliverables:
   fence, false non-execution evidence, `EffectUnknown` retry/dependent/conflicting
   progress, bridge split view, unsafe inverse, conditional-normalization state race,
   normalized cleanup/knowledge rewrite/history-sensitive reopening, partial-axis head,
-  prepared-leaf replay, late-evidence custody resurrection/duplicate cleanup,
+  prepared-leaf replay, local-only composite activation, external-anchor response
+  loss/split view, result-evidence/knowledge mismatch, late-evidence custody
+  resurrection/duplicate cleanup,
   classification rewrite, provider/writer collusion under each completeness profile,
-  hardware rollback, receipt/witness after execution, receipt-store loss, eligibility
-  forgery, assurance downgrade, mutable fence result, result-log/status-map splice,
+  hardware rollback, receipt/witness after execution, receipt-store loss, unreserved
+  receipt floods, Sybil/reconnect quota reset, ambiguous receipt refund, unsafe receipt
+  GC, receipt/witness traffic correlation and cover failure, eligibility forgery,
+  assurance downgrade, mutable fence result, result-log/status-map splice,
   one-identity-only map, append/map root mismatch, duplicate operation/idempotency key,
   stale map non-inclusion, projection splice, cross-realm unresolved-custody exhaustion,
   restart/clock-reset age, late renewal reservation, abandonment-anchor loss/rollback,
@@ -15042,7 +15329,8 @@ Deliverables:
   active coordinator real-budget observation, false blind-cover claim, retention-
   accounting key provisioning/rotation ambiguity, non-empty/forked epoch closure,
   partial audit rewrap, restored closed key, feature-witness-only authority, operation-
-  capability widening/cross-context use, missing budget/expected root, lower-state
+  capability borrowing/duplication/widening/cross-context use, missing budget/expected
+  root, executable ambiguity token, lower-state
   key/network/provider/publication calls, token forgery/replay/duplication, parse-only
   feature activation, matrix stripping/downgrade, competing emergency/maintenance
   activation, unanchored maintenance and caller-receipt overclaim,
@@ -15399,17 +15687,22 @@ Deliverables:
   receipts, immutable payload-staging/traffic profiles, emergency-incarnation/fence/
   late-result transitions, immutable acceptance plus result-log/status-map roots,
   dual operation/idempotency map identities, pre-execution receipt/witness eligibility,
-  execution-knowledge/authority-resolution prepared axes and composed-head CAS,
+  execution-knowledge/authority-resolution prepared axes, effect-evidence projection,
+  externally anchored composed-head activation and side-effect gating,
   normalized/late-evidence terminal cleanup/dependency classes, completeness assurance
   evidence, consistent append/map projection/inclusion/non-inclusion proofs, governed
   effect bridges, committed-effect compensation/two-world normalization, bounded
   authoritative-time custody/renewal/anchored abandonment, staged-material destruction/
   quota release, activation matrices, feature witnesses plus operation capability/
-  budget/root composition, rollback refusal, phantom cleanup, spam ceilings, fairness
-  and ledger compaction;
+  budget/root affine composition and query-only ambiguity tokens, bounded prepared-
+  receipt quotas/expiry/terminal compaction, receipt/witness observer profiles,
+  rollback refusal, phantom cleanup, spam ceilings, fairness and ledger compaction;
 - handoff privacy benchmarks compare baseline/padded/high-security size, timing,
   timestamp and backup-block traces plus emergency-retention overhead; discovery
   benchmarks compare complete active-coordinator views for real/cover operations;
+- receipt/witness benchmarks compare capacity reservation, wrapped evidence bytes,
+  threshold fanout, ambiguity recovery and terminal compaction overhead plus baseline/
+  padded/high-security timing, volume, retry, cover and collusion-observer traces;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - plaintext-to-encrypted authority-log cutover model/vectors and crash benchmarks
@@ -15958,11 +16251,15 @@ Deliverables:
   acceptance, and witnessed execution requires threshold co-commit as part of
   acceptance; unavailable evidence leaves work non-executable;
 - v0.111.66 feature state is a non-authorizing store/realm/revision/matrix/incarnation
-  witness composed with one exact v0.23.4 operation capability, durable budget lease
-  and expected authority root before any side effect;
-- v0.111.67 prepared axis leaves are inert until one expected-head CAS publishes the
-  composed emergency checkpoint; late knowledge cannot resurrect custody/repeat
-  cleanup, and history-sensitive dependencies need a new governed resolution;
+  witness; v0.111.70 moves one exact v0.23.4 operation capability, durable budget
+  lease and expected authority root into an affine operation token before any effect;
+- v0.111.67 prepared axis leaves remain inert while v0.111.69 projects exact result
+  evidence into knowledge; v0.111.68 externally reconciles and locally activates the
+  composed emergency checkpoint before side effects; late knowledge cannot resurrect
+  custody/repeat cleanup, and history-sensitive dependencies need a new governed
+  resolution;
+- v0.111.71 bounds and charges prepared receipts before external preparation, and
+  v0.111.72 enforces declared receipt/witness observer profiles and degradation;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -16203,6 +16500,20 @@ Deliverables:
 - v0.111.67 prepared-axis replay, composed-head CAS crash, mixed roots, normalized
   late committed/non-execution evidence, governed history resolution, duplicate
   cleanup/reopen, abandonment and conflict-head fixtures pass;
+- v0.111.68 durable composite preparation, exact external predecessor/root binding,
+  response-loss query reconciliation, external-only forward recovery, local-only
+  refusal, local activation and one-use side-effect gating fixtures pass;
+- v0.111.69 complete effect-evidence projection matrix, final-fence non-inclusion,
+  stale/pending refinement, conflict preservation, source-order independence and
+  composite checkpoint/projection substitution fixtures pass;
+- v0.111.70 compile-fail affine capability/budget/root ownership, double-compose/
+  double-execute races, cancellation and query-only ambiguity-token fixtures pass;
+- v0.111.71 pre-prepare count/byte/work/concurrency reservation, aggregate Sybil/
+  reconnect limits, authoritative expiry, ambiguity charging, terminal abort/
+  compaction and reserved fence/recovery-capacity fixtures pass;
+- v0.111.72 receipt/witness observer matrix, opaque identifier, baseline/padded/high-
+  security trace, retry/cover/collusion, log-retention and permanent degradation
+  fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -16608,13 +16919,19 @@ Deliverables:
   map root; late outcomes append only to separately chained result-log/status roots,
   and effect bridges bind both; completeness is provider-asserted, hardware-monotonic,
   witnessed or receipt-backed, with independent receipt durability or witness co-
-  commit required before acceptance/execution for those profiles; protected recovery
-  requires independent evidence when provider equivocation is in scope, while
-  unverifiable completeness freezes the whole affected provider/authority scope;
+  commit required before acceptance/execution for those profiles; receipt preparation
+  reserves aggregate count/byte/work/concurrency capacity first, retains ambiguous or
+  possibly eligible evidence, and exposes only its declared opaque observer profile;
+  protected recovery requires independent evidence when provider equivocation is in
+  scope, while unverifiable completeness freezes the whole affected provider/
+  authority scope;
   execution-knowledge and resolution axis updates remain inert prepared leaves until
-  one expected-head CAS publishes their composed head with current result/dependency/
-  custody roots; normalization may terminate custody and reopen only proven current-
-  state dependencies while preserving unknown execution/history-sensitive blocking;
+  deterministic effect-evidence projection validates the exact current result
+  checkpoint and one externally anchored prepare/reconcile/local-activate lifecycle
+  publishes their composed head with current result/dependency/custody roots; only a
+  one-use post-activation token permits side effects; normalization may terminate
+  custody and reopen only proven current-state dependencies while preserving unknown
+  execution/history-sensitive blocking;
   late evidence may advance knowledge but cannot resurrect custody, repeat cleanup or
   reopen history-sensitive dependencies without a new governed composed resolution;
   ordinary compensation requires proven commit, while unknown effects normalize only
@@ -16625,9 +16942,12 @@ Deliverables:
   authoritative time/frontier evidence without restart age reset; governed
   abandonment anchors externally before destruction, permanently preserves unknown
   execution and disables the scope; authenticated normalized/terminal cleanup
-  preserves permanent commitment/resolution evidence; caller receipts expose only
-  caller-relative rollback and cannot replace system-wide anchoring or require a
-  ticket to repair the ledger;
+  preserves permanent commitment/resolution evidence; feature-state and policy
+  witnesses remain non-authorizing while each operation token takes affine ownership
+  of its exact capability, budget lease and expected-root guard, and ambiguity returns
+  query-only reconciliation authority; caller receipts expose only caller-relative
+  rollback and cannot replace system-wide anchoring or require a ticket to repair the
+  ledger;
 - durable quarantine candidate metadata uses a purpose-separated
   `StoreQuarantineMetadataKey` active before first publication, wrapped to
   admitted daemon/provider and recovery recipients, bound to store/quarantine/
