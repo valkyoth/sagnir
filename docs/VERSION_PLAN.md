@@ -10,6 +10,13 @@ v0.N.P      patch or fix release
 v1.0.0      first serious production-ready CLI
 ```
 
+Patch versions are reserved for bounded corrections or hardening that remains
+inside one parent milestone's implementation and review boundary. Independent
+features, new trust boundaries, and work that would create a long patch chain
+must receive the next available `v0.N.0` milestone. Unreleased later milestones
+may be shifted forward to keep that rule; completed or tagged releases remain
+fixed.
+
 The list below is not a maximum. Add versions whenever smaller release stops
 make review and testing clearer.
 
@@ -5046,7 +5053,7 @@ Deliverables:
 - key-destruction provider capability contract describing operation identity,
   idempotency, post-crash status query, confirmation evidence, refusal,
   unreachable and permanently ambiguous outcomes; no provider is used for an
-  erasure claim before v0.122.0 implements the durable operation;
+  erasure claim before v0.291.0 implements the durable operation;
 - bounded KDF and derivation parameter admission;
 - cross-purpose key-reuse rejection;
 - known-answer derivation and wrapping vectors;
@@ -5377,7 +5384,7 @@ Deliverables:
   small and representative large fixtures;
 - format admission fails or selects another design when p95 latency, peak
   memory, I/O amplification, proof size, or rebuild throughput exceeds the
-  declared threshold; v0.132.0 later supplies comprehensive production-scale
+  declared threshold; v0.301.0 later supplies comprehensive production-scale
   characterization;
 - threat-model review covering instance fanout, compartment-count leakage,
   operation-ID reuse, projection-certificate amplification, witness Sybil and
@@ -6750,7 +6757,7 @@ Deliverables:
 - disclosure, replay, revocation, cross-domain key substitution, neutral
   correlation, stale/forked revocation staple, offline freshness expiry,
   issuer equivocation, stale-body replacement, and false-proof tests;
-- explicit implementation stop: v0.100.0 and v0.117.0 may not persist
+- explicit implementation stop: v0.100.0 and v0.286.0 may not persist
   translation, neutral, or placeholder bytes until this admission is complete.
 
 Verification:
@@ -6901,7 +6908,7 @@ Deliverables:
 - copy preserves the source object and source references; move records an
   explicit source logical-removal transition after target durability, but does
   not imply cryptographic erasure of the source encryption instance;
-- source cryptographic erasure, when requested, is a separate v0.122.0
+- source cryptographic erasure, when requested, is a separate v0.291.0
   redaction operation subject to all remaining references, retention, legal
   hold, backup, receipt, and residual-copy rules;
 - source-bound reviews, proofs, test evidence, approvals, signatures, and policy
@@ -8039,7 +8046,7 @@ Deliverables:
   the selected profile's identity/linkability disclosure;
 - received bundles cannot be decrypted, semantically decoded, assigned a
   resumable semantic checkpoint, or written outside temporary bounded preflight
-  storage before v0.112.0 quarantine exists;
+  storage before v0.281.0 quarantine exists;
 - preflight cancellation discards temporary state and creates no trusted or
   resumable semantic capability;
 - successful preflight returns the consuming v0.110.2 `PreflightedBundle`
@@ -8049,7 +8056,7 @@ Deliverables:
   pages/nodes, and subsequent verification work; reservation failure returns
   `ResourceLimit` before quarantine handoff and leaves only disposable temporary
   preflight bytes for deterministic cleanup; the reservation is a provisional
-  `QuarantineReservationLease` governed by v0.111.1 and is not a durable
+  `QuarantineReservationLease` governed by v0.112.0 and is not a durable
   candidate, authority claim, or renewable session allowance;
 - manifest estimates remain untrusted upper-bound hints: understated counts,
   bytes, expansion, signatures, pages, or work fail streaming enforcement and
@@ -8069,7 +8076,7 @@ Exit criteria:
   receive bounded outer/ciphertext preflight before import.
 - Pre-decryption verification reports only v0.110.1 outer/ciphertext claims;
   semantic verification requires successful authorized decryption and complete
-  inner typed-ingest verification beginning only after v0.112.0 quarantine.
+  inner typed-ingest verification beginning only after v0.281.0 quarantine.
 - Bundle verification reports when local budgets cannot satisfy the bundle's
   minimum verification mode.
 - Manifest estimates are treated as untrusted preflight hints; streaming local
@@ -8081,7 +8088,7 @@ Exit criteria:
 - Preflight success cannot survive close-and-reopen or path substitution as a
   capability for different bytes.
 
-### v0.111.1 - Quarantine Reservation Lease Lifecycle
+### v0.112.0 - Quarantine Reservation Lease Lifecycle
 
 Goal: prevent slow, reconnecting, or parallel senders from holding receiver
 quarantine capacity indefinitely before a durable candidate exists.
@@ -8118,7 +8125,7 @@ Deliverables:
   verification result, policy result, or authority evidence;
 - successful complete quarantine publication atomically converts the lease into
   the durable `BoundedQuarantinedCandidate` quota charge; after conversion the
-  charge follows v0.112.0 expiry/retention and cannot independently expire as a
+  charge follows v0.281.0 expiry/retention and cannot independently expire as a
   pre-capture lease;
 - startup recovery reconciles every durable reservation record, cleanup-journal
   entry, partial destination, resume checkpoint, and candidate publication as
@@ -8154,7 +8161,7 @@ Exit criteria:
 - Lease expiry and scheduling affect only local resource availability; they
   cannot create, delete, select, or reinterpret authority evidence.
 
-### v0.111.2 - Quarantine Lease Clock And Metadata Closure
+### v0.113.0 - Quarantine Lease Clock And Metadata Closure
 
 Goal: make persisted lease expiry safe across restart and protect temporary
 resource metadata from becoming a sealed-private activity ledger.
@@ -8178,10 +8185,10 @@ Deliverables:
   incomplete leases and cannot extend an idle or absolute deadline;
 - after process restart or `ClockEpoch` mismatch, a completely committed
   `BoundedQuarantinedCandidate` and its durable quota charge remain intact; when
-  v0.111.3 metadata keys are available, every incomplete pre-candidate lease,
+  v0.114.0 metadata keys are available, every incomplete pre-candidate lease,
   partial destination, resume state, and reservation charge is atomically
   cleaned and released before retry, while key-unavailable recovery fails closed
-  under v0.111.3 and never guesses exact accounting from outer files;
+  under v0.114.0 and never guesses exact accounting from outer files;
 - 1.0 does not resume a pre-candidate transfer across process epochs; a peer may
   start a new bounded attempt only after old cleanup. Any future cross-restart
   lease resume requires a separately admitted trusted-time protocol and cannot
@@ -8242,7 +8249,7 @@ Exit criteria:
   lease activity through durable metadata, filenames, logs, metrics, or cleanup
   artifacts beyond their explicit measurable leakage contract.
 
-### v0.111.3 - Operational Metadata Key Lifecycle And Exact Accounting
+### v0.114.0 - Operational Metadata Key Lifecycle And Exact Accounting
 
 Goal: provision and rotate the keys protecting pre-realm operational metadata
 without weakening exact quota enforcement or durable candidate portability.
@@ -8253,7 +8260,7 @@ Deliverables:
   `OperationalMetadataKey` lifecycle states cover `Unprovisioned`, `Active`,
   `Rotating`, `Retiring`, `Unavailable`, `Compromised`, and `Destroyed`, with no
   implicit transition from unavailable encrypted state to empty or corrupt;
-- the daemon root is provisioned through the v0.111.4 ceremony before protected
+- the daemon root is provisioned through the v0.115.0 ceremony before protected
   transfers using an admitted OS keystore, HSM, or isolated v0.63.0/v0.63.1 key
   agent; an explicitly named lower-assurance software profile may use separately
   located owner-protected wrapped key material acquired through v0.98.2, but
@@ -8294,7 +8301,7 @@ Deliverables:
   candidate or trusted object;
 - atomic lease conversion decrypts and verifies the exact lease, counters, and
   publication transaction, then re-encrypts durable candidate metadata under
-  the v0.111.5 `StoreQuarantineMetadataKey` or an admitted known-realm metadata
+  the v0.116.0 `StoreQuarantineMetadataKey` or an admitted known-realm metadata
   key before publishing the candidate and charge; no durable candidate silently
   remains dependent on the daemon lease-metadata key;
 - moving or cloning a store to another daemon yields explicit
@@ -8306,7 +8313,7 @@ Deliverables:
   record classes, rotates every affected store key, preserves required evidence,
   and documents snapshot, backup, swap, crash-dump, provider-log, and old-
   ciphertext residuals; deleting a wrapping key is not claimed as cryptographic
-  erasure without the v0.121.1/v0.122.0 destruction-evidence contract;
+  erasure without the v0.290.1/v0.291.0 destruction-evidence contract;
 - the authenticated encrypted inner lease record always retains exact original,
   consumed, and remaining item/byte/signature/page/node/work counters, exact
   physical padded bytes, and checked quota lineage for recovery and admission;
@@ -8347,7 +8354,7 @@ Exit criteria:
 - Privacy representation can hide or coarsen observations but never weakens
   exact authenticated quota accounting or refunds previously consumed capacity.
 
-### v0.111.4 - Daemon Root Provisioning Authority Journal
+### v0.115.0 - Daemon Root Provisioning Authority Journal
 
 Goal: establish the first daemon operational-metadata root through a durable,
 idempotent ceremony before any store or realm authority log necessarily exists.
@@ -8371,7 +8378,7 @@ Deliverables:
   descriptor commitment, transition sequence, previous record/root, result
   class, and recovery status; it never stores an unwrapped root or credential;
 - initial bootstrap journal frames are explicitly minimal-plaintext integrity/
-  crash-detection records under the platform threat boundary; v0.111.6 admits a
+  crash-detection records under the platform threat boundary; v0.117.0 admits a
   forward-only cutover that authenticates the complete plaintext prefix and all
   later daemon journal records under a purpose-separated journal key without
   rewriting or claiming confidentiality for previously observable bootstrap
@@ -8429,7 +8436,7 @@ Exit criteria:
 - Root loss or daemon-state loss remains explicit recovery/migration/data loss,
   never silent reinitialization or repeated first provisioning.
 
-### v0.111.5 - Store Quarantine Metadata Key Lifecycle
+### v0.116.0 - Store Quarantine Metadata Key Lifecycle
 
 Goal: admit a portable purpose-separated key for durable quarantine candidate
 metadata before the first candidate can be published.
@@ -8442,7 +8449,7 @@ Deliverables:
   separation forbids conversion or cross-purpose provider handles;
 - store/quarantine initialization provisions an independently random key before
   the first durable candidate through a staged v0.23.3/v0.23.4 transaction
-  reconciled across store, v0.111.4 daemon, and provider journals by v0.111.7;
+  reconciled across store, v0.115.0 daemon, and provider journals by v0.118.0;
   states cover `Reserved`,
   `ProviderPending`, `ProviderReconciled`, `WrappedKeyDurable`,
   `DescriptorDurable`, `Active`, `Rotating`, `Unavailable`, and `Compromised`;
@@ -8454,7 +8461,7 @@ Deliverables:
   store recovery recipients under an explicit portability/backup profile; a
   non-exportable deployment documents provider-bound movement limits and never
   promises file-copy portability without the provider/recovery recipient;
-- atomic lease conversion under v0.111.3 publishes candidate metadata/indexes
+- atomic lease conversion under v0.114.0 publishes candidate metadata/indexes
   encrypted under the active store quarantine key, the exact durable quota
   charge, and the new candidate generation together; the lease key is no longer
   required after committed conversion and cleanup;
@@ -8509,7 +8516,7 @@ Exit criteria:
   metadata/accounting atomically without retaining an accidental daemon lease-
   key dependency or permitting cross-purpose key use.
 
-### v0.111.6 - Daemon Journal Authenticated Prefix Cutover
+### v0.117.0 - Daemon Journal Authenticated Prefix Cutover
 
 Goal: bind every plaintext daemon-bootstrap record into the first authenticated
 journal anchor so activation cannot hide prefix truncation or substitution.
@@ -8524,10 +8531,10 @@ Deliverables:
   provisioning operation ID/request digest, provider operation/idempotency and
   result commitments, activated root handle/assurance evidence/key epoch,
   wrapped-root/header and active descriptor commitments, daemon journal format
-  version, physical commitment algorithm, the v0.111.8 authentication suite/key
-  epoch, the v0.111.14 confidentiality profile/encryption suite/key epoch, and
+  version, physical commitment algorithm, the v0.119.0 authentication suite/key
+  epoch, the v0.125.0 confidentiality profile/encryption suite/key epoch, and
   domain-separated purpose;
-- the purpose-separated journal-authentication and v0.111.14 encryption keys are
+- the purpose-separated journal-authentication and v0.125.0 encryption keys are
   created or wrapped only after the provider-confirmed daemon root is available;
   cutover encryption/authentication is an idempotent bound provider/local
   operation and cannot request another root or alter the already confirmed
@@ -8537,11 +8544,11 @@ Deliverables:
   v0.23.3 daemon-domain transaction; a crash exposes the prior
   `ProviderReconciled` state or the exact cutover plus descriptor representation,
   never an active descriptor state with an unauthenticated prefix;
-- under the protected v0.111.14 profile, the cutover's semantic payload is the
-  first encrypted daemon-journal payload and the independently anchored v0.111.16
+- under the protected v0.125.0 profile, the cutover's semantic payload is the
+  first encrypted daemon-journal payload and the independently anchored v0.127.0
   bootstrap capsule supplies only the pre-open suite/key epochs, opaque key-set
   locator and encrypted-private-descriptor commitment; the private descriptor is
-  authenticated/decrypted before identity use, and v0.111.8 authenticates the
+  authenticated/decrypted before identity use, and v0.119.0 authenticates the
   exact outer cutover ciphertext representation;
 - every authenticated successor commits to the cutover or preceding
   authenticated record/root and exact daemon identity/incarnation; no later
@@ -8584,7 +8591,7 @@ Exit criteria:
 - Documentation distinguishes post-cutover tamper evidence from confidentiality
   and from any guarantee about modifications before the first anchor existed.
 
-### v0.111.7 - Store Quarantine Key Three-Journal Reconciliation
+### v0.118.0 - Store Quarantine Key Three-Journal Reconciliation
 
 Goal: reconcile store authority, daemon operations, and provider/key-agent state
 without assuming an impossible atomic commit across the three journals.
@@ -8600,11 +8607,11 @@ Deliverables:
   records request digest, daemon recipient, allowed provider, recovery recipients,
   and prior store root before any daemon or provider contact;
 - stage 2: the daemon verifies the exact store reservation proof/root and accepts
-  it once into the v0.111.4 journal, recording its daemon operation, expected
+  it once into the v0.115.0 journal, recording its daemon operation, expected
   store root/incarnation, request digest, and one provider idempotency key; a
   different or already-consumed reservation is refused before provider contact;
-- before stage 3 provider execution, v0.111.9 atomically reserves one exact local
-  provider-handle capacity charge and v0.111.11 performs the selected holding-
+- before stage 3 provider execution, v0.120.0 atomically reserves one exact local
+  provider-handle capacity charge and v0.122.0 performs the selected holding-
   token, atomic-quota, or static-slot provider admission for this operation/
   profile; unavailable hard-mode capacity refuses without creating key material
   or an ambiguous handle;
@@ -8634,7 +8641,7 @@ Deliverables:
 - abandonment requires authenticated evidence that no matching store commit
   exists at or after the reserved root and that no concurrent recovery can still
   publish it; provider-key destruction is a separate durable idempotent
-  destruction operation under v0.121.1/v0.122.0, never a cleanup side effect;
+  destruction operation under v0.290.1/v0.291.0, never a cleanup side effect;
 - conflicting provider handles/results, daemon result commitments, store roots,
   active descriptors, epochs, or request digests enter `Conflict`; quorum,
   retry order, arrival time, local preference, or a second daemon cannot select
@@ -8673,7 +8680,7 @@ Exit criteria:
   reconciliation or separately authorized destruction; arrival order never
   chooses authority.
 
-### v0.111.8 - Daemon Journal Authentication Suite Admission
+### v0.119.0 - Daemon Journal Authentication Suite Admission
 
 Goal: freeze one exact authenticated-journal construction and key lifecycle
 before daemon cutover or successor bytes become durable compatibility promises.
@@ -8702,27 +8709,27 @@ Deliverables:
   daemon identity, daemon-state incarnation, record kind, record format version,
   sequence, exact encoded record length, exact encoded payload bytes, previous
   record commitment, previous authenticated chain root, and previous tag;
-- for the protected v0.111.14/v0.111.16 confidentiality profile, transcript
+- for the protected v0.125.0/v0.127.0 confidentiality profile, transcript
   identity/incarnation fields are replaced by the active bounded bootstrap-
   capsule epoch and encrypted-private-descriptor commitment, `record kind` is the
-  fixed outer encrypted-record kind, `sequence` is the v0.111.18 profile-scoped
+  fixed outer encrypted-record kind, `sequence` is the v0.129.0 profile-scoped
   authenticated logical sequence/slot coordinate, and `exact encoded payload bytes` are the
   complete canonical encryption framing, associated-data commitment, ciphertext
   and AEAD tag exactly as stored; confidential identity, semantic sequence or
   other inner fields are never required or rebuilt to compute or verify this HMAC;
 - the first cutover record uses explicit genesis sentinels for previous
   authenticated root/tag while its payload commits the complete plaintext prefix
-  under v0.111.6; every successor uses the exact prior root/tag and checked
+  under v0.117.0; every successor uses the exact prior root/tag and checked
   sequence, so splice, deletion, reordering and cross-incarnation replay fail;
 - recovery obtains the authoritative suite ID/key epoch from the active daemon-
   root policy/descriptor and provider-bound key descriptor, including the
-  independently authorized v0.111.12 descriptor transition after rotation,
+  independently authorized v0.123.0 descriptor transition after rotation,
   never from an old-key-authenticated transition or untrusted journal bytes;
   mismatch, absent descriptor, unknown suite or unavailable key returns typed
   refusal before semantic record interpretation;
 - parser reads only the fixed bounded outer frame needed to locate exact bytes,
   applies cumulative size/work limits, verifies the full tag in constant time,
-  and only then opens v0.111.14 ciphertext and semantically decodes payload fields
+  and only then opens v0.125.0 ciphertext and semantically decodes payload fields
   or acts on the inner record kind; HMAC or AEAD authentication failure has one
   bounded non-oracular result class and releases no semantic plaintext;
 - unknown suites fail closed; retired suites remain available read-only while
@@ -8730,8 +8737,8 @@ Deliverables:
   dropped while admitted history/rollback/recovery still references their keys
   or decoders;
 - authorized daemon operational-policy suite rotation uses the non-circular
-  v0.111.10 bridge, independent v0.111.12 rotation authorization and staged
-  v0.111.13 publication: an old-suite-authenticated
+  v0.121.0 bridge, independent v0.123.0 rotation authorization and staged
+  v0.124.0 publication: an old-suite-authenticated
   `DaemonJournalSuiteTransition` binds old final root/sequence, old/new suite and
   key epochs, new key descriptor/assurance, transition operation and a
   `NewChainGenesisDescriptor` that contains no new-record tag or tag-dependent
@@ -8766,7 +8773,7 @@ Exit criteria:
 - Historical suite verification and forward rotation preserve old roots and keys
   without permitting downgrade, reinterpretation or silent algorithm selection.
 
-### v0.111.9 - Provider Handle Capacity And Orphan Accounting
+### v0.120.0 - Provider Handle Capacity And Orphan Accounting
 
 Goal: prevent failed, ambiguous or abandoned provisioning from exhausting HSM,
 key-agent or provider handle capacity before durable destruction is available.
@@ -8782,9 +8789,9 @@ Deliverables:
   `AbandonedPendingDestruction`; state movement transfers one charge atomically
   and never refunds or duplicates it;
 - before any create/generate/import/wrap provider call, the daemon durably
-  reserves local aggregate capacity and the authenticated v0.111.11 provider
+  reserves local aggregate capacity and the authenticated v0.122.0 provider
   capability profile either reserves physical capacity, atomically quota-checks
-  execution, or binds a dedicated slot for the exact v0.111.7 operation/request
+  execution, or binds a dedicated slot for the exact v0.118.0 operation/request
   digest and idempotency key; unavailable capacity returns stable
   `ProviderCapacityUnavailable` without key material or an ambiguous handle;
 - a reservation may release without provider confirmation only when durable
@@ -8811,10 +8818,10 @@ Deliverables:
 - providers shared with non-Sagnir clients declare namespace/quota/isolation and
   inventory visibility limits; Sagnir reports when physical free capacity cannot
   be established and does not infer it from local handle counts alone;
-- orphan/conflict abandonment before v0.122.0 marks the operation permanently
+- orphan/conflict abandonment before v0.291.0 marks the operation permanently
   non-publishable but remains fully charged and makes no destruction or physical-
   capacity-refund claim; evidence remains reachable for later reconciliation;
-- v0.121.1/v0.122.0 destruction reserves its own idempotent provider operation;
+- v0.290.1/v0.291.0 destruction reserves its own idempotent provider operation;
   capacity releases only after durable provider-confirmed destruction evidence,
   daemon/provider/store journal reconciliation, and proof that no active/
   recoverable descriptor still references the handle; lost destruction response
@@ -8823,7 +8830,7 @@ Deliverables:
   fair admission so one hostile or broken store cannot consume every exceptional
   slot, while borrowing unused shares never exceeds provider/global maxima;
 - CLI/API/status exposes exact typed capacity state and remediation at privileged
-  granularity, but privacy profiles coarsen external counts under v0.111.3 without
+  granularity, but privacy profiles coarsen external counts under v0.114.0 without
   changing exact internal accounting or creating a provider-capacity oracle;
 - tests cover thousands of failed store incarnations, provider-success/store-
   loss loops, daemon-state deletion/restore, ambiguous queries, unknown handles,
@@ -8838,7 +8845,7 @@ Verification:
 - `cargo test -p sagnir-store`
 - provider-capacity state-machine and bounded-inventory model;
 - software provider plus constrained HSM/key-agent capacity fixtures;
-- v0.111.7/v0.122.0 cross-journal destruction-reconciliation suite.
+- v0.118.0/v0.291.0 cross-journal destruction-reconciliation suite.
 
 Exit criteria:
 
@@ -8849,7 +8856,7 @@ Exit criteria:
 - Capacity is refunded only after durable confirmed destruction and complete
   reference/journal reconciliation, never from abandonment or local deletion.
 
-### v0.111.10 - Non-Circular Journal Suite Rotation Bridge
+### v0.121.0 - Non-Circular Journal Suite Rotation Bridge
 
 Goal: rotate daemon-journal authentication suites without a commitment cycle
 between the old transition tag and the first new-chain record.
@@ -8871,14 +8878,14 @@ Deliverables:
   operation and nonce; its new-suite transcript uses the descriptor's explicit
   first sequence and genesis sentinels rather than an invented prior new tag;
 - subsequent new-suite records chain from the authenticated first new record
-  under the ordinary v0.111.8 transcript; they cannot attach directly to the old
+  under the ordinary v0.119.0 transcript; they cannot attach directly to the old
   root, descriptor alone, another transition, or another daemon incarnation;
 - bridge construction states are
   `DescriptorPrepared -> OldTransitionAuthenticated -> NewGenesisAuthenticated`,
   with explicit `Ambiguous`/`Conflict`; none is an
-  authoritative chain switch, and v0.111.12 authorization plus v0.111.13 atomic
+  authoritative chain switch, and v0.123.0 authorization plus v0.124.0 atomic
   publication must succeed before the old chain closes or new writes begin;
-- staged bridge bytes are non-authoritative and crash-safe: before v0.111.13
+- staged bridge bytes are non-authoritative and crash-safe: before v0.124.0
   publication, recovery exposes the complete old writable chain and may only
   reconcile or discard the exact staged descriptor/transition/genesis under its
   operation; after publication it exposes the complete new chain with the exact
@@ -8910,11 +8917,11 @@ Exit criteria:
   own tag or from the first new record.
 - The first new record is uniquely bound to one authenticated old transition and
   descriptor, and all later records descend from that bridge.
-- Every partial bridge construction is non-authoritative until the v0.111.12/
-  v0.111.13 authorization and atomic cutover; no circular fixed point, dual
+- Every partial bridge construction is non-authoritative until the v0.123.0/
+  v0.124.0 authorization and atomic cutover; no circular fixed point, dual
   writable chain or arrival-order choice exists.
 
-### v0.111.11 - Provider Capacity Capability Profiles
+### v0.122.0 - Provider Capacity Capability Profiles
 
 Goal: enforce hard provider capacity only through capabilities the provider can
 actually guarantee, without treating local counters as physical reservations.
@@ -8927,7 +8934,7 @@ Deliverables:
   assurance root/evidence/freshness, operation classes, quota/resource classes,
   limits, inventory semantics and descriptor version;
 - capability discovery is authenticated and pinned by daemon/provider policy
-  before v0.111.7 provisioning; provisioning request bytes, remote peers, store
+  before v0.118.0 provisioning; provisioning request bytes, remote peers, store
   metadata and unauthenticated provider responses cannot select or upgrade a
   mode, and capability changes require explicit re-admission;
 - `ReserveThenExecute` returns a durable single-use provider reservation token
@@ -8940,7 +8947,7 @@ Deliverables:
   cancellation racing execution, timeout, lost response or unknown status remains
   charged/ambiguous until exact provider query reconciliation;
 - `AtomicQuotaCheckedExecute` has no fictional pre-reservation: after the local
-  v0.111.9 charge, one idempotent provider operation atomically checks physical
+  v0.120.0 charge, one idempotent provider operation atomically checks physical
   quota, journals admission and creates/wraps the key, returning either one
   durable result or a durable `ProviderCapacityUnavailable` refusal with no key,
   handle, partial object or ambiguous capacity consumption;
@@ -8951,7 +8958,7 @@ Deliverables:
   operation/request/purpose with provider compare-and-swap before generation;
   the occupied slot is the capacity charge, cannot be rebound across store/
   incarnation churn, and is released only by confirmed reset/destruction under
-  v0.111.9/v0.122.0;
+  v0.120.0/v0.291.0;
 - `UnverifiableCapacity` means the provider cannot establish holding reservation,
   atomic quota-checked execution, dedicated slot or complete inventory isolation;
   it is unsupported for protected profiles and all claims of hard provider-
@@ -8995,7 +9002,7 @@ Exit criteria:
 - Protected profiles refuse unverifiable or degraded capacity capabilities
   instead of silently weakening resource-exhaustion guarantees.
 
-### v0.111.12 - Independent Daemon Journal Rotation Authorization
+### v0.123.0 - Independent Daemon Journal Rotation Authorization
 
 Goal: ensure compromise of the retiring journal authentication key cannot
 authorize its own successor or rewrite the daemon's authoritative suite policy.
@@ -9028,11 +9035,11 @@ Deliverables:
   or a valid retiring-key MAC cannot select a winner;
 - the new authoritative daemon-root policy/descriptor binds the new suite/key
   epoch, exact provider-bound key descriptor, bridge descriptor and authorization
-  commitment and becomes active only through the joint v0.111.13 publication;
+  commitment and becomes active only through the joint v0.124.0 publication;
   the authorization alone cannot activate a key or close a chain;
 - recovery selects the authoritative suite/key epoch from the independently
   authenticated daemon-root descriptor state and its committed authorization,
-  then verifies the v0.111.10 bridge; it never discovers authority from the old-
+  then verifies the v0.121.0 bridge; it never discovers authority from the old-
   MACed transition, the highest journal epoch or provider output alone;
 - compromise recovery treats all retiring-key MACs after the declared trusted
   frontier as attacker-capable data: the independent authority fixes the accepted
@@ -9069,16 +9076,16 @@ Exit criteria:
 - Daemon-root authority compromise invokes an explicit recovery ceremony rather
   than weakening ordinary rotation or trusting an attacker-controlled old MAC.
 
-### v0.111.13 - Fully Staged Atomic Journal Rotation Cutover
+### v0.124.0 - Fully Staged Atomic Journal Rotation Cutover
 
 Goal: prove the exact new genesis is usable and durable before any irreversible
 old-chain closure, then publish the bridge and authoritative descriptor together.
 
 Deliverables:
 
-- before writer exclusion, v0.111.15 verifies caller/policy eligibility, reserves
+- before writer exclusion, v0.126.0 verifies caller/policy eligibility, reserves
   attempt/provider/prepared-byte budgets, provisions and reconciles the new key
-  under v0.111.9/v0.111.11, and performs every provider availability check that
+  under v0.120.0/v0.122.0, and performs every provider availability check that
   does not depend on the final old frontier;
 - one exclusive bounded rotation lease then freezes the expected old root/
   sequence only while final frontier-bound authorization, exact bridge-record
@@ -9087,7 +9094,7 @@ Deliverables:
   any pre-publication failure releases the lease and leaves the unchanged old
   chain authoritative and writable;
 - ordered critical-section preparation is: capture and compare the expected old
-  frontier/descriptor, obtain or finalize v0.111.12 authorization for those exact
+  frontier/descriptor, obtain or finalize v0.123.0 authorization for those exact
   values, revalidate the reconciled new key, authenticate but do not publish the
   old transition, authenticate and durably stage the exact new genesis using
   that old transition tag, independently reverify all bytes/tags/descriptors/
@@ -9109,7 +9116,7 @@ Deliverables:
   unavailable provider evidence or changed old frontier aborts preparation and
   leaves the old chain open;
 - preferred publication uses one authority transaction to atomically expose the
-  old close transition, first new genesis and v0.111.12 daemon-root descriptor
+  old close transition, first new genesis and v0.123.0 daemon-root descriptor
   switch, or none; no reader can observe a closed old chain without the exact
   usable new genesis and authoritative descriptor selecting it;
 - where filesystem/platform layout cannot expose all three objects through one
@@ -9141,7 +9148,7 @@ Deliverables:
   substituted or ambiguous staged-key status aborts while the old chain remains
   authoritative, while provider loss after completed publication is ordinary
   explicit active-key unavailability rather than a partial rotation;
-- pre-publication abandoned keys and provider operations retain v0.111.9 charges
+- pre-publication abandoned keys and provider operations retain v0.120.0 charges
   and explicit orphan/destruction state; cleanup cannot destroy an ambiguous key,
   reuse a staged genesis or claim capacity release before confirmed destruction;
 - recovery validates publication marker/manifest, prepared manifest, exact staged
@@ -9173,7 +9180,7 @@ Exit criteria:
 - Recovery after publication requires no new provider MAC operation and cannot
   choose, regenerate or rebase any component of the authorized staged bridge.
 
-### v0.111.14 - Confidential Daemon Journal And Rotation Staging
+### v0.125.0 - Confidential Daemon Journal And Rotation Staging
 
 Goal: protect post-root daemon operations and rotation staging from local or
 backup observers while preserving exact authenticated recovery.
@@ -9202,8 +9209,8 @@ Deliverables:
   chunked limits, nonce/subkey allocation, retry, clone/rollback, exhaustion and
   provider behavior; unknown, unsupported or provider-selected substitutes fail
   before write or semantic decode;
-- the v0.111.6 cutover payload and every successor daemon-journal payload,
-  v0.111.10 transition/genesis body, v0.111.12 authorization detail, v0.111.13
+- the v0.117.0 cutover payload and every successor daemon-journal payload,
+  v0.121.0 transition/genesis body, v0.123.0 authorization detail, v0.124.0
   prepared/publication manifest and staging index are encrypted and authenticated
   under the selected suite before persistence; bootstrap records that necessarily
   precede root/key availability remain the minimal plaintext prefix committed by
@@ -9218,11 +9225,11 @@ Deliverables:
 - AEAD associated data binds domain/version, fixed outer record kind/version,
   profile-scoped authenticated logical sequence/slot coordinate, encryption suite/key epoch,
   HMAC suite/key epoch, nonce/subkey domain, padded length class, previous
-  authenticated chain root and the active v0.111.16 bootstrap-capsule/private-
+  authenticated chain root and the active v0.127.0 bootstrap-capsule/private-
   descriptor commitment; it never requires daemon identity before open, while the
   encrypted inner header binds daemon identity/incarnation and semantic sequence
   and must match the recovered private descriptor/chain before semantic use;
-- v0.111.8 computes its full-length HMAC over the exact canonical outer framing,
+- v0.119.0 computes its full-length HMAC over the exact canonical outer framing,
   associated-data commitment and ciphertext/tag bytes as stored; verification
   authenticates those exact bytes before AEAD open, and neither side reconstructs
   plaintext to determine the MAC transcript;
@@ -9246,14 +9253,14 @@ Deliverables:
   or retire an encryption key;
 - old encryption keys/decoders remain available read-only while reachable journal
   or staged history depends on them; rotation writes new ciphertext under a new
-  epoch through an authenticated descriptor transition, while v0.111.17 physical
+  epoch through an authenticated descriptor transition, while v0.128.0 physical
   re-encryption creates a separate copy-on-write representation with a new HMAC/
   physical root linked to the old root by authenticated migration evidence;
 - locked, revoked, unavailable, lost or wrong encryption keys produce typed
   `JournalConfidentialityUnavailable` before payload decode, rotation recovery,
   provider-handle use or authority mutation; there is no plaintext fallback,
   empty-state interpretation, automatic key replacement or weaker-profile retry;
-- repositories created by v0.111.6-v0.111.13 migrate through an explicit signed/
+- repositories created by v0.117.0-v0.124.0 migrate through an explicit signed/
   authenticated plaintext-to-encrypted frontier that records prior leakage,
   provisions the encryption key before activation and never relabels historical
   plaintext as confidential; retained plaintext remains authenticated history or
@@ -9263,7 +9270,7 @@ Deliverables:
   explicit capability and remains sanitized, while remote/public telemetry never
   reveals rotation timing, provider changes, failure history or exact volumes;
 - journal filesystem, timing, count, churn and backup/block leakage claims inherit
-  v0.111.18's concrete v0.95.0 profile composition; random names, encrypted
+  v0.129.0's concrete v0.95.0 profile composition; random names, encrypted
   payloads and padded records alone make no claim to hide append frequency,
   sequence growth, timestamps, changed blocks or rotation timing;
 - documentation states that HMAC-only `AuthenticatedPlaintext` intentionally
@@ -9291,11 +9298,11 @@ Exit criteria:
 - Visible bytes and names reveal only the declared record-level framing and
   profile fields; provider, topology, operation and failure details remain inside
   authenticated ciphertext, while count/timing/churn/backup leakage is exactly
-  what the selected v0.111.18 traffic profile declares and measures.
+  what the selected v0.129.0 traffic profile declares and measures.
 - Encryption-key unavailability refuses protected recovery or mutation without
   fallback, while minimal bootstrap and weaker-profile leakage stay explicit.
 
-### v0.111.15 - Starvation-Resistant Journal Rotation Scheduling
+### v0.126.0 - Starvation-Resistant Journal Rotation Scheduling
 
 Goal: prevent unauthorized, slow or repeated rotation attempts from monopolizing
 the daemon-journal writer while retaining exact atomic-cutover guarantees.
@@ -9317,7 +9324,7 @@ Deliverables:
   does not require the final old frontier; provider timeout/unavailability at this
   stage consumes its charged attempt but cannot block ordinary journal writes;
 - preliminary authority and policy checks run before queueing, while the final
-  v0.111.12 authorization binds the exact old root/sequence and descriptor only
+  v0.123.0 authorization binds the exact old root/sequence and descriptor only
   after the lease captures that frontier; slow/revoked/stale final authorization
   is bounded by the critical-section deadline and never rebased;
 - fair writer queue gives already queued ordinary journal writes precedence after
@@ -9325,22 +9332,22 @@ Deliverables:
   retried request cannot reacquire ahead of those writers, split into Sybil
   attempts, or maintain effective exclusivity through timeout/requeue loops;
 - hard checked limits cover concurrent pending attempts, queued attempts per
-  principal/daemon, cumulative lease-hold time per v0.111.19 accounting epoch,
+  principal/daemon, cumulative lease-hold time per v0.130.0 accounting epoch,
   consecutive failed attempts, prepared bytes and unresolved provider operations;
   exhaustion returns a typed refusal before lease acquisition and cannot evict
   existing ordinary writes, active state or ambiguous provider evidence;
 - the exclusive critical section contains only expected-frontier/descriptor
   capture, final authorization, exact old-transition/new-genesis construction,
-  v0.111.14 encryption/HMAC, bounded staging/reverification and v0.111.13 atomic
+  v0.125.0 encryption/HMAC, bounded staging/reverification and v0.124.0 atomic
   publication; key generation, unconstrained network discovery, interactive
   approval and provider retry loops are prohibited inside it;
 - a maximum critical-section duration is enforced from a trusted monotonic clock
-  bound to the current v0.111.2 `ClockEpoch` and is shorter than and independent
+  bound to the current v0.113.0 `ClockEpoch` and is shorter than and independent
   of provider/network timeout; reaching it aborts pre-publication authority,
   releases the writer lease and schedules queued ordinary writes even when an
   external provider operation remains unresolved;
 - process death releases the OS writer lock but never refunds attempt/failure/
-  cumulative-hold or ambiguous-provider charges; v0.111.19 recovery accounts the
+  cumulative-hold or ambiguous-provider charges; v0.130.0 recovery accounts the
   interrupted lease conservatively without comparing monotonic instants across
   process epochs before another rotation may queue;
 - provider/key/MAC/encryption operations started inside the section use one
@@ -9350,14 +9357,14 @@ Deliverables:
 - cancellation, caller disconnect, authorization refusal, stale frontier,
   staging failure or deadline atomically releases the writer lease and unused
   local work/prepared-byte reservations, then securely removes non-authoritative
-  plaintext staging; provider handles/operations remain charged under v0.111.9/
-  v0.111.11 until exact reconciliation/destruction, while uncertain staged
+  plaintext staging; provider handles/operations remain charged under v0.120.0/
+  v0.122.0 until exact reconciliation/destruction, while uncertain staged
   ciphertext retains its local attempt/storage charge until recovery proves it
   non-published and completes authenticated cleanup;
 - successful publication transfers only the exact consumed attempt/provider/
   staging charges into retained authoritative accounting; cleanup/refund is
   journaled and cannot race provider completion, publication or recovery;
-- starvation and repeated-attempt audit events are stored under v0.111.14
+- starvation and repeated-attempt audit events are stored under v0.125.0
   confidentiality with exact privileged counters; ordinary/public status reports
   only coarse pressure/refusal classes and cannot reveal rotation timing,
   principal identity, provider latency or failure history;
@@ -9386,7 +9393,7 @@ Exit criteria:
 - Failure releases local lease resources atomically while retaining every
   ambiguous provider charge and confidential audit event for reconciliation.
 
-### v0.111.16 - Daemon Journal Bootstrap Capsule And Private Descriptor
+### v0.127.0 - Daemon Journal Bootstrap Capsule And Private Descriptor
 
 Goal: make protected cold-start recovery possible without exposing or requiring
 confidential daemon identity and topology before descriptor decryption.
@@ -9402,7 +9409,7 @@ Deliverables:
   store/realm identity, topology, operation history/status, assurance details,
   raw handle, path, exact descriptor length, failure reason or semantic journal
   kind, and unknown fields/versions/suites fail within fixed pre-key bounds;
-- capsule acceptance is anchored by the v0.111.4 daemon-root provisioning state,
+- capsule acceptance is anchored by the v0.115.0 daemon-root provisioning state,
   platform-sealed bootstrap anchor or separately admitted recovery root that pins
   the expected capsule commitment/epoch; the capsule cannot authenticate itself
   through the provider locator or keys it names, and copied/rolled-back capsules
@@ -9439,7 +9446,7 @@ Deliverables:
   inferred from filenames, newest timestamps, directory order or journal bytes;
 - capsule/private-descriptor creation and rotation first use a v0.23.3 daemon-
   domain transaction to make the exact new descriptor/capsule bytes durable and
-  verified, then v0.111.20 reconciles any external anchor before local activation;
+  verified, then v0.131.0 reconciles any external anchor before local activation;
   no filesystem transaction is claimed atomic with a TPM, HSM, key agent or
   witness, and recovery exposes only the prior active pair or an explicit
   prepared/reconciled transition until the new pair activates;
@@ -9449,7 +9456,7 @@ Deliverables:
   journal chains, migration manifests or rollback evidence depend on it;
 - capsule leakage contract declares fixed format/suite IDs and key epochs, opaque
   key-set locator linkability, update cadence and ciphertext commitment changes;
-  v0.111.18 governs traffic/churn observations, and no claim treats opaque bytes
+  v0.129.0 governs traffic/churn observations, and no claim treats opaque bytes
   as absence of correlation;
 - vectors and recovery tests cover capsule truncation/extension/unknown fields,
   anchor rollback, locator substitution/multiple results, descriptor commitment/
@@ -9474,7 +9481,7 @@ Exit criteria:
 - Capsule leakage is bounded and explicit, and no rollback, locator substitution
   or partial capsule/descriptor publication can select authority.
 
-### v0.111.17 - Copy-On-Write Daemon Journal Re-Encryption Migration
+### v0.128.0 - Copy-On-Write Daemon Journal Re-Encryption Migration
 
 Goal: migrate journal ciphertext without overwriting authenticated history or
 claiming that ciphertext-bound HMAC roots remain unchanged.
@@ -9489,7 +9496,7 @@ Deliverables:
 - commitment-key lifecycle is versioned and retained for historical migration
   verification; changing it requires a separately linked commitment-key migration
   and cannot silently claim equality with roots produced by another key/epoch;
-- v0.111.21 captures and pins one immutable old-chain frontier without long writer
+- v0.132.0 captures and pins one immutable old-chain frontier without long writer
   exclusion, then migration authenticates/decrypts that prefix in chain order,
   computes concealed semantic commitments and builds an ordered commitment root/
   count under streaming budgets while ordinary appends continue; unavailable old
@@ -9511,9 +9518,9 @@ Deliverables:
   conflict and cannot rebase onto a changed source root;
 - no authenticated journal record, ciphertext, tag, physical root, capsule or
   descriptor is overwritten in place; temporary/new names are opaque, all new
-  bytes and manifest are durable first, and v0.111.21 uses one short fair final-
+  bytes and manifest are durable first, and v0.132.0 uses one short fair final-
   tail lease plus daemon authority transaction to activate the new representation
-  and updated v0.111.16 descriptor/capsule lineage or leave the old representation
+  and updated v0.127.0 descriptor/capsule lineage or leave the old representation
   active; full-history processing never holds the journal writer lease;
 - recovery validates old root, migration manifest, ordered semantic commitments,
   new root and activation CAS before choosing a representation; a new root without
@@ -9564,7 +9571,7 @@ Exit criteria:
   as a migration side effect; unmanaged dependent copies are explicitly outside
   the recoverability claim and become unreadable after key destruction.
 
-### v0.111.18 - Daemon Journal Traffic Privacy Profiles
+### v0.129.0 - Daemon Journal Traffic Privacy Profiles
 
 Goal: compose encrypted daemon-journal storage with v0.95.0 so profile claims
 cover filesystem, timing, count, churn and backup/block observations.
@@ -9573,7 +9580,7 @@ Deliverables:
 
 - daemon journals are a named v0.95.0 consumer with machine-readable
   `JournalBaseline`, `JournalPadded` and `JournalHighSecurity` profile IDs,
-  parameters committed inside the v0.111.16 private descriptor; no traffic-
+  parameters committed inside the v0.127.0 private descriptor; no traffic-
   profile ID is added to the bootstrap capsule, though externally observable
   behavior may reveal or distinguish profiles as declared by their contracts;
 - `JournalBaseline` encrypts semantic metadata and uses opaque names but explicitly
@@ -9583,7 +9590,7 @@ Deliverables:
 - `JournalPadded` uses preallocated fixed-size segments, fixed slot/envelope
   classes, bounded epoch batching, minimum/maximum batch size, maximum latency,
   copy-on-write replacement cadence and profile-specific timestamp normalization;
-  each scheduled slot follows the v0.111.22 one-write real-or-cover rule, and
+  each scheduled slot follows the v0.133.0 one-write real-or-cover rule, and
   committed cover slots are indistinguishable within the declared local-storage
   observer model but never become real records in place;
 - padded/high-security outer frames use profile-scoped authenticated logical
@@ -9604,12 +9611,12 @@ Deliverables:
   real records but a distinct encrypted inner kind, consume nonce/key/work/
   storage budgets, cannot satisfy operation history or authority, and are removed
   from semantic replay only after successful authentication/decryption;
-- filenames/directories remain opaque under v0.111.14, while segment allocation,
+- filenames/directories remain opaque under v0.125.0, while segment allocation,
   replacement, timestamp and block-write behavior follows the selected profile;
   backup software, filesystem, CoW/snapshot and local-provider capabilities are
   admitted and tested rather than assumed from random names or padding alone;
-- any segment refresh that changes authenticated ciphertext uses v0.111.22 fresh
-  slot generations/nonces and the v0.111.17/v0.111.21 representation-migration
+- any segment refresh that changes authenticated ciphertext uses v0.133.0 fresh
+  slot generations/nonces and the v0.128.0/v0.132.0 representation-migration
   protocol with a new physical root; byte-for-byte relocation is not called a
   refresh and is allowed only when authenticated logical coordinates/AD are
   unchanged;
@@ -9622,7 +9629,7 @@ Deliverables:
   during degradation is permanently labeled with observed assurance and cannot
   be retroactively claimed as high-security after health recovers;
 - ordinary rotation may preserve or strengthen the profile; weakening is not a
-  normal transition and uses the v0.111.14 destructive declassification/export
+  normal transition and uses the v0.125.0 destructive declassification/export
   ceremony with permanent leakage evidence when policy admits it;
 - encrypted health/audit records retain exact internal observations without
   becoming a public activity oracle; locked/remote status exposes only fixed or
@@ -9649,18 +9656,18 @@ Exit criteria:
 - Semantic sequence and operation details remain encrypted, while all unavoidable
   physical traffic leakage and overhead are explicit per profile.
 
-### v0.111.19 - Restart-Stable Rotation Attempt Accounting
+### v0.130.0 - Restart-Stable Rotation Attempt Accounting
 
 Goal: preserve rotation hold/failure budgets across process epochs without
 comparing monotonic instants across restart or refilling from untrusted time.
 
 Deliverables:
 
-- each exclusive lease binds random v0.111.2 `ClockEpoch`, start monotonic value,
+- each exclusive lease binds random v0.113.0 `ClockEpoch`, start monotonic value,
   checked duration/absolute deadline and accumulated hold debit; only clock reads
   from that exact epoch determine its live duration, timeout or in-process release;
 - process death releases the OS writer lock and creates a new random `ClockEpoch`
-  on restart; recovery first reconciles the v0.111.13 publication transaction,
+  on restart; recovery first reconciles the v0.124.0 publication transaction,
   retains a completely published attempt as successful, and otherwise marks the
   interrupted attempt conservatively failed/aborted without refunding attempt,
   prepared-byte, cumulative-hold or ambiguous-provider charges merely because the
@@ -9684,12 +9691,12 @@ Deliverables:
 - without an available admitted trusted-time/frontier/reset authority, restart
   does not automatically refill a rolling-window budget; exhausted rotation
   capacity remains exhausted while ordinary journal writes continue, and status
-  reports a coarse typed recovery requirement under v0.111.14/v0.111.18 privacy;
+  reports a coarse typed recovery requirement under v0.125.0/v0.129.0 privacy;
 - kill/restart loops, process/daemon identity churn, restored snapshots, cloned
   state and `ClockEpoch` replacement cannot reduce cumulative hold/failure totals,
   gain queue priority or turn a charged provider ambiguity into free capacity;
 - fair scheduling persists queued-writer precedence/reacquisition penalties in
-  the separate bounded v0.111.23 admission ledger rather than the excluded journal
+  the separate bounded v0.134.0 admission ledger rather than the excluded journal
   or process-local queue state; restart reconciles tickets and priority debt before
   another failed principal or equivalent rotation operation may acquire
   exclusivity;
@@ -9722,7 +9729,7 @@ Exit criteria:
 - Restart cannot improve rotation priority or capacity, but ordinary journal
   writes remain available while rotation accounting awaits authorized recovery.
 
-### v0.111.20 - External Bootstrap Anchor Transition Reconciliation
+### v0.131.0 - External Bootstrap Anchor Transition Reconciliation
 
 Goal: advance capsule anchors across local storage and external providers without
 claiming impossible cross-system atomicity or losing rollback protection.
@@ -9787,7 +9794,7 @@ Deliverables:
   local preference or timestamp chooses a branch;
 - old capsule/descriptor/anchor evidence remains verifiable through the declared
   rollback/recovery horizon and cannot be deleted merely because external
-  advancement succeeded; retirement follows v0.111.17 managed-inventory rules;
+  advancement succeeded; retirement follows v0.128.0 managed-inventory rules;
 - tests cover each capability profile, signer-only complete disk rollback,
   prepared-byte loss, response loss before/after external commit, dual-slot tear,
   counter rollback/skip, external CAS conflict, witness split view, new external
@@ -9811,7 +9818,7 @@ Exit criteria:
 - Complete-disk rollback resistance is claimed only for an admitted non-rollback
   provider or witness retaining the latest anchor epoch outside that disk.
 
-### v0.111.21 - Online Journal Re-Encryption Frontier And Catch-Up
+### v0.132.0 - Online Journal Re-Encryption Frontier And Catch-Up
 
 Goal: migrate active journal history under bounded streaming work and a short
 final writer lease rather than blocking appends for full-history processing.
@@ -9823,7 +9830,7 @@ Deliverables:
   and migration operation, then pins every source segment/key/decoder needed for
   that frontier against compaction, retirement or deletion without excluding
   ordinary appends;
-- prefix migration streams only that immutable frontier through v0.111.17 old-
+- prefix migration streams only that immutable frontier through v0.128.0 old-
   record HMAC/AEAD verification, semantic commitment and fresh encryption/HMAC
   output under checked byte, record, decode-work, crypto-work, memory, elapsed-
   time and temporary-storage budgets; cancellation/restart resumes only from an
@@ -9836,10 +9843,10 @@ Deliverables:
   records/work, total migration age and maximum final-tail records/bytes; limit
   exhaustion returns typed `MigrationCatchUpLimit` or `MigrationStarved`, retains
   old authority and charged staging, and cannot silently retry forever;
-- when the observed tail fits the final bound, v0.111.15 grants one fair short
+- when the observed tail fits the final bound, v0.126.0 grants one fair short
   writer lease after queued ordinary writers; the critical section captures the
   exact final source tail, verifies source/target prefix continuity, migrates that
-  bounded tail, finalizes/rereads the v0.111.17 manifest and target physical root,
+  bounded tail, finalizes/rereads the v0.128.0 manifest and target physical root,
   rechecks expected capsule/descriptor/maintenance epochs and performs activation
   CAS before releasing writers;
 - no full-history decrypt, semantic-commitment computation, re-encryption, HMAC,
@@ -9887,7 +9894,7 @@ Exit criteria:
 - Migration, rotation, capsule update, segment refresh and compaction have one
   deterministic authority-changing order with no stale rebase or lost history.
 
-### v0.111.22 - Single-Write Cover Slots And Segment Generations
+### v0.133.0 - Single-Write Cover Slots And Segment Generations
 
 Goal: make padded/cover journal storage nonce-safe and root-consistent under
 preallocation, crashes, relocation and scheduled segment refresh.
@@ -9918,7 +9925,7 @@ Deliverables:
   sparse holes or distinguishable delayed allocation outside the leakage contract;
 - a changed authenticated ciphertext byte, cover set, logical slot coordinate,
   generation, nonce domain or AD creates a fresh segment generation and new
-  physical chain root through v0.111.17/v0.111.21 representation migration;
+  physical chain root through v0.128.0/v0.132.0 representation migration;
   scheduled full-segment replacement is never an in-place storage optimization;
 - byte-for-byte relocation may update only an encrypted placement map when the
   stable authenticated logical segment/slot coordinate and all AEAD/HMAC AD remain
@@ -9957,7 +9964,7 @@ Exit criteria:
 - Every authenticated segment refresh has a fresh generation/nonce domain and new
   migration-linked physical root; relocation is byte-for-byte only under stable AD.
 
-### v0.111.23 - Durable Writer Admission Ledger And Priority Debt
+### v0.134.0 - Durable Writer Admission Ledger And Priority Debt
 
 Goal: preserve bounded ordinary-writer precedence without writing priority state
 through the journal lease it is intended to arbitrate.
@@ -10009,12 +10016,12 @@ Deliverables:
   create permanent rotation denial;
 - restart verifies/rebuilds the ledger from authenticated records/checkpoints,
   reconciles every granted ticket against journal transactions, restores FIFO/
-  weighted state and v0.111.19 accounting, and grants nothing while ledger key/
+  weighted state and v0.130.0 accounting, and grants nothing while ledger key/
   root or conflict state is unavailable;
 - ledger compaction/checkpoint preserves all queued/granted/conflict/debt state,
   terminal covered ranges and replay evidence under the general authority-
   transaction/retention rules; it cannot renumber FIFO positions or erase debt;
-- privacy follows v0.111.14/v0.111.18: filenames and ticket bodies are opaque,
+- privacy follows v0.125.0/v0.129.0: filenames and ticket bodies are opaque,
   exact principals/payloads/timing remain encrypted, and external status exposes
   only coarse queue-pressure/refusal state without weakening exact scheduling;
 - tests cover ticket spam, concurrent admission CAS, rotation-held journal lock,
@@ -10039,7 +10046,7 @@ Exit criteria:
 - Capability/aggregate quotas and weighted fairness prevent writer-ticket spam or
   rotation retries from permanently denying the other admitted class.
 
-### v0.111.24 - Atomic Sealed-Segment Publication
+### v0.135.0 - Atomic Sealed-Segment Publication
 
 Goal: reconcile fixed-size cover traffic with single-write slots by granting
 authority only to complete authenticated segments at their scheduled window.
@@ -10052,9 +10059,9 @@ Deliverables:
   from filename, length, sparse extent or partial manifest presence;
 - each scheduled batch is built in an opaque, quota-charged staging namespace
   whose path, allocation behavior and temporary-file metadata satisfy the selected
-  v0.111.18 traffic profile without making it active journal authority;
+  v0.129.0 traffic profile without making it active journal authority;
 - materialization writes every slot exactly once as authenticated real or cover
-  ciphertext under its v0.111.22 reservation, generation and nonce domain; a late
+  ciphertext under its v0.133.0 reservation, generation and nonce domain; a late
   real record never replaces staged or published cover and instead enters a later
   scheduled segment under a fresh reservation;
 - sealing authenticates the canonical logical slot order, exact slot count,
@@ -10102,7 +10109,7 @@ Exit criteria:
 - Recovery yields the exact old segment, exact new segment or explicit conflict;
   it cannot assemble authority from partially staged generations.
 
-### v0.111.25 - Restart-Stable Migration Accounting Epochs
+### v0.136.0 - Restart-Stable Migration Accounting Epochs
 
 Goal: make online migration work and age limits conservative across process
 restart without comparing monotonic instants from different clock epochs.
@@ -10157,7 +10164,7 @@ Exit criteria:
 - Migration resumes from one authenticated accounting root or refuses with a
   stable typed recovery/authority requirement.
 
-### v0.111.26 - Admission-Ledger Authority And Cross-Log Reconciliation
+### v0.137.0 - Admission-Ledger Authority And Cross-Log Reconciliation
 
 Goal: provision, rotate, anchor and recover the writer-admission ledger without
 losing queue priority across its independently durable journal transaction.
@@ -10165,13 +10172,13 @@ losing queue priority across its independently durable journal transaction.
 Deliverables:
 
 - purpose-specific writer-ledger encryption and HMAC keys are provisioned through
-  the v0.111.9/v0.111.11 provider-capacity contracts, bound to daemon, ledger,
-  suite and key epochs, and committed by the v0.111.16 private descriptor before
+  the v0.120.0/v0.122.0 provider-capacity contracts, bound to daemon, ledger,
+  suite and key epochs, and committed by the v0.127.0 private descriptor before
   the first authoritative ticket can be admitted;
 - ledger key rotation has an independently authorized operation and recovery path
   that does not require acquiring a writer ticket from the unavailable ledger;
   old keys/representations remain until all reachable checkpoints, backups and
-  ambiguous grants are migrated and verified under the v0.111.17 rules;
+  ambiguous grants are migrated and verified under the v0.128.0 rules;
 - a canonical cross-log protocol advances one ticket through `TicketQueued`,
   `GrantReserved`, `JournalTransactionCommitted` and `GrantCompleted`, with
   explicit `Ambiguous` and `Conflict` states and no success inferred from process
@@ -10184,7 +10191,7 @@ Deliverables:
 - grant reservation is durable before journal execution; timeout, response loss
   or crash queries/replays only the exact idempotent journal transaction and must
   reconcile it before another grant can consume that FIFO position or payload;
-- periodic journal and v0.111.20 anchor checkpoints bind the latest admission-
+- periodic journal and v0.131.0 anchor checkpoints bind the latest admission-
   ledger root, terminal grant frontier and key epoch; selective ledger rollback,
   truncation, same-sequence conflict or checkpoint disagreement enters conflict
   and cannot erase queued tickets, priority debt or committed results;
@@ -10222,7 +10229,7 @@ Exit criteria:
 - Rollback, truncation or restore cannot silently erase priority or completed
   grants; assurance is no stronger than the admitted external anchor or receipt.
 
-### v0.111.27 - Bounded External-Anchor Managed Recovery
+### v0.138.0 - Bounded External-Anchor Managed Recovery
 
 Goal: recover exact bytes named by an externally committed bootstrap anchor
 without unbounded replica, backup, network or provider search.
@@ -10253,7 +10260,7 @@ Deliverables:
   valid copies must contain the same committed bytes or recovery enters conflict;
 - restart resumes one authenticated recovery operation with persistent counters
   and conservative in-flight charges in a distinct recovery-accounting domain;
-  v0.111.25 migration tokens/counters cannot satisfy it, and clone, rollback or
+  v0.136.0 migration tokens/counters cannot satisfy it, and clone, rollback or
   resume-token replacement cannot renew recovery capacity;
 - copy retirement, replacement or relocation requires a signed successor anchor
   transition to commit the new recovery set before the old set is released; local
@@ -10280,7 +10287,7 @@ Exit criteria:
 - External-anchor recoverability claims state the exact copy and resource bounds
   that were verified before advancement.
 
-### v0.111.28 - Immutable Admission Grant Certificates And Frontiers
+### v0.139.0 - Immutable Admission Grant Certificates And Frontiers
 
 Goal: allow concurrent admission-ledger appends while preserving exact grant
 authority, rollback detection and ordinary-writer priority before maintenance.
@@ -10346,7 +10353,7 @@ Exit criteria:
 - Maintenance starts only from a system-anchored frontier accounting for every
   earlier ordinary ticket and priority debt; caller receipts are not equivalent.
 
-### v0.111.29 - Storage-Observer Staging Traffic Privacy
+### v0.140.0 - Storage-Observer Staging Traffic Privacy
 
 Goal: include segment staging, failure and publication behavior in measurable
 traffic leakage contracts rather than treating opaque staging as invisible.
@@ -10357,7 +10364,7 @@ Deliverables:
   `SegmentPublished` alone enters journal authority, while filesystem, block,
   snapshot, backup and provider observers may see every staging operation even
   when names, contents and record kinds remain cryptographically opaque;
-- each v0.111.18 traffic profile declares leakage for staging file/directory
+- each v0.129.0 traffic profile declares leakage for staging file/directory
   creation and deletion cadence, allocation/extents and changed-block patterns,
   slot materialization write order/volume, flush/fsync timing, seal/manifest work,
   publication rename/pointer writes and abandoned-generation cleanup;
@@ -10371,7 +10378,7 @@ Deliverables:
   equivalent cover-staging schedule with fixed operation classes so successful,
   failed, empty, cover-only and real batches satisfy the admitted trace bounds;
 - staging arena slots have independent generations/nonces and one-write semantics;
-  recycling follows v0.111.24 sealed publication and authenticated cleanup and
+  recycling follows v0.135.0 sealed publication and authenticated cleanup and
   cannot overwrite ambiguous ciphertext or expose a free-space success oracle;
 - publication, no-op window and cleanup operations occur at profile-fixed windows
   with bounded jitter and cover work where required; excess provider latency does
@@ -10402,7 +10409,7 @@ Exit criteria:
   batches or the exact observed interval remains permanently marked degraded.
 - Traffic-profile resource limits include all cover-staging and cleanup work.
 
-### v0.111.30 - Domain-Separated Anchor Recovery Accounting
+### v0.141.0 - Domain-Separated Anchor Recovery Accounting
 
 Goal: persist and bound external-anchor recovery under an authority domain that
 cannot be confused with journal migration accounting.
@@ -10436,7 +10443,7 @@ Deliverables:
   keys while status exposes only profile-approved coarse progress/exhaustion;
   unavailable accounting keys fail closed and never initialize an empty epoch;
   cold recovery locates those keys through the descriptor-independent bootstrap
-  binding and lifecycle specified by v0.111.32;
+  binding and lifecycle specified by v0.143.0;
 - vectors give different canonical bytes/commitments for identical numeric fields
   in migration and recovery domains and reject cross-purpose token, reset, key,
   checkpoint, receipt and operation-ID substitution;
@@ -10458,7 +10465,7 @@ Exit criteria:
 - Restart and ambiguity conserve charged work without cross-`ClockEpoch` timing.
 - Recovery activation binds the exact exhausted/consumed accounting generation.
 
-### v0.111.31 - External Recovery Availability Classes
+### v0.142.0 - External Recovery Availability Classes
 
 Goal: make external-anchor advancement state an honest verified availability
 claim, including zero-copy and common-failure-domain operation.
@@ -10467,7 +10474,7 @@ Deliverables:
 
 - canonical intended availability class is bound into the prepared anchor
   transition/recovery-set commitment, while the final class enters authority only
-  through the v0.111.38 activation transition; policy/status distinguish
+  through the v0.149.0 activation transition; policy/status distinguish
   `LocalOnlyNoRecovery`,
   `ManagedSingleFailureDomain`, `ManagedRedundant` or `ProtectedDiverse` with an
   exact versioned definition and no implication stronger than its evidence;
@@ -10476,12 +10483,12 @@ Deliverables:
   that loss of local prepared bytes may be unrecoverable, cannot claim recoverable
   advancement and is refused by every protected availability profile;
 - protected profiles set minimum verified copy count and minimum independent
-  failure-domain count greater than one, plus maximum copies from v0.111.27;
+  failure-domain count greater than one, plus maximum copies from v0.138.0;
   single-copy or common-domain sets receive the lower class even when their byte
   count satisfies a nominal redundancy threshold;
 - each copy passes authenticated read-after-write verification or an equivalent
   bounded restore challenge after durability acknowledgement and before external
-  anchor advancement, then proves under v0.111.35 that the challenged immutable
+  anchor advancement, then proves under v0.146.0 that the challenged immutable
   version remains retained through anchor activation; write success, metadata
   listing or a stale provider receipt alone does not establish retrievability;
 - failure-domain descriptors cover provider/operator, account/credential,
@@ -10514,12 +10521,12 @@ Exit criteria:
 - Zero-copy advancement is explicitly non-recoverable and never enters a protected
   availability profile or reports managed recovery.
 - Protected advancement occurs only after the required count and independent
-  failure domains pass bounded restore verification and v0.111.38 activates the
+  failure domains pass bounded restore verification and v0.149.0 activates the
   prepared class with continuous-retention evidence.
 - Availability labels remain historically honest and current degradation cannot
   be hidden by copy count, opaque provider labels or later repair.
 
-### v0.111.32 - Cold-Recoverable Anchor Accounting Key Bootstrap
+### v0.143.0 - Cold-Recoverable Anchor Accounting Key Bootstrap
 
 Goal: make recovery-accounting authority available before the missing private
 descriptor is recovered while preventing rollback from restoring fresh budget.
@@ -10535,7 +10542,7 @@ Deliverables:
   transition and independently recoverable bootstrap key set, not solely inside
   the private descriptor whose bytes recovery is intended to restore;
 - cold recovery uses the finite operator/recovery-recipient bootstrap token from
-  v0.111.36 to locate externally retained anchor-transition/bootstrap evidence
+  v0.147.0 to locate externally retained anchor-transition/bootstrap evidence
   even when local capsule, descriptor and daemon identity bytes are absent, then
   resolves the opaque accounting-key locator, verifies its commitment and opens
   the accounting epoch before querying any managed recovery copy;
@@ -10544,7 +10551,7 @@ Deliverables:
   publication is one prepared/reconciled activation with no state in which the
   external anchor authorizes recovery but its accounting key/root is only volatile;
 - provider pending, timeout, lost response, wrong key, orphan handle and conflicting
-  locator states follow v0.111.7/v0.111.9 reconciliation and remain charged; cold
+  locator states follow v0.118.0/v0.120.0 reconciliation and remain charged; cold
   recovery performs exact query-only reconciliation and never provisions a
   replacement key because lookup or unwrap failed;
 - accounting-key rotation is independently authorized and stages old/new locator,
@@ -10584,7 +10591,7 @@ Exit criteria:
 - Rotation, retirement and backup cannot strand or silently replace accounting
   authority needed by an externally committed transition.
 
-### v0.111.33 - Admission Ledger Checkpoints And Consistency Proofs
+### v0.144.0 - Admission Ledger Checkpoints And Consistency Proofs
 
 Goal: prove append-only ancestry and current grant state with a concrete bounded
 structure rather than assuming an authenticated state-map root has ancestry.
@@ -10645,7 +10652,7 @@ Exit criteria:
 - Compaction preserves sufficient authenticated witness material for every live
   grant and admission frontier.
 
-### v0.111.34 - Purpose-Separated Writer Admission Frontier Anchor
+### v0.145.0 - Purpose-Separated Writer Admission Frontier Anchor
 
 Goal: anchor maintenance admission frontiers without consuming or racing bootstrap
 capsule or recovery-accounting anchor authority.
@@ -10695,14 +10702,14 @@ Verification:
 Exit criteria:
 
 - Maintenance exclusion starts only after its exact admission frontier is
-  reconciled in a purpose-separated anchor namespace and the v0.111.37 bounded
+  reconciled in a purpose-separated anchor namespace and the v0.148.0 bounded
   current-ledger satisfaction transaction succeeds immediately before lease CAS.
 - Frontier ambiguity blocks maintenance without blocking already admitted ordinary
   writes or consuming bootstrap/recovery anchor counters.
 - Cross-domain anchor evidence and shared-provider capacity cannot substitute
   authority or create an unbounded maintenance request path.
 
-### v0.111.35 - Retention-Bound Recovery Copy Challenges
+### v0.146.0 - Retention-Bound Recovery Copy Challenges
 
 Goal: prove protected recovery copies remain immutable and retrievable from their
 challenge through external anchor activation.
@@ -10718,12 +10725,12 @@ Deliverables:
   successful restore challenge until the external anchor is reconciled plus the
   configured minimum post-activation recovery horizon;
 - challenge reads the exact immutable version under a fresh unpredictable nonce,
-  authenticates full committed bytes within v0.111.27/v0.111.30 budgets and binds
+  authenticates full committed bytes within v0.138.0/v0.141.0 budgets and binds
   response, provider receipt, retention capability and diversity descriptor into
   the prepared anchor transition;
 - immediately after external preparation reconciliation and before availability
   activation, recovery obtains fresh provider evidence that the challenged version
-  remains present and verifies an admitted v0.111.41 enforceable, independently
+  remains present and verifies an admitted v0.152.0 enforceable, independently
   attested or reviewed probabilistic retention mechanism; provider audit history
   may corroborate but cannot independently prove continuous retrievability, and a
   fresh metadata read alone proves only current presence;
@@ -10763,7 +10770,7 @@ Exit criteria:
 - Historical evidence distinguishes verified retention at activation from later
   current-health degradation and repair.
 
-### v0.111.36 - Daemon Recovery Bootstrap Token
+### v0.147.0 - Daemon Recovery Bootstrap Token
 
 Goal: locate the exact cold-recovery authority through a finite recipient-held
 capability when all local daemon bootstrap bytes and identity are unavailable.
@@ -10786,7 +10793,7 @@ Deliverables:
   responses, redirects, handshakes, network/download bytes, signatures/proofs,
   provider calls, decode/crypto work, elapsed current-`ClockEpoch` work and temporary
   storage; before recovery accounting opens, attempts consume the token-bound
-  v0.111.39 bootstrap discovery budget and later import its exact receipt;
+  v0.150.0 bootstrap discovery budget and later import its exact receipt;
 - recovery authority is an explicit threshold/capability bound into the token and
   external transition; token possession alone does not bypass recipient signatures,
   hardware factors, policy epochs or quorum/diversity requirements;
@@ -10829,24 +10836,24 @@ Exit criteria:
 - Token rotation, backup and loss have durable non-oracular semantics and cannot
   select a different daemon, older root or weaker recovery policy.
 
-### v0.111.37 - Post-Anchor Admission Frontier Satisfaction
+### v0.148.0 - Post-Anchor Admission Frontier Satisfaction
 
 Goal: revalidate an externally reconciled maintenance frontier against the exact
 current admission ledger immediately before acquiring writer exclusion.
 
 Deliverables:
 
-- after v0.111.34 external reconciliation and before journal writer/rotation lease
+- after v0.145.0 external reconciliation and before journal writer/rotation lease
   acquisition, the scheduler enters one bounded admission-lock transaction with
   the frontier-anchor evidence, maintenance grant/certificate and expected
   admission/maintenance epochs fixed as inputs;
-- transaction verifies a v0.111.33 append-only consistency proof that the externally
+- transaction verifies a v0.144.0 append-only consistency proof that the externally
   anchored frontier checkpoint is a prefix of the current complete admission
   checkpoint; fork, truncation, log/map mismatch or proof limit exhaustion refuses
   this maintenance attempt without requesting another external transition;
 - authenticated range/terminal/exception proofs account for every ordinary ticket
   at or below the frontier cutoff as transaction-committed/terminal, owner of the
-  durable v0.111.40 next-writer handoff, represented by exact unconsumed finite
+  durable v0.151.0 next-writer handoff, represented by exact unconsumed finite
   priority debt, or independently authorized terminal cancellation/supersession;
   `GrantReserved` alone and any unaccounted earlier priority block maintenance;
 - maintenance grant leaf, certificate, authorization, policy epoch, frontier anchor
@@ -10892,7 +10899,7 @@ Exit criteria:
 - No provider operation or unbounded proof work occurs under admission or writer
   locks, and failure leaves ordinary progress and queue authority intact.
 
-### v0.111.38 - Two-Stage Recovery Availability Activation
+### v0.149.0 - Two-Stage Recovery Availability Activation
 
 Goal: prevent an external transition from asserting protected availability before
 continuous retention through the activation boundary has been proven.
@@ -10913,7 +10920,7 @@ Deliverables:
   that the challenged immutable version is still the retained object;
 - continuous-retention proof must derive from enforceable no-delete/version-lock
   semantics, independently attested storage enforcement or a reviewed proof-of-
-  retrievability/data-possession construction under v0.111.41; provider audit
+  retrievability/data-possession construction under v0.152.0; provider audit
   history can corroborate such evidence but never independently establishes
   retrievability, and a current metadata read proves only one instant;
 - canonical `RecoveryAvailabilityActivated` binds prepared transition, fresh
@@ -10955,7 +10962,7 @@ Exit criteria:
 - Failed, expired, ambiguous or conflicting final verification remains pending or
   recovery-required without implicit activation or downgrade.
 
-### v0.111.39 - Pre-Accounting Bootstrap Discovery Budget
+### v0.150.0 - Pre-Accounting Bootstrap Discovery Budget
 
 Goal: bound and preserve cold-discovery work before the recovered accounting key
 can authenticate normal anchor-recovery accounting.
@@ -10972,7 +10979,7 @@ Deliverables:
   fingerprint, endpoint and exact requested latest-value operation;
 - provider/witness endpoints maintain a purpose-specific operation journal,
   monotonic use counter or admitted hardware-backed equivalent keyed by token
-  generation/budget epoch; v0.111.42 admits either one externally coordinated
+  generation/budget epoch; v0.153.0 admits either one externally coordinated
   global counter or non-overlapping endpoint allocations, so independent endpoints,
   fresh attempt IDs, restart, recipient retry or clones cannot multiply capacity;
 - endpoint operation evidence records reservation, execution, exact bounded result
@@ -11019,7 +11026,7 @@ Exit criteria:
 - Providers lacking durable attempt tracking expose an explicit one-attempt/weaker
   guarantee and never gain silent retry capacity.
 
-### v0.111.40 - Durable Ordinary Next-Writer Handoff
+### v0.151.0 - Durable Ordinary Next-Writer Handoff
 
 Goal: ensure a pre-cutoff ordinary writer that has only been granted cannot be
 overtaken by maintenance before its transaction or priority is resolved.
@@ -11029,7 +11036,7 @@ Deliverables:
 - canonical `OrdinaryWriterHandoff` binds admission ledger/checkpoint, ticket ID/
   leaf version, grant certificate/generation, journal transaction/idempotency key,
   expected writer-lease generation, principal/capability commitment, payload or
-  deterministic reconstruction commitment, v0.111.45 durable staged-payload
+  deterministic reconstruction commitment, v0.156.0 durable staged-payload
   commitment, handoff sequence and predecessor handoff root;
 - scheduler creates at most one durable next-writer handoff through admission-ledger
   CAS after `GrantReserved` only for a fully staged resumable payload; an explicit
@@ -11049,7 +11056,7 @@ Deliverables:
   or erase lease priority; bounded recovery either resumes the exact immutable
   payload/reconstruction material or performs one independently authorized conversion to
   unconsumed finite priority debt before maintenance can satisfy the cutoff; if
-  both paths are unavailable, v0.111.43 enters typed recovery-required state rather
+  both paths are unavailable, v0.154.0 enters typed recovery-required state rather
   than claiming bounded recovery necessarily completes;
 - independently authorized cancellation/supersession binds ticket, handoff, reason,
   authority/policy epoch and proof no journal result exists; a local disconnect,
@@ -11085,7 +11092,7 @@ Exit criteria:
 - Maintenance cannot overtake an earlier ordinary grant across crash, disconnect,
   response loss or competing lease CAS.
 
-### v0.111.41 - Retention Assurance Mechanisms And Policy
+### v0.152.0 - Retention Assurance Mechanisms And Policy
 
 Goal: distinguish enforceable or independently verifiable retrievability from
 provider assertions when activating protected recovery availability.
@@ -11108,12 +11115,12 @@ Deliverables:
   or proof-of-data-possession construction with domain-separated unpredictable
   challenges, authenticated object encoding/metadata, sample count, adversarial
   model, extraction/soundness bound, verifier key lifecycle and exact probabilistic
-  guarantee; v0.111.44 binds that metadata to exact ciphertext-copy lifecycle and
+  guarantee; v0.155.0 binds that metadata to exact ciphertext-copy lifecycle and
   privacy rules, and no sampling claim becomes deterministic continuous storage;
 - challenge randomness is generated after the copy/version/commitment is fixed,
   cannot be provider-selected or replayed, and uses the v0.23/v0.91 entropy boundary;
   routine response verification and activation assurance are bounded and charged
-  under v0.111.47 retention-verification accounting, not cold-recovery accounting;
+  under v0.158.0 retention-verification accounting, not cold-recovery accounting;
 - authenticated append-only provider audit history, current metadata, receipts and
   self-reported retention flags are corroborating `ProviderAsserted` evidence only;
   they may expose contradiction/equivocation but cannot independently establish
@@ -11122,7 +11129,7 @@ Deliverables:
   probabilistic soundness threshold/challenge cadence, retention horizon, mechanism
   diversity and common-mode dependencies; `ProviderAsserted` never contributes a
   copy or failure domain toward `ProtectedDiverse`;
-- v0.111.38 activation binds each copy's assurance descriptor and verifies fresh
+- v0.149.0 activation binds each copy's assurance descriptor and verifies fresh
   evidence spanning preparation through activation; an expired/revoked attestation,
   failed/missed challenge, weakened parameters or mechanism downgrade remains
   pending/recovery-required and cannot be replaced by provider audit entries;
@@ -11152,7 +11159,7 @@ Exit criteria:
 - Policy rejects expired, weakened, replayed or cross-mechanism evidence rather
   than silently downgrading protected availability.
 
-### v0.111.42 - Coordinated Discovery Budget And Pre-Authentication Gate
+### v0.153.0 - Coordinated Discovery Budget And Pre-Authentication Gate
 
 Goal: prevent independent recovery endpoints or unauthenticated callers from
 multiplying or exhausting legitimate bootstrap discovery capacity.
@@ -11190,7 +11197,7 @@ Deliverables:
   threshold participant set, one discovery operation and expected query key;
   parallel participants contribute to one threshold authorization rather than each
   creating a separately chargeable legitimate reservation;
-- all coordinator/partition receipts feed the v0.111.39 discovery receipt root and
+- all coordinator/partition receipts feed the v0.150.0 discovery receipt root and
   later accounting import; contradictory endpoint/coordinator counters, allocation-
   range reuse or valid-authority-after-abuse refusal enters conflict/availability
   failure without falling back to another budget model;
@@ -11215,7 +11222,7 @@ Exit criteria:
 - Parallel recipients and threshold participants produce one bounded reservation
   history whose exact receipts import into recovery accounting.
 
-### v0.111.43 - Writer Handoff Recovery Epoch And Blocking State
+### v0.154.0 - Writer Handoff Recovery Epoch And Blocking State
 
 Goal: bound ordinary handoff recovery across restart and report honestly when
 neither payload/result recovery nor independent priority conversion is available.
@@ -11233,7 +11240,7 @@ Deliverables:
   `ClockEpoch`; restart closes in-flight work with conservative maximum charges and
   starts no fresh persistent allowance, while wall time, disconnect duration,
   process identity and local file age never expire a handoff or authorize debt;
-- journal-result reconciliation uses the exact v0.111.26/v0.111.40 transaction and
+- journal-result reconciliation uses the exact v0.137.0/v0.151.0 transaction and
   idempotency key; response loss queries that operation, and committed result is
   bound atomically to handoff/ticket before any lease or debt transition proceeds;
 - payload recovery resumes only the authenticated payload/resume commitment under
@@ -11252,7 +11259,7 @@ Deliverables:
   the bounded queue policy requires it, and read-only/non-authority operations plus
   the independent handoff-recovery path remain available;
 - no lower-assurance profile may silently overtake the blocked handoff; an explicit
-  v0.111.46 emergency incarnation recovery preserves permanent evidence and fences
+  v0.157.0 emergency incarnation recovery preserves permanent evidence and fences
   late results under independent threshold authority; it is not a scheduling bypass;
 - recovery resumes from the exact authenticated epoch when payload/provider/
   authority returns, reconciles result or converts to debt/terminal state, then
@@ -11281,7 +11288,7 @@ Exit criteria:
 - Read-only and independent recovery operations remain usable, and restored
   authority resumes exact queue order without invented results or silent bypass.
 
-### v0.111.44 - Private Retrievability Metadata Migration
+### v0.155.0 - Private Retrievability Metadata Migration
 
 Goal: bind PoR/PoDP evidence to exact encrypted recovery-copy versions while
 preserving privacy and authority across re-encryption, relocation and key rotation.
@@ -11307,7 +11314,7 @@ Deliverables:
   be copied, patched or replayed from another copy/version;
 - old ciphertext/metadata/version remains active, challengeable and retained until
   the new ciphertext, complete tags, manifest, verifier key, full restore challenge
-  and v0.111.38 availability activation all verify and atomically supersede it;
+  and v0.149.0 availability activation all verify and atomically supersede it;
   cleanup/old-key retirement follows retention and rollback horizons afterward;
 - relocation is byte-for-byte unchanged only when ciphertext/version identity and
   every proof-authenticated placement coordinate/context remain stable; otherwise
@@ -11350,7 +11357,7 @@ Exit criteria:
 - Mixed, partial, replayed, corrupt or wrong-key proof metadata never establishes
   protected availability or permits premature old-version retirement.
 
-### v0.111.45 - Durable Handoff Payload Staging Gate
+### v0.156.0 - Durable Handoff Payload Staging Gate
 
 Goal: prevent caller loss or deliberate disconnect from turning a non-resumable
 request into a next-writer handoff that can freeze all later writes.
@@ -11368,7 +11375,7 @@ Deliverables:
 - staging uses purpose-separated encryption/HMAC keys and nonce domains, opaque
   owner-only names and immutable generation files; debug/status/log output exposes
   no payload, digest, path or principal beyond the selected privacy profile;
-- content confidentiality does not imply traffic privacy: v0.111.51 is the mandatory
+- content confidentiality does not imply traffic privacy: v0.162.0 is the mandatory
   closure for storage-observer size/timing/timestamp/backup and cleanup claims before
   protected handoff staging can activate;
 - durable byte, object, decode/work, crypto and temporary-storage quota reservation
@@ -11414,7 +11421,7 @@ Exit criteria:
 - Non-resumable tickets never own next-writer priority and can only wait or follow
   independently authorized cancellation/debt semantics.
 
-### v0.111.46 - Emergency Writer Incarnation Recovery
+### v0.157.0 - Emergency Writer Incarnation Recovery
 
 Goal: recover security-critical journal authority from a permanently blocked or
 compromised writer handoff without pretending the action is normal scheduling.
@@ -11427,7 +11434,7 @@ Deliverables:
   authority roots/recipients are bootstrap-bound, purpose-separated and rotatable;
 - prepared transition binds exact daemon/journal/admission-ledger incarnations and
   roots, blocked ticket/handoff/staging/recovery-epoch commitments, writer-lease
-  generation, the v0.111.54 provider-complete fenced operation-set commitment,
+  generation, the v0.165.0 provider-complete fenced operation-set commitment,
   journal/provider pending or ambiguous operations, recovery attempts/budgets,
   compromise/availability reason, policy epoch and random operation/idempotency key;
 - state machine is `EmergencyPrepared -> OldIncarnationFenced ->
@@ -11444,13 +11451,13 @@ Deliverables:
 - provider/journal results arriving after the fence are authenticated against the
   old operation/incarnation and quarantined as `LateFencedResult`; they never apply
   to new authority, complete a reused ticket or disappear, and require explicit
-  v0.111.49 effect classification/governed bridge resolution if their semantic
+  v0.160.0 effect classification/governed bridge resolution if their semantic
   effect may have committed;
-- fencing is not a terminal staged-material cleanup transition: v0.111.50 retains
+- fencing is not a terminal staged-material cleanup transition: v0.161.0 retains
   payload, decoder, keys and quota until the effect bridge and all authoritative
   result roots reach an authenticated terminal outcome;
-- v0.111.58 keeps this authority-changing path inactive until v0.111.49/v0.111.50
-  and v0.111.54-v0.111.56 close effect, completeness and custody semantics;
+- v0.169.0 keeps this authority-changing path inactive until v0.160.0/v0.161.0
+  and v0.165.0-v0.167.0 close effect, completeness and custody semantics;
 - abandoned ticket ID, FIFO sequence, grant/handoff generation, nonce domains and
   operation IDs remain permanently non-reusable; new incarnation counters/random
   identities cannot alias old or cloned state;
@@ -11482,7 +11489,7 @@ Exit criteria:
 - No old identifier, operation, lease or nonce authority becomes reusable, and
   permanent evidence survives rollback, backup and compaction.
 
-### v0.111.47 - Retention Verification Accounting Epoch
+### v0.158.0 - Retention Verification Accounting Epoch
 
 Goal: bound routine retention/availability assurance without consuming emergency
 cold-recovery capacity or accepting cross-purpose accounting artifacts.
@@ -11504,14 +11511,14 @@ Deliverables:
   ambiguity and challenge IDs survive restart/clone, and reset/refill requires
   purpose-specific authority bound to prior root, consumed counters and policy/
   availability epochs rather than local wall time;
-- v0.111.38 availability activation binds the exact consumed verification root,
+- v0.149.0 availability activation binds the exact consumed verification root,
   challenge/attestation result commitments and remaining policy capacity; rollback,
   stale root or partially accounted evidence cannot activate a class;
 - periodic assurance and verification-only copy sampling/downloads use this epoch;
   actual cold recovery copy retrieval, decryption and restoration remain charged to
   `AnchorRecoveryAccountingEpoch`, with a typed boundary that prevents relabeling
   emergency restoration as routine verification;
-- verifier/tag key work under v0.111.44 remains separately keyed but its resource
+- verifier/tag key work under v0.155.0 remains separately keyed but its resource
   use is charged here; retention-verification keys cannot decrypt recovery copies,
   reset recovery budgets or authorize proof/tag migration;
 - canonical vectors reject substitution among retention verification, anchor
@@ -11520,7 +11527,7 @@ Deliverables:
 - unavailable/wrong accounting key or authority fails closed while retaining exact
   pending assurance state; it does not initialize fresh counters, consume cold-
   recovery capacity or silently downgrade protected availability;
-- v0.111.53 is the mandatory provisioning/descriptor/rotation/retirement closure;
+- v0.164.0 is the mandatory provisioning/descriptor/rotation/retirement closure;
   this milestone cannot activate a live protected assurance epoch independently;
 - tests cover periodic/activation challenge limits, provider response loss, restart/
   clone, cross-`ClockEpoch`, reset replay, key rotation/loss, activation with stale
@@ -11541,7 +11548,7 @@ Exit criteria:
   purpose-specific key/root/reset authority.
 - Availability activation binds one exact fully accounted verification root.
 
-### v0.111.48 - Recovery Discovery Metadata Privacy Profiles
+### v0.159.0 - Recovery Discovery Metadata Privacy Profiles
 
 Goal: state and test what coordinators, endpoints and network observers learn from
 bootstrap discovery, including limits of relay and cover-query mitigations.
@@ -11570,13 +11577,13 @@ Deliverables:
   cover capacity; cover operations cannot consume, reserve, reset or reveal valid
   token discovery budgets and cannot be provider-selected to target real events;
 - coordinators inherently learn requests reaching them and therefore recovery
-  frequency/linkability unless v0.111.52 admits a blind protocol whose complete
+  frequency/linkability unless v0.163.0 admits a blind protocol whose complete
   coordinator view satisfies its observer-specific bounds; measured network timing
   alone cannot hide legitimate authentication or budget access; relays may
   themselves learn source/timing, and
   single relay/coordinator, global passive observer and endpoint-collusion limits
   remain explicit rather than inheriting a stronger privacy claim;
-- threshold authorization and v0.111.42 pre-auth gate preserve response-shape/
+- threshold authorization and v0.153.0 pre-auth gate preserve response-shape/
   timing privacy without allowing invalid-auth floods to consume legitimate budget;
   public abuse exhaustion may cause a declared availability/timing signal but no
   token-validity oracle or authenticated budget mutation;
@@ -11604,7 +11611,7 @@ Exit criteria:
 - Response shaping and public-abuse isolation reduce validity oracles without
   changing recovery authority or legitimate discovery capacity.
 
-### v0.111.49 - Post-Fence Ambiguous Effect Resolution
+### v0.160.0 - Post-Fence Ambiguous Effect Resolution
 
 Goal: prevent an emergency fence from being mistaken for proof that an old
 provider or journal operation did not commit immediately before fencing.
@@ -11612,11 +11619,11 @@ provider or journal operation did not commit immediately before fencing.
 Deliverables:
 
 - every fenced operation enters an authenticated append-only classification chain;
-  v0.111.55 fixes its transition lifecycle and compensation semantics, while absence,
+  v0.166.0 fixes its transition lifecycle and compensation semantics, while absence,
   timeout, local rollback, fence completion and missing provider state never imply
   `ProvenNoEffect`;
 - derived `ProvenNoEffect` requires final non-acceptance plus reconciled pre-acceptance
-  abort, accepted-never-started evidence or v0.111.82 started-no-effect evidence, bound
+  abort, accepted-never-started evidence or v0.193.0 started-no-effect evidence, bound
   to operation, old incarnation/namespace, fence and query roots;
   `Committed` binds the exact semantic effect, provider result and old roots;
 - `EffectUnknown` carries the complete uncertainty set, affected authority scope,
@@ -11637,7 +11644,7 @@ Deliverables:
   when policy defines a bounded effect-specific compensator and residual-risk
   classification; irreversible or unbounded effects remain blocked;
 - a late authenticated result can append a refinement after `EffectUnknown` only
-  through the same bridge CAS under v0.111.55; conflicting results, bridge attempts
+  through the same bridge CAS under v0.166.0; conflicting results, bridge attempts
   or provider split views create permanent conflict evidence and preserve read-only
   authority;
 - when provider semantics cannot conclusively query, fence and identify the effect,
@@ -11663,7 +11670,7 @@ Exit criteria:
 - No retry, adoption or compensation can erase uncertainty or apply one effect
   twice.
 
-### v0.111.50 - Emergency Handoff Material Retirement
+### v0.161.0 - Emergency Handoff Material Retirement
 
 Goal: retain staged payload recovery material while an emergency effect is unknown,
 then destroy it and release quota only after authenticated terminal resolution.
@@ -11674,12 +11681,12 @@ Deliverables:
   `EmergencyFencedPendingEffect`, preserving encrypted payload/reconstruction bytes,
   decoder/schema, wrappers/keys, staging commitment, retention policy and full quota;
 - bridge outcomes map to `EmergencyResolvedAdopted`,
-  `EmergencyResolvedNotExecuted`, `EmergencyResolvedCompensated` or the v0.111.59
+  `EmergencyResolvedNotExecuted`, `EmergencyResolvedCompensated` or the v0.170.0
   `EmergencyResolvedNormalized`; no scheduler, timeout, disconnect, local deletion
   or fence-only transition can create them;
 - `EmergencyFencedPendingEffect` remains decryptable to admitted recovery authority
   for the declared emergency horizon, with renewal/abandonment governed by
-  v0.111.56, and cannot execute, become a new handoff, satisfy a different operation
+  v0.167.0, and cannot execute, become a new handoff, satisfy a different operation
   or lose its conservative resource charge;
 - terminal cleanup first reconciles journal, admission ledger, provider result,
   bridge and dependency roots, then authenticates deletion of every managed staged
@@ -11687,8 +11694,8 @@ Deliverables:
   capacity or retiring decoder/key support;
 - normalized cleanup preserves `ExecutionKnowledge::Unknown`, requires the exact
   normalization receipt and keeps every history-sensitive dependency blocked under
-  v0.111.59 even when admitted current-state dependencies reopen; v0.111.67 prepares
-  the composite-head CAS and v0.111.68 requires external reconciliation plus local
+  v0.170.0 even when admitted current-state dependencies reopen; v0.178.0 prepares
+  the composite-head CAS and v0.179.0 requires external reconciliation plus local
   activation before cleanup or reopening;
 - staged generations use independently accountable keys/encryption instances; a
   shared wrapping key cannot be destroyed while another live or unresolved staged
@@ -11703,7 +11710,7 @@ Deliverables:
 - cleanup crash/restart is idempotent and forward-only; ambiguous provider deletion
   remains charged and recoverable, while missing key/material before terminal
   resolution enters permanent `RecoveryRequired` rather than releasing quota;
-- v0.111.56 supplies realm/global custody bounds, immutable decoder retention,
+- v0.167.0 supplies realm/global custody bounds, immutable decoder retention,
   authoritative renewal and permanent fail-closed `AbandonedUnresolved`; this
   milestone alone cannot retain unresolved material without a bounded custody plan;
 - tests cover fence at each staging/execute/result boundary, all bridge outcomes,
@@ -11726,15 +11733,15 @@ Exit criteria:
 - Permanent commitments and resolution evidence survive cleanup without preserving
   recoverable plaintext by accident.
 
-### v0.111.51 - Handoff Staging Traffic Privacy Composition
+### v0.162.0 - Handoff Staging Traffic Privacy Composition
 
 Goal: make encrypted handoff staging a measured consumer of the daemon and storage-
 observer traffic profiles rather than treating opaque payload files as invisible.
 
 Deliverables:
 
-- v0.111.45/v0.111.50 staging and cleanup are named consumers of the v0.111.18 and
-  v0.111.29 profiles, with canonical baseline, padded and high-security profile IDs
+- v0.156.0/v0.161.0 staging and cleanup are named consumers of the v0.129.0 and
+  v0.140.0 profiles, with canonical baseline, padded and high-security profile IDs
   and parameters committed inside the private realm descriptor;
 - baseline declares observable staging/retention/cleanup timing, allocation and
   padded-size class, retry cadence, filesystem timestamps, directory churn, changed
@@ -11779,7 +11786,7 @@ Exit criteria:
 - High-security claims hold for measured staging/retention/cleanup traces or the
   affected interval remains permanently degraded.
 
-### v0.111.52 - Discovery Cover Observer Boundary
+### v0.163.0 - Discovery Cover Observer Boundary
 
 Goal: scope cover-query privacy to observers the selected protocol can actually
 hide recovery occurrence from, including an active coordinator.
@@ -11830,7 +11837,7 @@ Exit criteria:
 - Separate cover accounting preserves operation shape without becoming recovery
   authority or consuming legitimate discovery capacity.
 
-### v0.111.53 - Retention Accounting Key Lifecycle
+### v0.164.0 - Retention Accounting Key Lifecycle
 
 Goal: make retention-verification accounting key provisioning, publication,
 rotation and retirement explicit before any assurance epoch becomes authoritative.
@@ -11856,7 +11863,7 @@ Deliverables:
   local timeout never reprovisions, adopts an unknown handle or retires the old key;
 - retirement proves no live/pending accounting root or verification transcript needs
   the old epoch, commits destruction intent/result where policy requires it, and
-  requires the signed v0.111.57 final epoch closure before destruction while
+  requires the signed v0.168.0 final epoch closure before destruction while
   preserving canonical historical verification evidence without retaining excess
   operational authority;
 - key loss/unavailability blocks new assurance and protected activation while
@@ -11881,10 +11888,10 @@ Exit criteria:
   accounting epochs.
 - Provider ambiguity and key loss preserve capacity, counters and evidence without
   regeneration, fallback or cross-purpose budget reset.
-- v0.111.58 keeps protected retention accounting inactive until v0.111.57 historical
+- v0.169.0 keeps protected retention accounting inactive until v0.168.0 historical
   closure is implemented for the selected key/provider profile.
 
-### v0.111.54 - Atomic Provider Namespace Fence Completeness
+### v0.165.0 - Atomic Provider Namespace Fence Completeness
 
 Goal: prove an emergency fence covers every operation accepted by the old provider
 namespace, including operations a compromised writer omitted from its local journal.
@@ -11894,7 +11901,7 @@ Deliverables:
 - canonical `ProviderNamespaceFenceReceipt` binds provider/service identity and
   capability profile, old namespace/lease/incarnation, atomic fence generation,
   provider consistency mode, final accepted-operation sequence/high-watermark,
-  v0.111.61 append-log/map roots, operation count and predecessor receipt/root;
+  v0.172.0 append-log/map roots, operation count and predecessor receipt/root;
 - fence activation and accepted-operation snapshot share one provider linearization
   point: every operation is either rejected after that point or included in the
   final sequence/root; no response timing, local process ordering or later inventory
@@ -11908,14 +11915,14 @@ Deliverables:
 - provider capability admission declares linearizability/consistency assumptions,
   accumulator/proof suite, maximum inventory/proof work, query authorization and
   retention horizon for final receipts and negative-operation proofs;
-- completeness assurance is conditional on the selected v0.111.60 profile; a
+- completeness assurance is conditional on the selected v0.171.0 profile; a
   provider-signed root alone is only `ProviderAssertedComplete` and cannot detect a
   provider/writer pair that consistently omits an accepted operation;
 - local reconciliation compares journal/admission-ledger/provider sets against the
   final root; provider-accepted operations absent locally become durable
   `ProviderAcceptedLocalUnknown` records before any new-incarnation authority opens;
 - local-only operations absent from the provider root remain non-execution candidates
-  only when a retained v0.111.61 authenticated-map non-inclusion proof covers their
+  only when a retained v0.172.0 authenticated-map non-inclusion proof covers their
   exact ID, namespace and fence generation and its map/log projection proof is valid;
 - missing pages, weak/eventual consistency, proof gaps, unsupported negative-query
   retention, accumulator conflict or an unverifiable provider freezes the entire
@@ -11933,19 +11940,19 @@ Verification:
 - `cargo test -p sagnir-store`
 - atomic fence/snapshot/accumulator/pagination state-machine model;
 - adversarial provider and compromised-writer integration suite within each declared
-  v0.111.60 assurance boundary;
+  v0.171.0 assurance boundary;
 - canonical receipt and inclusion/range/non-inclusion vectors.
 
 Exit criteria:
 
-- Within the selected v0.111.60 assurance boundary, every observed provider-accepted
+- Within the selected v0.171.0 assurance boundary, every observed provider-accepted
   old operation is included in one authenticated final set created atomically with
   the namespace fence; provider assertion remains conditional on provider honesty.
 - Local journal completeness is never trusted as provider-operation completeness.
 - If the provider cannot prove the final set and retain its negative-query evidence,
   the complete affected authority/provider scope remains frozen.
 
-### v0.111.55 - Safe Effect Classification And Compensation
+### v0.166.0 - Safe Effect Classification And Compensation
 
 Goal: make effect knowledge append-only and prevent compensation from causing a
 second harmful effect when the original operation may never have executed.
@@ -11953,10 +11960,10 @@ second harmful effect when the original operation may never have executed.
 Deliverables:
 
 - canonical lifecycle is `Unclassified` -> `EffectUnknown` -> (`Committed` |
-  `ProvenNoEffect(kind)`) -> `BridgeResolved`; v0.111.74/v0.111.82 retain the exact
+  `ProvenNoEffect(kind)`) -> `BridgeResolved`; v0.185.0/v0.193.0 retain the exact
   evidence kind, while direct relabeling, deletion, rollback or conflicting terminal
   classifications are invalid;
-- every transition binds the v0.111.54 final provider operation-set root, operation/
+- every transition binds the v0.165.0 final provider operation-set root, operation/
   old/new incarnation roots, prior classification, evidence/proof commitment,
   dependency closure, policy epoch and expected bridge leaf version;
 - `EffectUnknown` is a durable historical classification that later evidence may
@@ -11975,7 +11982,7 @@ Deliverables:
 - conditional normalization commits a provider-attested common terminal state and
   preserves historical `EffectUnknown`; only dependencies explicitly bound to that
   normalized state may reopen, while unrelated uncertainty remains blocked;
-- v0.111.59 represents execution knowledge and authority resolution as independent
+- v0.170.0 represents execution knowledge and authority resolution as independent
   axes and supplies the normalized terminal custody outcome; this milestone alone
   cannot relabel normalized unknown execution as committed or not executed;
 - when no safe two-world normalization exists, the operation remains irreducibly
@@ -12003,7 +12010,7 @@ Exit criteria:
   during which the effect was unknown.
 - Irreducibly unknown effects keep their affected authority blocked permanently.
 
-### v0.111.56 - Bounded Unresolved Emergency Custody
+### v0.167.0 - Bounded Unresolved Emergency Custody
 
 Goal: prevent indefinitely unknown effects from exhausting daemon storage or forcing
 unsafe decoder/key retirement while preserving a permanent fail-closed outcome.
@@ -12023,7 +12030,7 @@ Deliverables:
   current payload/key/decoder generations, measured capacity, new retention horizon,
   policy/authority epoch and predecessor renewal before any key/schema/decoder or
   backup-retention horizon expires;
-- v0.111.62 binds that horizon to one process `ClockEpoch` plus admitted persistent
+- v0.173.0 binds that horizon to one process `ClockEpoch` plus admitted persistent
   authoritative time/frontier evidence, reserves renewal capacity before the safety
   margin and externally anchors abandonment before physical destruction;
 - renewal authority is independent of the blocked writer and verifies readability,
@@ -12063,7 +12070,7 @@ Exit criteria:
 - Reclaiming physical storage from irreducible uncertainty permanently disables the
   affected authority and preserves bounded authenticated evidence.
 
-### v0.111.57 - Retention Accounting Epoch Closure
+### v0.168.0 - Retention Accounting Epoch Closure
 
 Goal: close an old retention-accounting epoch with independently verifiable evidence
 before destroying the symmetric key that authenticated or encrypted its history.
@@ -12114,7 +12121,7 @@ Exit criteria:
 - Historical verification never depends solely on a destroyed operational HMAC key.
 - Audit-only material cannot become live accounting or availability authority.
 
-### v0.111.58 - Security Feature Activation Matrix
+### v0.169.0 - Security Feature Activation Matrix
 
 Goal: prevent intermediate binaries from enabling an authority-changing path whose
 formats or models exist but whose mandatory closure milestones are incomplete.
@@ -12128,17 +12135,17 @@ Deliverables:
 - each entry binds feature/revision, minimum reader/verifier/writer versions,
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
-- emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.169 are complete and their provider/fence/effect/
+- emergency writer recovery remains non-authoritative until v0.157.0, v0.160.0,
+  v0.161.0 and v0.165.0-v0.280.0 are complete and their provider/fence/effect/
   custody/anchor/evidence/admission/privacy capabilities are admitted; earlier
   binaries may parse/verify evidence only;
-- protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
+- protected handoff staging remains inactive until v0.156.0 and v0.162.0 traffic-
   profile composition pass for the selected platform/storage observer profile;
-- coordinator-private discovery remains inactive until v0.111.52 names a reviewed
+- coordinator-private discovery remains inactive until v0.163.0 names a reviewed
   blind protocol/suite and its complete coordinator-view fixtures pass; relay/cover
   support alone activates only its explicitly weaker observer claims;
-- protected retention accounting remains inactive until v0.111.47, v0.111.53 and
-  v0.111.57 provisioning, accounting and historical closure contracts pass;
+- protected retention accounting remains inactive until v0.158.0, v0.164.0 and
+  v0.168.0 provisioning, accounting and historical closure contracts pass;
 - unknown/unsupported critical entries, missing evidence, downgraded provider/profile
   capability or dependency rollback force read-only/refusal; no config flag,
   permissive UX mode, imported descriptor or local administrator can bypass them;
@@ -12151,7 +12158,7 @@ Deliverables:
 - generated compile-time/runtime capability tables and tests keep CLI/daemon/library
   behavior identical; help/status reports inactive paths without exposing private
   roots, operation presence or profile-sensitive activity;
-- v0.111.63/v0.111.66 make state witnesses non-authorizing and require their
+- v0.174.0/v0.177.0 make state witnesses non-authorizing and require their
   composition with exact operation capability, budget lease and expected root at
   every key, network, provider, staging and authority API boundary;
 - tests cover every intermediate version/state, missing dependency, parse-only
@@ -12174,7 +12181,7 @@ Exit criteria:
 - Mixed-version and rollback states fail read-only without weakening existing
   authority or privacy claims.
 
-### v0.111.59 - Dual-Axis Emergency Resolution
+### v0.170.0 - Dual-Axis Emergency Resolution
 
 Goal: separate knowledge of historical execution from resolution of current
 authority so safe normalization can terminate custody without inventing history.
@@ -12182,30 +12189,30 @@ authority so safe normalization can terminate custody without inventing history.
 Deliverables:
 
 - canonical emergency state contains independent `ExecutionKnowledge` values refined
-  by v0.111.73-v0.111.74/v0.111.82/v0.111.87: `Unknown`, `ProvenNotAccepted`,
+  by v0.184.0-v0.185.0/v0.193.0/v0.198.0: `Unknown`, `ProvenNotAccepted`,
   `AcceptedExecutionUnknown`, `AcceptedNeverStarted`, `AcceptedStartedNoEffect`,
   `AcceptedEffectsPartial(effect_knowledge_root)`, `Committed(effect_commitment)` and
   `Conflicting(evidence_root)`, plus
   `AuthorityResolution` values `Blocked`, `Adopted`, `Compensated`, `Normalized`,
-  `Abandoned` and v0.111.79 `ConflictAbandoned`; `ProvenNoEffect` is a derived
+  `Abandoned` and v0.190.0 `ConflictAbandoned`; `ProvenNoEffect` is a derived
   classification that retains its non-acceptance, never-started or started-no-effect
   evidence kind;
-- v0.111.91 refines partial operations with a per-permit
-  `EffectAuthorityResolution` map bound one-to-one to the v0.111.87 effect-knowledge
+- v0.202.0 refines partial operations with a per-permit
+  `EffectAuthorityResolution` map bound one-to-one to the v0.198.0 effect-knowledge
   map; operation-level `AuthorityResolution` remains canonical for scalar and
   aggregate custody decisions but cannot erase different permit resolutions;
 - valid-pair rules are explicit: scalar `Adopted` and ordinary `Compensated` require
   scalar `Committed`; a committed permit in `AcceptedEffectsPartial` may adopt or
-  compensate only through its exact v0.111.91 resolution leaf while ambiguous permits
+  compensate only through its exact v0.202.0 resolution leaf while ambiguous permits
   remain blocked; `Normalized` may retain unresolved knowledge, `Conflicting` permits
   only `Blocked` or fail-closed `ConflictAbandoned`, and ordinary `Abandoned` preserves
   non-conflicting current execution knowledge without asserting an effect;
 - append-only execution-knowledge transitions and authority-resolution transitions
-  produce separate immutable prepared roots/leaves; v0.111.67 makes only one locally
+  produce separate immutable prepared roots/leaves; v0.178.0 makes only one locally
   committed expected-head-CAS candidate across both axes, provider/result roots,
-  dependencies, custody and policy epoch; v0.111.68 requires external reconciliation
+  dependencies, custody and policy epoch; v0.179.0 requires external reconciliation
   before that candidate becomes active or permits side effects;
-- canonical `EmergencyResolvedNormalized` binds the v0.111.55 atomic normalization
+- canonical `EmergencyResolvedNormalized` binds the v0.166.0 atomic normalization
   receipt/current-state commitment, preserved `ExecutionKnowledge::Unknown`, exact
   dependency closure, journal/admission-ledger/provider roots, custody generation,
   policy root and expected prior resolution leaf;
@@ -12215,7 +12222,7 @@ Deliverables:
   or other history-sensitive dependencies remain blocked under unknown execution;
 - after normalized-state receipt, dependency closure and journal/ledger/provider
   roots reconcile, `EmergencyResolvedNormalized` is a terminal custody outcome under
-  v0.111.50 and may authorize authenticated staged-material cleanup/quota release;
+  v0.161.0 and may authorize authenticated staged-material cleanup/quota release;
 - cleanup preserves both the permanent unknown-execution classification and the
   normalization/cleanup evidence; it cannot relabel the outcome as adopted,
   compensated or proven not executed;
@@ -12227,9 +12234,9 @@ Deliverables:
 - tests cover every valid/invalid pair, normalized cleanup, current-state reopening,
   history-sensitive refusal, late committed/non-execution evidence, concurrent axis
   transitions, rollback, compaction and backup restore.
-- late evidence semantics are normative under v0.111.67: knowledge may advance after
+- late evidence semantics are normative under v0.178.0: knowledge may advance after
   normalization, but custody/cleanup cannot resurrect and history-sensitive reopening
-  requires a distinct governed composed-head resolution; v0.111.69 requires the
+  requires a distinct governed composed-head resolution; v0.180.0 requires the
   knowledge leaf to be a valid projection of the exact result-evidence checkpoint.
 
 Verification:
@@ -12247,7 +12254,7 @@ Exit criteria:
   dependency is resolved.
 - Every cleanup outcome is represented without misclassifying execution knowledge.
 
-### v0.111.60 - Provider Fence Completeness Assurance Profiles
+### v0.171.0 - Provider Fence Completeness Assurance Profiles
 
 Goal: state which independent observation, if any, makes a provider fence complete
 when provider equivocation or provider/writer collusion is in scope.
@@ -12257,7 +12264,7 @@ Deliverables:
 - canonical assurance levels are `ProviderAssertedComplete`,
   `HardwareMonotonicComplete`, `WitnessedComplete` and `ReceiptComplete`, each with a
   distinct suite/profile ID, evidence format, trust assumption and claim boundary;
-- `ProviderAssertedComplete` accepts the v0.111.54 provider-signed atomic fence/set
+- `ProviderAssertedComplete` accepts the v0.165.0 provider-signed atomic fence/set
   only under an honest linearizable-provider assumption; documentation, status and
   proofs state that consistent provider/writer omission is undetectable;
 - `HardwareMonotonicComplete` binds acceptance/fence roots to an admitted attested
@@ -12265,9 +12272,9 @@ Deliverables:
   generation, rollback/clone resistance, attestation freshness and revocation roots;
 - `WitnessedComplete` requires independent witnesses or a threshold/diversity set to
   co-commit each admitted acceptance before execution plus the final fence root under
-  v0.111.65; witness receipts, consistency proofs, equivocation evidence and
+  v0.176.0; witness receipts, consistency proofs, equivocation evidence and
   unavailable-threshold behavior are canonical and bounded;
-- `ReceiptComplete` requires v0.111.65 independent receipt durability before the
+- `ReceiptComplete` requires v0.176.0 independent receipt durability before the
   provider may linearize acceptance or permit execution, then reconciles every
   prepared/accepted receipt against final fence roots; missing, duplicated,
   conflicting or unretained evidence prevents completeness and execution;
@@ -12303,7 +12310,7 @@ Exit criteria:
 - No test or documentation claims detection of collusion without independent
   evidence.
 
-### v0.111.61 - Dual-Root Provider Operation Set
+### v0.172.0 - Dual-Root Provider Operation Set
 
 Goal: retain ordered acceptance history while providing bounded logarithmic exact
 operation-ID membership and non-inclusion proofs.
@@ -12315,14 +12322,14 @@ Deliverables:
   map/set root keyed by `(namespace, operation_id)`;
 - append entries and map leaves bind immutable provider sequence, operation ID,
   idempotency key, old lease/incarnation, request/effect commitment and
-  `result_state_at_fence`; v0.111.64 places later evidence in separate result roots;
+  `result_state_at_fence`; v0.175.0 places later evidence in separate result roots;
 - a canonical projection/consistency proof establishes that both roots contain the
   same complete unique accepted-operation multiset/count at the fence generation;
   neither root alone can establish full fence completeness;
 - operation IDs are unique within the namespace and idempotency keys map to exactly
   one request/effect commitment; duplicate ID, duplicate key with changed request,
   sequence alias or map/log disagreement is terminal conflict;
-- v0.111.64 uses domain-prefixed operation-ID and idempotency-key leaves in the
+- v0.175.0 uses domain-prefixed operation-ID and idempotency-key leaves in the
   authenticated map so both uniqueness/absence proofs remain logarithmic;
 - authenticated map pages use the admitted bounded uniquely represented map
   construction and provide logarithmic inclusion/non-inclusion proofs independent of
@@ -12357,7 +12364,7 @@ Exit criteria:
 - No provider Boolean answer, linear scan or one-root proof satisfies protected
   fence completeness.
 
-### v0.111.62 - Authoritative Emergency Custody Time
+### v0.173.0 - Authoritative Emergency Custody Time
 
 Goal: make custody renewal resistant to restart/clock rollback and make unresolved
 abandonment externally irreversible before destroying recovery material.
@@ -12410,7 +12417,7 @@ Exit criteria:
 - Custody bytes are never destroyed for unresolved abandonment before an externally
   reconciled irreversible emergency-namespace transition exists.
 
-### v0.111.63 - Typed Feature Activation Witnesses
+### v0.174.0 - Typed Feature Activation Witnesses
 
 Goal: enforce activation-matrix state through unforgeable non-authorizing Rust
 witnesses rather than scattered Boolean checks at authority boundaries.
@@ -12425,7 +12432,7 @@ Deliverables:
   `ModelComplete` grants no runtime capability;
   `WritePrepared` permits quota-charged non-authoritative encrypted staging only,
   with no external effect, active-root publication or authority-visible reference;
-  `AuthorityActive` yields only a v0.111.66 non-authorizing `FeatureActiveWitness` for
+  `AuthorityActive` yields only a v0.177.0 non-authorizing `FeatureActiveWitness` for
   transitions admitted by its feature entry;
 - sealed, non-constructible, non-`Clone` Rust witness types represent each state
   and carry feature/revision/matrix root, policy/profile/provider epochs, operation
@@ -12436,7 +12443,7 @@ Deliverables:
 - APIs for key access, network/query, provider mutation, durable staging, active-root
   publication, recovery/compensation and protected claims require the feature-state
   witness plus exact v0.23.4 operation capability, durable budget/reservation lease
-  and expected authority root under v0.111.66, never a Boolean or witness alone;
+  and expected authority root under v0.177.0, never a Boolean or witness alone;
 - witness transitions consume the prior witness and return a narrower or stronger
   witness only after the corresponding durable matrix transition; cancellation,
   panic, restart and response ambiguity cannot duplicate or retain stale witnesses;
@@ -12466,11 +12473,11 @@ Exit criteria:
 
 - Lower activation states cannot invoke stronger side effects by construction.
 - Every authority-changing public API requires a non-authorizing state witness plus
-  the exact independent authorization/budget/root inputs defined by v0.111.66.
+  the exact independent authorization/budget/root inputs defined by v0.177.0.
 - Matrix rollback, serialization or runtime configuration cannot manufacture active
   authority.
 
-### v0.111.64 - Immutable Acceptance And Result Evidence Roots
+### v0.175.0 - Immutable Acceptance And Result Evidence Roots
 
 Goal: keep final provider fence membership immutable while admitting late operation
 results through a separately authenticated successor history.
@@ -12492,7 +12499,7 @@ Deliverables:
 - result transitions are monotonic and typed (`NoResultAtFence`, `Pending`,
   `Committed`, `ProvenNoEffect(kind)`, `Conflicting` or `EffectUnknown`); stale,
   contradictory or differently committed outcomes preserve explicit conflict;
-- v0.111.73-v0.111.74 project these result states into canonical conflicting,
+- v0.184.0-v0.185.0 project these result states into canonical conflicting,
   proven-not-accepted, accepted-unknown, accepted-never-started and committed
   execution knowledge without treating fence non-inclusion as execution evidence;
 - late provider/journal/witness results append to the result log and update only the
@@ -12508,7 +12515,7 @@ Deliverables:
 - effect classification, emergency composite heads and bridge/normalization/cleanup
   decisions bind immutable acceptance roots plus the exact current result-evidence
   checkpoint; neither acceptance nor result evidence can substitute for the other;
-- v0.111.69 defines the deterministic projection from this result checkpoint into
+- v0.180.0 defines the deterministic projection from this result checkpoint into
   emergency execution knowledge; a checkpoint/knowledge pair that cannot satisfy
   that projection is never admissible as one composite head;
 - compaction retains independent append consistency, current-status proofs, conflict
@@ -12532,7 +12539,7 @@ Exit criteria:
   roots.
 - Operation-ID and idempotency-key uniqueness/absence are both proven logarithmically.
 
-### v0.111.65 - Pre-Execution Receipt And Witness Admission
+### v0.176.0 - Pre-Execution Receipt And Witness Admission
 
 Goal: ensure independent receipt or witness evidence exists before a provider may
 linearize acceptance or execute an operation.
@@ -12546,7 +12553,7 @@ Deliverables:
   or threshold recipient before provider acceptance; it proves a possible submission,
   not execution or acceptance, and cannot itself authorize an effect;
 - provider acceptance atomically binds the externally durable prepared-receipt
-  commitment into the v0.111.64 immutable acceptance entry; execution APIs require
+  commitment into the v0.175.0 immutable acceptance entry; execution APIs require
   the resulting `ExecutionEligible` proof and cannot run from local receipt bytes;
 - if independent receipt durability is unavailable, ambiguous or revoked after
   preparation, the provider must not linearize acceptance or execute; recovery
@@ -12554,16 +12561,16 @@ Deliverables:
 - prepared receipts absent from a final accepted-operation set reconcile through a
   terminal `AbortedBeforeAcceptance` or remain explicit uncertainty; deletion, age
   or provider non-inclusion alone cannot prove non-execution after eligibility;
-- v0.111.74 permits `ProvenNotAccepted` only when final non-inclusion and the exact
+- v0.185.0 permits `ProvenNotAccepted` only when final non-inclusion and the exact
   reconciled abort agree; accepted operations use separate execution-outcome evidence;
-- v0.111.71 reserves and charges bounded prepared-receipt capacity before external
-  preparation, and v0.111.72 applies a declared independent observer/privacy profile
+- v0.182.0 reserves and charges bounded prepared-receipt capacity before external
+  preparation, and v0.183.0 applies a declared independent observer/privacy profile
   to every receipt and witness exchange;
 - `WitnessedComplete` makes threshold/diverse witness co-commit part of acceptance:
   the provider cannot create an accepted entry or `ExecutionEligible` proof until the
-  required witness set durably signs the v0.111.106 signature-free
-  `AcceptanceIntentRoot`; v0.111.109 requires one checkpoint-verifiable
-  `WitnessAdmissionReceipt` per counted signer, v0.111.112 gives each receipt a
+  required witness set durably signs the v0.217.0 signature-free
+  `AcceptanceIntentRoot`; v0.220.0 requires one checkpoint-verifiable
+  `WitnessAdmissionReceipt` per counted signer, v0.223.0 gives each receipt a
   non-recursive statement-checkpoint frontier, canonical `WitnessSetRoot` commits
   those receipts, and provider acceptance binds both roots without any transcript
   signing its own signature result;
@@ -12573,7 +12580,7 @@ Deliverables:
 - hardware-monotonic profiles bind their pre-execution counter/log advancement into
   the same eligibility proof; provider assertion remains explicitly weaker;
 - external receipt/witness/counter evidence reconciles with the final fence and
-  v0.111.64 result log; response loss cannot cause duplicate acceptance/execution or
+  v0.175.0 result log; response loss cannot cause duplicate acceptance/execution or
   erase independently observed prepared/committed evidence;
 - tests cover execute-before-receipt, crash after preparation/acceptance/eligibility,
   receipt-store loss, colluding provider/writer, witness delay/equivocation, threshold
@@ -12594,14 +12601,14 @@ Exit criteria:
 - Prepared evidence that never becomes accepted remains distinguishable from both
   execution and proven non-execution.
 
-### v0.111.66 - Feature Witness And Operation Authorization Composition
+### v0.177.0 - Feature Witness And Operation Authorization Composition
 
 Goal: keep feature activation proof orthogonal to exact operation authorization,
 budget reservation and authority-root compare-and-swap.
 
 Deliverables:
 
-- v0.111.63 active-state type is a non-authorizing `FeatureActiveWitness`, never a
+- v0.174.0 active-state type is a non-authorizing `FeatureActiveWitness`, never a
   generic authority capability or replacement for v0.23.4 operation capabilities;
 - each witness binds store, realm/genesis, feature/revision, activation-matrix root,
   policy/profile/provider epochs, daemon/realm incarnation and witness generation;
@@ -12613,7 +12620,7 @@ Deliverables:
 - an internal operation-specific composition token may borrow only the
   `FeatureActiveWitness` and immutable policy metadata; the one-operation capability,
   durable budget/reservation lease and expected-root guard move by value into the
-  token after context equality and freshness checks under v0.111.70; no public
+  token after context equality and freshness checks under v0.181.0; no public
   generic authority supertype, widening conversion or reusable ambient token exists;
 - feature witnesses cannot widen scope, extend lifetime, replace possession proof,
   change quorum/policy, reset budget, alter expected root or convert one operation
@@ -12649,7 +12656,7 @@ Exit criteria:
 - Every authority operation remains exact, one-use, budgeted and expected-root-bound.
 - No feature witness widens or converts authority across operations or contexts.
 
-### v0.111.67 - Atomic Composite Emergency Head Preparation
+### v0.178.0 - Atomic Composite Emergency Head Preparation
 
 Goal: compose execution knowledge, authority resolution and late evidence into one
 atomic prepared head so partial axis updates can never become an authority candidate.
@@ -12660,22 +12667,22 @@ Deliverables:
   leaves only; neither axis root, prepared result nor local current-state cache is
   authoritative independently;
 - canonical `EmergencyCompositeHead` binds prior composite head, knowledge root/leaf,
-  resolution root/leaf, immutable acceptance roots, current v0.111.64 result-evidence
+  resolution root/leaf, immutable acceptance roots, current v0.175.0 result-evidence
   checkpoint, dependency classification/root, custody/cleanup state, policy epoch,
   writer/provider incarnations and expected authority generation;
-- v0.111.69 requires the knowledge leaf and exact result-evidence checkpoint to
+- v0.180.0 requires the knowledge leaf and exact result-evidence checkpoint to
   satisfy one canonical `EffectEvidenceProjection`; mismatch is a hard refusal;
 - one WAL-backed expected-head CAS prepares the complete new composite checkpoint;
-  v0.111.68 publishes its exact root through the established external-anchor
+  v0.179.0 publishes its exact root through the established external-anchor
   transaction before local activation; cleanup, dependency reopening, bridge/
   normalization decisions, sync/export and status proofs consume only an externally
   reconciled and locally activated head;
 - crash or cancellation before local activation leaves both prior axes, result
   checkpoint, custody and dependencies authoritative; prepared or externally pending
   leaves remain inert, bounded and recoverable without arrival-order selection under
-  v0.111.68;
+  v0.179.0;
 - `Unknown + Normalized` may later advance to `Committed + Normalized` or derived
-  `ProvenNoEffect + Normalized` with its exact v0.111.74/v0.111.82 evidence kind
+  `ProvenNoEffect + Normalized` with its exact v0.185.0/v0.193.0 evidence kind
   through a new composed-head CAS binding admitted late evidence; normalization and
   its earlier cleanup remain immutable/idempotent;
 - history-sensitive dependencies remain blocked after late knowledge until a new
@@ -12686,7 +12693,7 @@ Deliverables:
   reopened twice; late evidence cannot resurrect destroyed custody, rerun cleanup,
   recreate keys/decoders, retry the old operation or reverse anchored abandonment;
 - conflicting late results or concurrent axis/resolution updates create explicit
-  composed heads carrying v0.111.73 `ExecutionKnowledge::Conflicting` and
+  composed heads carrying v0.184.0 `ExecutionKnowledge::Conflicting` and
   `AuthorityResolution::Blocked`, preserving all evidence; they never merge axis roots
   by last writer, choose the newest local cache or infer authority from one root;
 - compaction/backup retains composed-head ancestry, prepared-leaf terminal status,
@@ -12710,14 +12717,14 @@ Exit criteria:
 - History-sensitive dependencies reopen only through a distinct governed resolution
   that binds the full normalized history.
 
-### v0.111.68 - Externally Anchored Composite Emergency Publication
+### v0.179.0 - Externally Anchored Composite Emergency Publication
 
 Goal: make an emergency composite head authoritative only after its exact durable
 bytes and external publication have been reconciled before local activation.
 
 Deliverables:
 
-- reuse the v0.111.20 external-anchor transaction substrate, capability checks,
+- reuse the v0.131.0 external-anchor transaction substrate, capability checks,
   idempotent query protocol, dual-slot/predecessor continuity and recovery-copy
   accounting; this milestone introduces no independent anchoring protocol;
 - canonical lifecycle is `CompositePrepared -> ExternalAnchorPending ->
@@ -12741,7 +12748,7 @@ Deliverables:
   receipt; a competing local writer, restored clone, stale generation or changed
   composite bytes fails without undoing an externally committed head;
 - local activation yields only the borrowable, non-authorizing
-  `CompositeHeadActiveWitness` defined by v0.111.75; cleanup, reopening, compensation,
+  `CompositeHeadActiveWitness` defined by v0.186.0; cleanup, reopening, compensation,
   normalization, sync/export, retention release and every other authority-changing
   consequence additionally consume their own exact affine operation token, budget and
   expected active composite root;
@@ -12765,7 +12772,7 @@ Exit criteria:
 - Every externally visible composite root has complete durable recovery material.
 - Ambiguous publication is reconciled by query and never by repeating authority.
 
-### v0.111.69 - Effect Evidence Projection
+### v0.180.0 - Effect Evidence Projection
 
 Goal: prove that emergency execution knowledge is exactly supported by the bound
 immutable acceptance and current result-evidence checkpoint.
@@ -12773,14 +12780,14 @@ immutable acceptance and current result-evidence checkpoint.
 Deliverables:
 
 - canonical `EffectEvidenceProjection` binds operation/namespace, immutable
-  acceptance roots and proof, exact v0.111.64 result checkpoint/status proof,
-  projected v0.111.59 knowledge leaf, evidence policy and predecessor projection;
+  acceptance roots and proof, exact v0.175.0 result checkpoint/status proof,
+  projected v0.170.0 knowledge leaf, evidence policy and predecessor projection;
 - the normative projection matrix permits no knowledge stronger than its evidence:
   `Committed` requires accepted execution with the exact admitted effect commitment;
-  v0.111.74 separately projects proven non-acceptance, accepted execution uncertainty
+  v0.185.0 separately projects proven non-acceptance, accepted execution uncertainty
   and accepted-but-never-executed evidence without collapsing those states;
 - any differently committed, internally contradictory, cross-source contradictory
-  or fence/result-inconsistent evidence projects the v0.111.73 canonical
+  or fence/result-inconsistent evidence projects the v0.184.0 canonical
   `ExecutionKnowledge::Conflicting { evidence_root }`; conflict cannot be reduced to
   `Unknown`, selected by source priority or resolved by arrival order;
 - `Pending`, `NoResultAtFence` and incomplete prepared evidence remain blocking
@@ -12788,7 +12795,7 @@ Deliverables:
   strengthen them into committed or non-executed knowledge;
 - deterministic projection depends only on canonical admitted evidence and policy,
   not local time, map iteration, process order, provider response order or cache state;
-- every v0.111.67 composite-head preparation and v0.111.68 external publication
+- every v0.178.0 composite-head preparation and v0.179.0 external publication
   verifies and commits the exact projection proof; a stale result checkpoint,
   substituted knowledge leaf or omitted conflict makes the entire head inadmissible;
 - late evidence appends a new result checkpoint and projection before a new composite
@@ -12812,7 +12819,7 @@ Exit criteria:
 - Conflicting or stale evidence cannot become authority through ordering or timeout.
 - Composite publication rejects every invalid evidence/knowledge pairing.
 
-### v0.111.70 - Affine Operation Token Composition
+### v0.181.0 - Affine Operation Token Composition
 
 Goal: ensure composing feature state with operation authority transfers every
 one-use authority input exactly once and cannot duplicate execution permission.
@@ -12831,7 +12838,7 @@ Deliverables:
 - an authority-changing API consumes the token exactly once and returns only a typed
   terminal result or query-only reconciliation token; success, refusal, cancellation,
   panic and provider ambiguity cannot return an executable authority token;
-- v0.111.75 requires a separate operation-specific token for every consequence of an
+- v0.186.0 requires a separate operation-specific token for every consequence of an
   active composite head; the active-head witness never substitutes for this token;
 - ambiguity moves the operation ID, provider request digest and remaining recovery
   budget into a non-executable reconciliation token that permits only status query,
@@ -12857,7 +12864,7 @@ Exit criteria:
   ownership path.
 - Ambiguous execution leaves query authority only, never a retryable execution token.
 
-### v0.111.71 - Bounded Prepared Receipt Admission
+### v0.182.0 - Bounded Prepared Receipt Admission
 
 Goal: bound independent receipt preparation without deleting evidence for an
 operation that might have reached execution eligibility.
@@ -12867,7 +12874,7 @@ Deliverables:
 - a durable receipt-capacity reservation is acquired and charged before contacting
   an external receipt store or witness; no prepared external evidence may exist
   without a corresponding local aggregate reservation and operation ID;
-- v0.111.76 additionally requires an admitted provider-side capacity mode; local
+- v0.187.0 additionally requires an admitted provider-side capacity mode; local
   reservation is necessary but never sufficient to bound a shared external service;
 - limits cover count, bytes, verification work and concurrency per operation,
   principal, realm, witness/receipt authority and global store; aggregate accounting
@@ -12876,7 +12883,7 @@ Deliverables:
 - provider timeout, response loss, process restart and uncertain preparation retain
   the full charge until idempotent query proves a terminal state; ambiguity never
   refunds capacity merely because local receipt bytes are absent;
-- prepared-receipt lifetime uses v0.111.62 authoritative time, admitted policy epoch
+- prepared-receipt lifetime uses v0.173.0 authoritative time, admitted policy epoch
   and a signed expiry frontier; wall-clock age, reboot, suspended time or local
   administrator edits cannot expire authority evidence;
 - `AbortedBeforeAcceptance` is admitted only after the receipt authority, immutable
@@ -12908,7 +12915,7 @@ Exit criteria:
 - Ambiguous or possibly eligible evidence is retained until terminal truth is proven.
 - Saturation cannot consume the reserved capacity required to fence and reconcile.
 
-### v0.111.72 - Receipt And Witness Traffic Privacy Profiles
+### v0.183.0 - Receipt And Witness Traffic Privacy Profiles
 
 Goal: declare and enforce what receipt and witness observers can learn from
 pre-execution evidence traffic independently of other coordinator privacy controls.
@@ -12924,11 +12931,11 @@ Deliverables:
   selected profile explicitly requires and documents them;
 - baseline, padded and high-security profiles declare exact padding buckets, batch/
   schedule behavior, cover rate, retry cadence, relay assumptions, retention and
-  unavoidable leakage; v0.111.77 excludes selected evidence-producing witnesses from
+  unavoidable leakage; v0.188.0 excludes selected evidence-producing witnesses from
   occurrence privacy unless a reviewed blind/oblivious protocol is admitted;
 - padding and cover traffic receive independent capacity and cannot become receipt,
   witness, acceptance, execution-eligibility or non-execution evidence; exhaustion
-  cannot borrow v0.111.71 reconciliation/fence reserves or silently drop real traffic;
+  cannot borrow v0.182.0 reconciliation/fence reserves or silently drop real traffic;
 - cover, batching, relay or schedule failure causes an explicit permanent privacy-
   assurance degradation for the affected transcript; later recovery cannot relabel
   already observable traffic as protected;
@@ -12955,7 +12962,7 @@ Exit criteria:
 - Opaque evidence traffic cannot be correlated through reusable protocol identifiers.
 - Loss of required cover or scheduling permanently downgrades the affected claim.
 
-### v0.111.73 - Canonical Conflicting Execution Knowledge
+### v0.184.0 - Canonical Conflicting Execution Knowledge
 
 Goal: preserve positive contradictory execution evidence as a first-class fail-closed
 knowledge state rather than weakening it to missing evidence.
@@ -12963,7 +12970,7 @@ knowledge state rather than weakening it to missing evidence.
 Deliverables:
 
 - canonical `ExecutionKnowledge::Conflicting { evidence_root }` is admitted alongside
-  the non-conflicting v0.111.59 variants; its evidence root commits every conflicting
+  the non-conflicting v0.170.0 variants; its evidence root commits every conflicting
   source, statement kind, effect/non-effect commitment, provider/key epoch, sequence,
   acceptance/fence proof and result checkpoint used to establish the conflict;
 - conflict admission requires a canonical minimal contradiction proof, including two
@@ -12972,13 +12979,13 @@ Deliverables:
 - duplicate, differently ordered or redundant statements produce the same conflict
   classification and canonical evidence-set commitment; input order, source priority,
   local trust preference and newest-cache selection cannot choose one side;
-- `Conflicting` normally pairs only with `AuthorityResolution::Blocked`; v0.111.79
+- `Conflicting` normally pairs only with `AuthorityResolution::Blocked`; v0.190.0
   admits the separate terminal `ConflictAbandoned` pair after externally anchored
   disablement, but it cannot pair with adopted, compensated, normalized or ordinary
   abandoned resolution, choose evidence, reopen dependencies or satisfy policy;
-  v0.111.93 may authorize a separate conflict-observation consequence without making
+  v0.204.0 may authorize a separate conflict-observation consequence without making
   conflict a satisfying dependency or treating either statement as true;
-- the v0.111.69 projection emits `Conflicting` only from positive admitted
+- the v0.180.0 projection emits `Conflicting` only from positive admitted
   contradiction evidence and emits `Unknown` only for missing, pending, stale or
   otherwise insufficient evidence; neither state may be converted into the other;
 - conflict refinement appends evidence and publishes a new projected composite head;
@@ -13000,11 +13007,11 @@ Verification:
 Exit criteria:
 
 - Positive contradictory evidence can never be represented as mere uncertainty.
-- A conflicting operation remains blocked from authority; v0.111.79 may terminate
+- A conflicting operation remains blocked from authority; v0.190.0 may terminate
   custody without resolving or selecting the conflict.
 - Conflict classification is independent of evidence arrival and storage order.
 
-### v0.111.74 - Acceptance And Execution Outcome Taxonomy
+### v0.185.0 - Acceptance And Execution Outcome Taxonomy
 
 Goal: distinguish proof that an operation was never accepted from proof that an
 accepted operation never began execution.
@@ -13015,13 +13022,13 @@ Deliverables:
   `ProvenNotAccepted { fence_root, abort_root }`,
   `AcceptedExecutionUnknown { acceptance_root, eligibility_root }`,
   `AcceptedNeverStarted { acceptance_root, non_start_root }`,
-  v0.111.82 `AcceptedStartedNoEffect { acceptance_root, start_root, no_effect_root }`,
-  v0.111.87 `AcceptedEffectsPartial { acceptance_root, plan_root,
+  v0.193.0 `AcceptedStartedNoEffect { acceptance_root, start_root, no_effect_root }`,
+  v0.198.0 `AcceptedEffectsPartial { acceptance_root, plan_root,
   effect_knowledge_root }`, `Committed { acceptance_root, effect_commitment }` and
-  v0.111.73 `Conflicting`; multi-effect projections retain the per-permit knowledge
+  v0.184.0 `Conflicting`; multi-effect projections retain the per-permit knowledge
   lattice rather than collapsing a mixed plan into one scalar operation outcome;
 - `ProvenNotAccepted` requires exact operation/idempotency non-inclusion under the
-  final v0.111.54/v0.111.61 provider fence plus reconciled v0.111.65
+  final v0.165.0/v0.172.0 provider fence plus reconciled v0.176.0
   `AbortedBeforeAcceptance`; fence non-inclusion alone remains insufficient whenever
   prepared receipt, eligibility or provider ambiguity survives;
 - `AcceptedExecutionUnknown` requires immutable acceptance and eligibility evidence
@@ -13029,15 +13036,15 @@ Deliverables:
   non-observation cannot strengthen or weaken it;
 - `AcceptedNeverStarted` requires immutable acceptance plus authenticated final
   provider execution-slot, monotonic counter or equivalent admitted evidence proving
-  execution never began under the v0.111.78 start-before-effect state machine;
+  execution never began under the v0.189.0 start-before-effect state machine;
   ordinary result absence or caller assertion is insufficient;
 - `Committed` requires immutable acceptance and authenticated execution/result
   evidence for the exact effect commitment; an effect without acceptance linkage is
   conflicting evidence rather than a committed outcome;
 - derived `ProvenNoEffect` has a mandatory `NoEffectKind` of `NotAccepted`,
-  `AcceptedNeverStarted` or v0.111.82 `StartedNoEffect`; proof and policy APIs retain
+  `AcceptedNeverStarted` or v0.193.0 `StartedNoEffect`; proof and policy APIs retain
   that kind and never serialize a kind-erased authoritative no-effect claim;
-- the v0.111.69 projection matrix consumes exact acceptance, prepared-receipt,
+- the v0.180.0 projection matrix consumes exact acceptance, prepared-receipt,
   eligibility, execution-slot, fence and result checkpoints and emits only the
   strongest justified detailed variant; ambiguous paths remain blocking;
 - late acceptance, eligibility, execution or conflict evidence advances through a new
@@ -13061,23 +13068,23 @@ Exit criteria:
   and started-no-effect knowledge.
 - Every authoritative non-execution proof retains the evidence path that justified it.
 
-### v0.111.75 - Operation-Specific Composite Consequence Authorization
+### v0.186.0 - Operation-Specific Composite Consequence Authorization
 
 Goal: make active composite-head state a non-authorizing fact while every consequence
 retains narrow affine operation authority.
 
 Deliverables:
 
-- v0.111.68 local activation yields a sealed, borrowable
+- v0.179.0 local activation yields a sealed, borrowable
   `CompositeHeadActiveWitness` binding store, realm/genesis, exact active composite
   root/generation, external receipt, policy/provider epochs and local incarnation;
 - the witness contains no cleanup, reopening, compensation, normalization, export,
   sync, retention-release, signing, key-destruction or provider-mutation permission;
-- each consequence requires `&CompositeHeadActiveWitness` plus one exact v0.111.70
+- each consequence requires `&CompositeHeadActiveWitness` plus one exact v0.181.0
   `AffineOperationToken<ConsequenceKind>` that already owns its one-operation
   capability, budget/reservation lease and expected active composite-root guard; all
   contexts must match before secret access, durable writes, network activity or
-  provider mutation under v0.111.80;
+  provider mutation under v0.191.0;
 - composition produces a sealed one-use `PermittedConsequence<Kind>` whose type and
   scope name exactly one consequence; no generic side-effect token, widening
   conversion, multi-action enum or reusable ambient authority exists;
@@ -13088,7 +13095,7 @@ Deliverables:
   authority; a later head generation invalidates stale expected-root composition but
   does not mutate or revoke historical proof meaning;
 - ambiguity consumes the consequence token and returns only the exact query-only
-  reconciliation capability defined by v0.111.70; it cannot mint another consequence
+  reconciliation capability defined by v0.181.0; it cannot mint another consequence
   or be converted across consequence kinds;
 - compile-fail tests prove the witness alone invokes no consequence, one consequence
   token cannot widen or cross kinds, and one affine input set cannot compose twice;
@@ -13108,7 +13115,7 @@ Exit criteria:
 - Every consequence consumes independently scoped authority, budget and root guard.
 - No broad token can authorize multiple consequence kinds or repeated side effects.
 
-### v0.111.76 - Externally Enforced Receipt Capacity
+### v0.187.0 - Externally Enforced Receipt Capacity
 
 Goal: bound prepared evidence at the shared receipt or witness service even when
 clients, stores or hosts are cloned, compromised or mutually inconsistent.
@@ -13123,7 +13130,7 @@ Deliverables:
   principal/realm binding, count/byte/work/concurrency dimensions, exhaustion
   behavior, recovery reserve and assurance assumptions; unsupported or unverifiable
   modes keep receipt-backed execution inactive;
-- local v0.111.71 capacity reservation precedes provider reservation/preparation, and
+- local v0.182.0 capacity reservation precedes provider reservation/preparation, and
   provider evidence binds local reservation ID, operation/idempotency, external quota
   generation/range/token and exact charge; neither side substitutes for the other;
 - provider-side accounting aggregates restored disks, cloned stores, competing hosts,
@@ -13134,7 +13141,7 @@ Deliverables:
   supersession; timeout, process loss or a missing local token cannot refund either;
 - holding tokens are non-forgeable, purpose-scoped, finite and consumed atomically;
   static ranges never overlap or reissue before governed epoch closure and every slot
-  uses the v0.111.81 provider-side atomic consumption protocol; coordinated counters
+  uses the v0.192.0 provider-side atomic consumption protocol; coordinated counters
   preserve partition/conflict states rather than selecting by arrival order;
 - provider fence/reconciliation operations have independently reserved external
   capacity so ordinary preparation saturation cannot prevent terminal classification;
@@ -13158,7 +13165,7 @@ Exit criteria:
 - Ambiguous provider work stays charged on both sides until reconciled terminally.
 - Receipt-backed execution activates only with an enforceable provider capacity mode.
 
-### v0.111.77 - Selected-Witness Occurrence Privacy Boundary
+### v0.188.0 - Selected-Witness Occurrence Privacy Boundary
 
 Goal: state honestly which observers can learn that a real receipt preparation or
 witness signature occurred and require cryptographic protocols for stronger claims.
@@ -13207,7 +13214,7 @@ Exit criteria:
 - Cover improves only the observer classes its measured traces actually protect.
 - Selected-witness occurrence privacy requires an admitted blind/oblivious protocol.
 
-### v0.111.78 - Provider Start-Before-Effect Enforcement
+### v0.189.0 - Provider Start-Before-Effect Enforcement
 
 Goal: make accepted-never-started evidence sound by ensuring every admitted provider
 durably records execution start before crossing any effect boundary.
@@ -13217,7 +13224,7 @@ Deliverables:
 - canonical provider operation lifecycle is `ExecutionEligible -> StartReserved ->
   Started -> EffectPlanActive -> PlanTerminal`, with operation/idempotency,
   acceptance/eligibility roots, provider namespace/incarnation, execution slot,
-  expected predecessor, v0.111.87 per-permit knowledge root and aggregate result
+  expected predecessor, v0.198.0 per-permit knowledge root and aggregate result
   commitment bound at every transition; a one-effect plan projects to
   `EffectCommitted` or `FailedNoEffect` without defining the multi-effect model;
 - `StartReserved` allocates one provider execution slot but remains non-effectful;
@@ -13227,21 +13234,21 @@ Deliverables:
   enumerates every in-process and downstream effect boundary covered by the claim;
   an unlisted, bypassable or post-effect start marker invalidates the profile;
 - the API boundary makes effectful provider entry consume the affine
-  `StartedExecution` token defined by v0.111.83, produced only by the durable start
+  `StartedExecution` token defined by v0.194.0, produced only by the durable start
   transition and bound to a committed effect plan; direct, alternate, recovery,
   administrative and retry paths cannot invoke effects without it;
 - `FailedNoEffect` requires provider-verifiable terminal evidence that no declared
   effect boundary was crossed after start reservation; local error, cancellation,
   absent result, rollback request or caller assertion is insufficient;
 - crash, timeout, cancellation or lost response after `Started` but before a final
-  result projects to v0.111.74 `AcceptedExecutionUnknown`, never
+  result projects to v0.185.0 `AcceptedExecutionUnknown`, never
   `AcceptedNeverStarted`, `AcceptedStartedNoEffect` or `FailedNoEffect`;
 - providers unable to enforce or attest the complete start-before-effect boundary may
   produce accepted/eligible evidence but cannot advertise accepted-never-started
   assurance; unresolved execution remains blocking unknown;
 - recovery queries the exact operation/slot and reconciles start/result state without
   retrying execution, reallocating the slot or selecting a local pre-crash marker;
-- every downstream request additionally follows the v0.111.88 durable dispatch state
+- every downstream request additionally follows the v0.199.0 durable dispatch state
   machine; process-local possession of `StartedExecution` or an `EffectPermit` is not
   evidence that a request was or was not handed to an external system;
 - tests cover effect-before-start attempts, alternate effect paths, nested downstream
@@ -13262,7 +13269,7 @@ Exit criteria:
 - Providers without complete start-before-effect enforcement cannot prove accepted
   no-effect outcomes.
 
-### v0.111.79 - Irreducible Conflict Abandonment
+### v0.190.0 - Irreducible Conflict Abandonment
 
 Goal: end physical custody for permanently contradictory execution evidence without
 choosing a statement or claiming that the conflict was resolved.
@@ -13273,7 +13280,7 @@ Deliverables:
   `ExecutionKnowledge::Conflicting { evidence_root }`; the contradiction root and
   every retained evidence commitment remain unchanged and permanently unresolved;
   this label is operation-wide and cannot be placed on one permit inside
-  `AcceptedEffectsPartial`; v0.111.97 defines the distinct permit-scoped lifecycle;
+  `AcceptedEffectsPartial`; v0.208.0 defines the distinct permit-scoped lifecycle;
 - conflict abandonment is a distinct governed operation from ordinary abandonment,
   conflict resolution, compensation and normalization, with its own exact affine
   authority, policy threshold, custody budget and expected composite-root guard;
@@ -13286,11 +13293,11 @@ Deliverables:
 - authenticated cleanup may destroy only inventoried payloads, wrappers, keys,
   decoders and staged bytes whose physical custody is proven exclusive to the
   abandoned conflict; shared or uncertain resources remain charged and retained;
-- quota release covers only proven destroyed physical custody; v0.111.86 retains
+- quota release covers only proven destroyed physical custody; v0.197.0 retains
   bounded permanent conflict, fence, anchor, destruction and residual-uncertainty
   evidence under purpose-separated emergency evidence keys and retention contracts;
 - response loss or external-only anchor advancement uses query-only reconciliation
-  and forward recovery under v0.111.68; local-only abandonment remains inert;
+  and forward recovery under v0.179.0; local-only abandonment remains inert;
 - late evidence appends to permanent conflict history but cannot reverse
   `ConflictAbandoned`, recreate custody or re-enable authority; a new operation must
   use a new identity and explicit governance if work is attempted elsewhere;
@@ -13311,7 +13318,7 @@ Exit criteria:
 - Abandonment never chooses evidence or changes the unresolved conflict classification.
 - No cleanup occurs before exact externally anchored permanent disablement.
 
-### v0.111.80 - Consequence Token Ownership Closure
+### v0.191.0 - Consequence Token Ownership Closure
 
 Goal: give each consequence one affine ownership path for capability, budget and
 expected-root authority without accepting duplicate leases or guards.
@@ -13323,7 +13330,7 @@ Deliverables:
   the active-head witness is borrowed and the affine operation token moves by value;
 - `AffineOperationToken<ConsequenceKind>` already owns the exact one-operation
   capability, operation ID, budget/reservation lease and expected active composite-
-  root guard established by v0.111.70; composition accepts no second authority input;
+  root guard established by v0.181.0; composition accepts no second authority input;
 - composition validates witness/token store, realm, head root/generation, policy/
   provider epochs, consequence kind and incarnation, then transfers the complete token
   into one sealed non-`Clone`, non-serializable `PermittedConsequence<Kind>`;
@@ -13339,7 +13346,7 @@ Deliverables:
 - compile-fail tests reject duplicate budget leases, two root guards, child-to-parent
   widening, borrowed/copied tokens and cross-kind composition;
 - accounting/concurrency tests prove one top-level charge, bounded child totals,
-  v0.111.84 conservative checkpointed return and one expected-root CAS under races
+  v0.195.0 conservative checkpointed return and one expected-root CAS under races
   and panic.
 
 Verification:
@@ -13355,7 +13362,7 @@ Exit criteria:
 - Additional work capacity derives only from the token's already owned budget.
 - No API can double-charge or choose between independent roots for one consequence.
 
-### v0.111.81 - Clone-Safe Static Receipt Slot Consumption
+### v0.192.0 - Clone-Safe Static Receipt Slot Consumption
 
 Goal: make statically partitioned receipt capacity authoritative only when the
 external provider atomically prevents every slot from being consumed twice.
@@ -13364,7 +13371,7 @@ Deliverables:
 
 - each static range is bound to provider namespace, realm/principal, range generation,
   holder authorization, inclusive slot interval, capacity dimensions, policy epoch
-  and governed predecessor plus v0.111.85 rollback-resistant range/consumption roots;
+  and governed predecessor plus v0.196.0 rollback-resistant range/consumption roots;
   overlap, rollback or unanchored reissue is invalid;
 - every slot has a provider-authoritative `Unused -> Consumed` transition that
   atomically binds range generation, slot, operation ID, idempotency key, receipt
@@ -13381,7 +13388,7 @@ Deliverables:
   generation transition; unknown or consumed slots remain burned and cannot be
   returned to capacity;
 - a provider that cannot maintain atomic durable slot-consumption state advertises
-  static ranges as advisory only; v0.111.76 refuses that mode for protected receipt-
+  static ranges as advisory only; v0.187.0 refuses that mode for protected receipt-
   backed acceptance or execution;
 - external and local accounting reconcile one consumed slot and one charge; ambiguity
   keeps both charged, and provider refusal is never non-acceptance/non-execution proof;
@@ -13402,7 +13409,7 @@ Exit criteria:
 - Ambiguous consumption is queryable and permanently charged until reconciled.
 - Client-side promises alone never qualify static ranges for protected execution.
 
-### v0.111.82 - Started-No-Effect Knowledge And Policy Semantics
+### v0.193.0 - Started-No-Effect Knowledge And Policy Semantics
 
 Goal: represent execution that durably started but conclusively produced no effect
 without misclassifying it as never started.
@@ -13411,7 +13418,7 @@ Deliverables:
 
 - canonical `ExecutionKnowledge::AcceptedStartedNoEffect { acceptance_root,
   start_root, no_effect_root }` binds immutable acceptance/eligibility, the exact
-  v0.111.78 durable `Started` transition and provider-verifiable `FailedNoEffect`
+  v0.189.0 durable `Started` transition and provider-verifiable `FailedNoEffect`
   evidence under one provider namespace/incarnation and operation;
 - `AcceptedStartedNoEffect` is distinct from `AcceptedNeverStarted`: the former proves
   execution began and crossed no declared effect boundary, while the latter proves no
@@ -13422,12 +13429,12 @@ Deliverables:
 - policies may assign different retry, billing, causality, review, compliance,
   compensation and retention consequences to each no-effect kind; no default policy
   silently treats started work as never attempted;
-- `StartedNoEffect` requires v0.111.78 coverage of every declared downstream effect
-  boundary and v0.111.83 completion/reconciliation of the committed effect plan;
+- `StartedNoEffect` requires v0.189.0 coverage of every declared downstream effect
+  boundary and v0.194.0 completion/reconciliation of the committed effect plan;
   incomplete plan, ambiguous permit or uncovered effect path remains
   `AcceptedExecutionUnknown`;
 - late evidence that an effect occurred conflicts with `StartedNoEffect` and enters
-  v0.111.73 `Conflicting`; it never edits the earlier start/no-effect roots or selects
+  v0.184.0 `Conflicting`; it never edits the earlier start/no-effect roots or selects
   the late statement by arrival order;
 - projection, composite-head, archive and compaction formats retain acceptance, start,
   no-effect and kind commitments independently; a kind-erased old decoder refuses
@@ -13449,7 +13456,7 @@ Exit criteria:
 - Every no-effect proof retains the evidence path relevant to policy and audit.
 - Ambiguous or incompletely covered effects cannot become `StartedNoEffect`.
 
-### v0.111.83 - Affine Bounded Provider Effect Plans
+### v0.194.0 - Affine Bounded Provider Effect Plans
 
 Goal: consume start authority exactly once and bound every downstream effect through a
 precommitted affine plan with query-only ambiguity recovery.
@@ -13460,20 +13467,20 @@ Deliverables:
   provider namespace/incarnation, ordered effect count, dependency edges, per-effect
   type/target commitment, downstream idempotency key, expected precondition, work/
   provider budget and aggregate plan root under strict count/fanout/work limits;
-  every dependency edge carries the exact v0.111.90 required outcome predicate, and
-  v0.111.99 requires deterministic acyclic admission before reservations or permits;
+  every dependency edge carries the exact v0.201.0 required outcome predicate, and
+  v0.210.0 requires deterministic acyclic admission before reservations or permits;
 - the durable start transition consumes eligibility and yields one non-`Clone`,
   non-serializable `StartedExecution<PlanRoot>`; effectful provider entry consumes that
   token by value into one sealed `EffectPlanExecutor<PlanRoot>`;
 - the executor owns indexed affine `EffectPermit<N>` tokens derived from the committed
   plan; each permit binds plan root, index, exact downstream idempotency key, effect
   commitment, dependency frontier, provider epoch and reserved child budget;
-  v0.111.96 gives every permit a lineage-stable identity that cannot collide after an
+  v0.207.0 gives every permit a lineage-stable identity that cannot collide after an
   amendment;
 - each effect API consumes one permit exactly once before crossing its effect boundary
   and returns `EffectCommitted`, `FailedNoEffect` or `QueryOnlyAmbiguous`; no borrowed,
   cloned, reconstructed, skipped-index or cross-plan permit can invoke an effect;
-- permit consumption is made durable through the v0.111.88 authenticated WAL-backed
+- permit consumption is made durable through the v0.199.0 authenticated WAL-backed
   dispatch transition before network or provider handoff; Rust affine ownership is a
   local authority control and is never presented as durable at-most-once evidence;
 - an ambiguous downstream request retains its consumed permit identity and permits
@@ -13481,7 +13488,7 @@ Deliverables:
   changes its idempotency key, allocates a replacement permit or rebases its plan;
 - plan completion proves every permit terminal and every typed dependency satisfied;
   `FailedNoEffect` for the operation requires all permits proven no-effect;
-  v0.111.87 preserves committed, no-effect and ambiguous permit sets under the plan
+  v0.198.0 preserves committed, no-effect and ambiguous permit sets under the plan
   root, so one ambiguous permit blocks only unresolved consequences and cannot erase
   positive knowledge or individual compensation authority for committed permits;
 - cancellation, panic, restart and provider loss preserve consumed/ambiguous permits,
@@ -13492,7 +13499,7 @@ Deliverables:
   permit;
 - concurrency tests execute independent plan permits in parallel and prove bounded
   single local permit entry, dependency ordering and deterministic aggregate results;
-  stronger remote-delivery claims require the v0.111.88 provider profile.
+  stronger remote-delivery claims require the v0.199.0 provider profile.
 
 Verification:
 
@@ -13507,7 +13514,7 @@ Exit criteria:
 - Every downstream effect invocation consumes exactly one precommitted indexed permit.
 - Ambiguous downstream work is queried and never reissued.
 
-### v0.111.84 - Conservative Child-Budget Panic Accounting
+### v0.195.0 - Conservative Child-Budget Panic Accounting
 
 Goal: prevent panic, cancellation or value drop from refunding work that may already
 have consumed local, cryptographic, I/O, network or provider resources.
@@ -13555,7 +13562,7 @@ Exit criteria:
 - Dropping an authority or nonce-bearing child never marks its capacity unused.
 - Every parent refund is an authenticated durable accounting transition.
 
-### v0.111.85 - Rollback-Resistant Static Receipt Slot Authority
+### v0.196.0 - Rollback-Resistant Static Receipt Slot Authority
 
 Goal: prevent provider failover or backup restore from reverting consumed static slots
 to unused authoritative capacity.
@@ -13567,7 +13574,7 @@ Deliverables:
   generations, externally witnessed consumption-root checkpoints or threshold-
   committed authenticated slot maps;
 - rollback-resistant continuity is necessary but not sufficient for protected writes:
-  v0.111.89 additionally requires a non-equivocating single-successor allocation/CAS
+  v0.200.0 additionally requires a non-equivocating single-successor allocation/CAS
   authority with quorum intersection or equivalent fencing before a slot is consumed;
 - capability profiles name the exact mechanism, fault/Byzantine assumptions, quorum/
   hardware trust, durability/finality point, restore procedure, maximum stale window
@@ -13575,7 +13582,7 @@ Deliverables:
 - each provider checkpoint binds range-allocation root, range generation, consumed-slot
   authenticated-map root, counts, predecessor checkpoint, provider/key epoch and
   mechanism-specific finality evidence; range and consumption roots cannot separate;
-- v0.111.81 `Unused -> Consumed` becomes authoritative only when included in a final
+- v0.192.0 `Unused -> Consumed` becomes authoritative only when included in a final
   rollback-resistant checkpoint; pending/ambiguous consumption remains charged and
   query-only and cannot be treated as unused by another provider replica;
 - startup, failover and restore compare local state with the admitted monotonic/
@@ -13608,7 +13615,7 @@ Exit criteria:
 - Every protected range and consumed-slot map share one rollback-resistant checkpoint.
 - Providers without admitted rollback resistance expose advisory static ranges only.
 
-### v0.111.86 - Conflict Evidence Key And Retention Separation
+### v0.197.0 - Conflict Evidence Key And Retention Separation
 
 Goal: retain conflict-abandonment evidence under an independent emergency audit
 namespace without inheriting retention-accounting key authority.
@@ -13619,14 +13626,14 @@ Deliverables:
   `EmergencyConflictEvidenceKey` generations bound to store, realm/genesis, emergency
   incarnation, conflict/abandonment domain, suite and policy epoch;
 - conflict, fence, external-anchor, permanent-disablement, destruction,
-  residual-uncertainty and archive records use this namespace and v0.111.68 emergency
-  anchor; v0.111.47/v0.111.53 retention-accounting keys cannot authenticate, decrypt,
+  residual-uncertainty and archive records use this namespace and v0.179.0 emergency
+  anchor; v0.158.0/v0.164.0 retention-accounting keys cannot authenticate, decrypt,
   rotate, reset, compact or authorize conflict evidence;
 - conflict evidence has its own signed retention policy, minimum dispute/audit horizon,
   archive commitment, decoder/key-retention set, deletion eligibility and externally
   anchored final closure; ordinary retention-accounting epoch closure is not evidence
   that conflict history may be removed;
-- the implementation may reuse the structural closure pattern from v0.111.57 but not
+- the implementation may reuse the structural closure pattern from v0.168.0 but not
   its keys, domain tags, reset authority, canonical formats, root namespace, provider
   handles, archive identities or audit-only decryption capabilities;
 - provisioning, rotation, compromise, recovery and archival access use independent
@@ -13639,7 +13646,7 @@ Deliverables:
   that erases the evidence needed to verify `ConflictAbandoned`;
 - tests cover cross-purpose key substitution, shared-key configuration, reset-authority
   misuse, audit-capability widening, wrong archive root, key loss/rotation, restore,
-  premature retirement and v0.111.57 format/root confusion.
+  premature retirement and v0.168.0 format/root confusion.
 
 Verification:
 
@@ -13654,7 +13661,7 @@ Exit criteria:
 - Conflict abandonment remains verifiable after physical custody is released.
 - Conflict evidence retires only under its own externally anchored retention closure.
 
-### v0.111.87 - Per-Effect Knowledge Lattice And Mixed Outcomes
+### v0.198.0 - Per-Effect Knowledge Lattice And Mixed Outcomes
 
 Goal: preserve all positive execution knowledge when one bounded effect plan contains
 committed, no-effect, ambiguous or contradictory permit outcomes.
@@ -13682,7 +13689,7 @@ Deliverables:
 - compensation, audit, billing and policy consume exact committed permit witnesses;
   each committed effect may be compensated independently under its own authority,
   while ambiguous permits and consequences depending on them remain blocked; the
-  corresponding authority transition uses the v0.111.91 per-permit resolution map;
+  corresponding authority transition uses the v0.202.0 per-permit resolution map;
 - operation-level finality distinguishes all-committed, all-no-effect, terminal mixed,
   unresolved partial and conflicting plans; terminal mixed means every permit is
   conclusive, not that every permit produced the same outcome;
@@ -13706,7 +13713,7 @@ Exit criteria:
 - Evidence refinement is monotonic and deterministic for every bounded plan.
 - Compensation and dependency authority are scoped to exact per-effect outcomes.
 
-### v0.111.88 - Durable Effect Dispatch And Delivery Semantics
+### v0.199.0 - Durable Effect Dispatch And Delivery Semantics
 
 Goal: make each affine permit's external-dispatch boundary crash-safe and state
 provider delivery guarantees without claiming more than the complete path enforces.
@@ -13722,7 +13729,7 @@ Deliverables:
   flushes the complete immutable request commitment, query identity and recovery data
   before any byte, call, transaction, device command or provider handoff can cross the
   declared effect boundary;
-- v0.111.95 requires `OutcomeUnknown` to be expected-root-CAS committed and durably
+- v0.206.0 requires `OutcomeUnknown` to be expected-root-CAS committed and durably
   flushed after `DispatchPrepared` but before external handoff; this conservative
   dispatch-authorization state may mean the request was never sent, but crash or
   response loss cannot reconstruct `Ready`, infer no effect or authorize another
@@ -13738,7 +13745,7 @@ Deliverables:
 - protected activation refuses at-most-once or exactly-once claims unless the complete
   path has an admitted non-equivocating idempotency/transaction mechanism; ordinary
   retry middleware is disabled or included explicitly in the provider model, and
-  v0.111.94 binds every claim to a durable deduplication/replay-fence horizon;
+  v0.205.0 binds every claim to a durable deduplication/replay-fence horizon;
 - cancellation, panic, process kill, VM clone, stale WAL replay and concurrent recovery
   preserve one durable permit successor; conflicting terminal evidence enters
   `Conflicting` and no local newest-result choice resolves it;
@@ -13759,14 +13766,14 @@ Exit criteria:
 - Recovery queries an existing request and never creates a second local dispatch.
 - At-most-once and exactly-once claims reflect the complete delivery path.
 
-### v0.111.89 - Non-Equivocating Static Slot Allocation
+### v0.200.0 - Non-Equivocating Static Slot Allocation
 
 Goal: prevent partitioned, stale or equivocating providers from authorizing two
 successful consumers for one rollback-resistant static receipt slot.
 
 Deliverables:
 
-- protected static ranges require both v0.111.85 rollback-resistant checkpoint
+- protected static ranges require both v0.196.0 rollback-resistant checkpoint
   continuity and a non-equivocating single-successor allocation authority; satisfying
   one property never implies the other;
 - admitted allocation modes are linearizable compare-and-swap under intersecting
@@ -13808,7 +13815,7 @@ Exit criteria:
 - Stale replicas cannot serve protected writes under any configured stale window.
 - Rollback detection alone is never advertised as non-equivocating allocation.
 
-### v0.111.90 - Typed Effect Dependency Outcome Witnesses
+### v0.201.0 - Typed Effect Dependency Outcome Witnesses
 
 Goal: define exactly which predecessor outcome authorizes each dependent effect and
 prevent data-dependent execution from minting undeclared effect authority.
@@ -13827,22 +13834,22 @@ Deliverables:
   typed witness declared by its edge; witness variance, kind erasure, cross-plan use,
   stale-root use and one outcome satisfying a different predicate are rejected;
 - `Terminal` accepts only admitted conclusive committed or proven-no-effect knowledge;
-  ambiguity and conflict never satisfy an ordinary dependency, while v0.111.93 uses a
+  ambiguity and conflict never satisfy an ordinary dependency, while v0.204.0 uses a
   separate conflict-observation consequence for audit, quarantine, fencing and
   abandonment without asserting either conflicting outcome;
 - output predicates use deterministic bounded canonical evaluators and commit input/
   output schemas, function/version root and target domain; predicate evaluation cannot
   perform I/O, access secrets or mint capabilities;
 - data-dependent target selection is precommitted as a bounded domain and derivation
-  function; v0.111.96 permits an amendment only to narrow, cancel or instantiate
+  function; v0.207.0 permits an amendment only to narrow, cancel or instantiate
   authority inside the original accepted envelope, while any new count, type, target
   domain, recipient, provider or authority becomes a fresh causally linked operation
   with its own admission, acceptance, eligibility, plan and `Started` transition;
 - plan amendments bind old/new plan roots, completed and ambiguous permit sets,
   amendment authority, policy decision and expected composite root; they preserve old
   outcomes and cannot rearm consumed permits or weaken dependency requirements;
-  v0.111.92 must fence the old executor generation and publish one append-only effect-
-  plan lineage before any amended permit becomes invocable, and v0.111.99 validates
+  v0.203.0 must fence the old executor generation and publish one append-only effect-
+  plan lineage before any amended permit becomes invocable, and v0.210.0 validates
   the complete carried-plus-new dependency DAG before successor publication;
 - compile-fail, model and crash tests cover wrong witness types, ambiguous/contradictory
   predecessors, stale outputs, predicate substitution, cross-plan borrowing, dynamic
@@ -13861,7 +13868,7 @@ Exit criteria:
 - Ambiguity cannot satisfy an effect dependency.
 - Data-dependent execution cannot create effect authority outside the admitted plan.
 
-### v0.111.91 - Per-Permit Emergency Authority Resolution
+### v0.202.0 - Per-Permit Emergency Authority Resolution
 
 Goal: resolve, compensate or terminate each known effect independently without
 collapsing a partially known operation into one scalar authority outcome.
@@ -13869,9 +13876,9 @@ collapsing a partially known operation into one scalar authority outcome.
 Deliverables:
 
 - canonical `EffectAuthorityResolution` values are `Blocked`, `Adopted`,
-  `Compensated`, `Normalized`, `Abandoned` and v0.111.97
+  `Compensated`, `Normalized`, `Abandoned` and v0.208.0
   `EffectConflictAbandoned`; each leaf binds
-  operation, effect-plan lineage, plan root/generation, permit index, exact v0.111.87
+  operation, effect-plan lineage, plan root/generation, permit index, exact v0.198.0
   knowledge leaf/root, resolution evidence, policy epoch and predecessor leaf;
 - `EffectAuthorityResolutionMap` has exactly the same bounded permit domain as the
   active effect-knowledge map; missing, duplicate, extra or cross-plan entries and
@@ -13883,7 +13890,7 @@ Deliverables:
   permit to be committed, `Normalized` requires an admitted two-world-safe operation,
   ambiguous knowledge remains `Blocked`, and conflicting knowledge permits only
   `Blocked` or the exact externally anchored `EffectConflictAbandoned` lifecycle;
-- v0.111.98 commits consequence execution knowledge separately from the requested
+- v0.209.0 commits consequence execution knowledge separately from the requested
   resolution; terminal labels such as `Compensated` appear only after authenticated
   terminal consequence evidence, while pending, unknown or conflicting consequence
   outcomes remain query-only and block cleanup, reopening and custody release;
@@ -13917,7 +13924,7 @@ Exit criteria:
 - Scalar operation summaries cannot authorize per-effect consequences.
 - Every emergency consequence preserves the exact permit knowledge it resolved.
 
-### v0.111.92 - Effect Plan Amendment Fencing And Lineage
+### v0.203.0 - Effect Plan Amendment Fencing And Lineage
 
 Goal: ensure a governed plan amendment cannot leave old executors or permits live
 beside a newly activated plan generation.
@@ -13928,11 +13935,11 @@ Deliverables:
   AmendmentPrepared -> ActiveSuccessor`; each transition binds operation, current
   lineage root, old/new plan roots and generations, executor incarnation, permit-state
   map, original accepted-authority envelope, amendment authority/policy, expected
-  composite head and predecessor transition; v0.111.96 rejects authority widening;
+  composite head and predecessor transition; v0.207.0 rejects authority widening;
 - `FreezePrepared` acquires exclusive expected-generation authority and prevents new
   permit extraction; `ExecutorFenced` becomes durable only after every old permit is
   classified as terminal, `OutcomeUnknown`, or `RevokedBeforeDispatch` with proof that
-  no v0.111.95 dispatch authorization became authoritative;
+  no v0.206.0 dispatch authorization became authoritative;
 - every permit dispatch CAS validates the currently active executor generation and
   plan-lineage root immediately before durable dispatch authorization; stale in-memory
   executors, process clones and pre-fence permits fail without external handoff;
@@ -13970,7 +13977,7 @@ Exit criteria:
 - Every old permit is terminal, ambiguous or durably revoked before amendment.
 - Plan amendments preserve one append-only lineage across restart and sync.
 
-### v0.111.93 - Conflict-Observed Consequence Authority
+### v0.204.0 - Conflict-Observed Consequence Authority
 
 Goal: react safely to contradictory effect evidence without treating conflict as a
 successful, failed or otherwise satisfying predecessor outcome.
@@ -13986,8 +13993,8 @@ Deliverables:
 - only a separately authorized `PermittedConsequence<ConflictObserved>` may consume
   that witness, exact operation capability, budget and expected root; admitted
   consequence kinds are bounded audit capture, quarantine, authority fencing,
-  notification, v0.111.79 operation-wide conflict-abandonment preparation and
-  v0.111.97 permit-scoped effect-conflict-abandonment preparation;
+  notification, v0.190.0 operation-wide conflict-abandonment preparation and
+  v0.208.0 permit-scoped effect-conflict-abandonment preparation;
 - conflict-observed consequences state only that contradiction exists; they cannot
   select either statement, emit committed/proven-no-effect knowledge, satisfy an
   ordinary dependency, authorize compensation/adoption or reopen current/history-
@@ -14017,7 +14024,7 @@ Exit criteria:
 - Conflict response observes contradiction without asserting either outcome.
 - Every conflict-triggered side effect consumes separate exact authority.
 
-### v0.111.94 - Provider Deduplication Horizons And Replay Fences
+### v0.205.0 - Provider Deduplication Horizons And Replay Fences
 
 Goal: bind idempotency, at-most-once and exactly-once claims to durable provider
 retention so delayed or cloned requests cannot become new work after compaction.
@@ -14066,7 +14073,7 @@ Exit criteria:
 - Delivery claims remain valid for every admitted delayed or cloned request lifetime.
 - Missing replay-fence continuity refuses writes and downgrades affected claims.
 
-### v0.111.95 - Conservative Dispatch Authorization Ordering
+### v0.206.0 - Conservative Dispatch Authorization Ordering
 
 Goal: remove the local-WAL/external-handoff crash gap by recording uncertainty before
 an effect can leave the process.
@@ -14086,16 +14093,16 @@ Deliverables:
   `Ready` or `DispatchPrepared` code paths;
 - no purely local marker claims that handoff definitely occurred because local WAL and
   an external provider do not transition atomically; authenticated provider admission,
-  terminal result or v0.111.100 `DeliveryClosureProof` refines uncertainty append-only;
+  terminal result or v0.211.0 `DeliveryClosureProof` refines uncertainty append-only;
   provider `not found` or current-map non-inclusion alone never proves no effect while
   an admitted proxy, queue, retry buffer or partition may deliver a delayed copy;
-- recovery from `DispatchPrepared` may fence/revoke under v0.111.92 only after proving
+- recovery from `DispatchPrepared` may fence/revoke under v0.203.0 only after proving
   no dispatch authorization committed; recovery from `OutcomeUnknown` is query-only
   and cannot send, reauthorize, mint another permit or infer no effect from local
   absence;
 - provider transactional admission may return stronger evidence, but local authority
   remains `OutcomeUnknown` until that exact evidence is durably appended and projected;
-  response loss preserves uncertainty and v0.111.94 replay-fence protection;
+  response loss preserves uncertainty and v0.205.0 replay-fence protection;
 - logs, status and proofs distinguish prepared-not-authorized from authorized-unknown
   without exposing request identifiers or claiming network observation;
 - fault injection kills before and after each WAL append, CAS, file sync, directory
@@ -14115,14 +14122,14 @@ Exit criteria:
 - A post-durability, pre-send crash remains safely queryable uncertainty.
 - Recovery never mistakes local WAL state for proof of external handoff or no effect.
 
-### v0.111.96 - Accepted Effect Envelope And Stable Permit Identity
+### v0.207.0 - Accepted Effect Envelope And Stable Permit Identity
 
 Goal: prevent amendments from widening authority after acceptance and keep permit
 identity unambiguous across every plan generation.
 
 Deliverables:
 
-- v0.111.103 derives a stable lineage identity from the durably reserved operation ID,
+- v0.214.0 derives a stable lineage identity from the durably reserved operation ID,
   proposed-envelope root and plan-genesis commitment before receipt preparation and
   admits the envelope through explicit non-authorizing typed stages;
 - final active `AcceptedEffectEnvelope` binds operation/lineage, proposal and validated-
@@ -14144,7 +14151,7 @@ Deliverables:
   parse a future critical format but must refuse authority rather than approximating
   fresh acceptance inside an already started lineage;
 - canonical `EffectPermitId { lineage_id, birth_generation, permit_index }` is stable
-  for the permit's lifetime; `lineage_id` is fixed by v0.111.103 before receipts and is
+  for the permit's lifetime; `lineage_id` is fixed by v0.214.0 before receipts and is
   authenticated, not created or replaced, by acceptance;
   `birth_generation` names the generation that first created the permit, and the index
   is unique within that generation;
@@ -14171,7 +14178,7 @@ Exit criteria:
 - Widening work always receives a fresh independently accepted operation.
 - Permit identities never collide or change across plan generations.
 
-### v0.111.97 - Permit-Scoped Effect Conflict Abandonment
+### v0.208.0 - Permit-Scoped Effect Conflict Abandonment
 
 Goal: abandon one irreducibly conflicting permit without misusing operation-wide
 `ConflictAbandoned` or silently weakening unrelated permit authority.
@@ -14179,7 +14186,7 @@ Goal: abandon one irreducibly conflicting permit without misusing operation-wide
 Deliverables:
 
 - canonical `EffectAuthorityResolution::EffectConflictAbandoned` is distinct from
-  v0.111.79 operation-wide `AuthorityResolution::ConflictAbandoned` and pairs only
+  v0.190.0 operation-wide `AuthorityResolution::ConflictAbandoned` and pairs only
   with one exact conflicting `EffectPermitId` under `AcceptedEffectsPartial`;
 - its external monotonic anchor binds operation/lineage, permit identity, contradiction
   root, permanently disabled effect/provider/idempotency scope, complete downstream
@@ -14195,7 +14202,7 @@ Deliverables:
   when proofs show they neither depend on the abandoned permit nor share mutable
   authority/custody that the anchor disabled;
 - if exact dependency closure, exclusivity or provider fencing cannot be proven, permit-
-  scoped abandonment refuses; governance may instead invoke v0.111.79 operation-wide
+  scoped abandonment refuses; governance may instead invoke v0.190.0 operation-wide
   conflict abandonment with its broader permanent disablement;
 - late evidence appends to the permit conflict history but cannot reverse anchored
   disablement, recreate authority or relabel the aggregate operation as wholly
@@ -14217,7 +14224,7 @@ Exit criteria:
 - Narrow abandonment cannot destroy or disable unrelated/shared state.
 - Unprovable isolation fails closed or escalates through explicit governance.
 
-### v0.111.98 - Consequence Execution Knowledge And Resolution Ambiguity
+### v0.209.0 - Consequence Execution Knowledge And Resolution Ambiguity
 
 Goal: preserve pending, unknown and conflicting outcomes of compensation and other
 resolution consequences before recording a terminal per-permit resolution.
@@ -14231,7 +14238,7 @@ Deliverables:
   evidence_root }` and `ResolutionConflicting { evidence_root }`;
 - append-only `ConsequenceExecutionKnowledgeMap` retains detailed history keyed by
   operation/lineage, stable permit identity, consequence kind and consequence ID;
-  v0.111.102 adds the authoritative one-active-consequence slot/index, and both roots
+  v0.213.0 adds the authoritative one-active-consequence slot/index, and both roots
   are committed by `EffectEmergencyStateRoot` beside effect knowledge and requested
   resolution maps with exact projection verification;
 - a requested `Adopted`, `Compensated`, `Normalized`, `Abandoned` or
@@ -14268,7 +14275,7 @@ Exit criteria:
 - Ambiguous compensation cannot repeat or release dependent authority/custody.
 - Consequence uncertainty remains distinct from source-effect uncertainty.
 
-### v0.111.99 - Acyclic Effect Dependency Admission
+### v0.210.0 - Acyclic Effect Dependency Admission
 
 Goal: reject unsatisfiable permit dependency cycles before they reserve capacity or
 create effect authority.
@@ -14278,7 +14285,7 @@ Deliverables:
 - every executable `CommittedEffectPlan` dependency graph is a directed acyclic graph;
   self-edges, duplicate edges and directed cycles are canonical admission failures;
 - deterministic validation derives one canonical topological order using stable
-  v0.111.96 permit identities and tie-breaking independent of input order, signatures,
+  v0.207.0 permit identities and tie-breaking independent of input order, signatures,
   randomized commitments, storage placement or attacker-selected map order;
 - hard limits cover node/edge count, fanout, indegree, longest dependency depth,
   predicate work and total topological-validation work with checked arithmetic and
@@ -14312,7 +14319,7 @@ Exit criteria:
 - Dependency depth and validation work are explicitly bounded.
 - Amendments validate one complete lineage-wide executable DAG.
 
-### v0.111.100 - Delivery Closure Proofs For No-Effect Finality
+### v0.211.0 - Delivery Closure Proofs For No-Effect Finality
 
 Goal: prove every admitted delivery layer is closed before an unknown dispatch can
 become `ProvenNoEffect`.
@@ -14322,7 +14329,7 @@ Deliverables:
 - canonical `DeliveryClosureProof` binds operation, stable permit identity, exact
   request commitment/idempotency identity, dispatch-authorization root, every admitted
   client/proxy/retry-buffer/queue/dead-letter/provider layer and namespace, provider/
-  protocol epoch fence, v0.111.94 replay-fence root and closure evidence root;
+  protocol epoch fence, v0.205.0 replay-fence root and closure evidence root;
 - each delivery layer contributes authenticated final evidence that the exact request
   is drained with a committed terminal result, rejected under a permanent monotonic
   fence, or durably deduplicated so any delayed copy can never produce a new effect;
@@ -14339,7 +14346,7 @@ Deliverables:
   closure and replay fence into the successor before final proof; retirement cannot
   destroy query/verification authority needed by unresolved dispatches;
 - `DeliveryClosureProof` is necessary but not sufficient for no-effect finality;
-  v0.111.101 composes it with typed provider historical-outcome evidence and complete
+  v0.212.0 composes it with typed provider historical-outcome evidence and complete
   effect-boundary coverage, and closure verification alone cannot refine
   `OutcomeUnknown` or select between no-effect, committed, conflicting and unknown;
 - closure proof creation, query and verification are bounded, privacy-profile aware and
@@ -14365,7 +14372,7 @@ Exit criteria:
 - Delivery closure survives partition healing, restore and provider-epoch rotation
   without making a historical outcome claim by itself.
 
-### v0.111.101 - Historical No-Effect Finality Proof
+### v0.212.0 - Historical No-Effect Finality Proof
 
 Goal: prove both that no delayed request can execute and that no historical effect was
 already produced before projecting a dispatch-authorized unknown permit to no-effect.
@@ -14382,19 +14389,19 @@ Deliverables:
   version/epoch and coverage evidence proving the historical-outcome statement applies
   to the complete declared effect surface;
 - authoritative dispatched `StartedNoEffect` finality is the domain-separated
-  composition of one verified v0.111.100 `DeliveryClosureProof`, one matching
+  composition of one verified v0.211.0 `DeliveryClosureProof`, one matching
   `ProviderHistoricalEffectOutcome` and one `CompleteEffectBoundaryCoverage`, all for
   the same operation, permit, request, provider epoch and replay-fence lineage;
 - delivery closure proves only that no future delayed copy can newly execute; a replay
   fence, deduplication tombstone, drained queue, provider `not found` or closed epoch is
   never interpreted as evidence about whether an earlier request committed;
-- v0.111.104 composes historical outcome with exact prior operation knowledge before
-  constructing finality, and v0.111.110 refines accepted-started operations per permit;
+- v0.215.0 composes historical outcome with exact prior operation knowledge before
+  constructing finality, and v0.221.0 refines accepted-started operations per permit;
   pre-acceptance may accept `NeverAccepted`, accepted-without-authoritative-start may
   accept `AcceptedNeverStarted`, and only a dispatch-authorized permit may require
   `StartedNoEffect` delivery closure; incompatible evidence projects `Conflicting`;
 - historical-outcome verification returns a general typed
-  `HistoricalOutcomeFinalityProof`, never a boolean; v0.111.107 gives pre-dispatch
+  `HistoricalOutcomeFinalityProof`, never a boolean; v0.218.0 gives pre-dispatch
   variants their separate no-dispatch proof obligations and reserves complete
   closure/coverage for `StartedNoEffect`, while `Committed`, `Conflicting` and
   `Unknown` remain their exact typed outcomes;
@@ -14424,7 +14431,7 @@ Exit criteria:
 - No-effect finality proves both historical absence of effect and future non-delivery.
 - Committed, conflicting and unknown provider outcomes remain their exact typed states.
 
-### v0.111.102 - Consequence Slot Uniqueness And Occurrence Policy
+### v0.213.0 - Consequence Slot Uniqueness And Occurrence Policy
 
 Goal: prevent distinct consequence IDs from creating concurrent compensation or other
 resolution attempts for the same permit and resolution generation.
@@ -14437,10 +14444,10 @@ Deliverables:
   knowledge_root, terminal_kind }`;
 - before minting any consequence capability, admission validates an expected-`Vacant`
   predecessor on the exact slot and selects the consequence ID/request commitment;
-  v0.111.105 makes `Terminal` immutable, and v0.111.108 atomically publishes the slot
+  v0.216.0 makes `Terminal` immutable, and v0.219.0 atomically publishes the slot
   with its generation head, history and provider/budget reservation; different IDs
   therefore contend on one authority transition rather than separate history keys;
-- `EffectEmergencyStateRoot` commits the slot-map root and append-only v0.111.98
+- `EffectEmergencyStateRoot` commits the slot-map root and append-only v0.209.0
   detailed consequence-history root; deterministic exact projection proves every
   active/terminal slot names one matching history entry and no history entry can become
   executable without its slot;
@@ -14474,7 +14481,7 @@ Exit criteria:
 - Distinct consequence IDs cannot bypass ambiguity or terminal state.
 - Repeatable consequences are explicit, bounded and monotonically sequenced.
 
-### v0.111.103 - Non-Circular Effect Envelope Admission Pipeline
+### v0.214.0 - Non-Circular Effect Envelope Admission Pipeline
 
 Goal: fix lineage identity before receipts and admit effect authority through explicit
 typed stages without requiring acceptance or eligibility to validate their own inputs.
@@ -14488,7 +14495,7 @@ Deliverables:
   AcceptedEffectEnvelopeActive -> ExecutionEligible -> Started`;
 - `DecodedPlanCandidate` and `ResourceValidatedPlan` carry no receipt, policy,
   acceptance, provider or effect authority; resource validation applies canonical
-  decode, envelope limits, v0.111.99 full DAG/topological checks and hard work budgets
+  decode, envelope limits, v0.210.0 full DAG/topological checks and hard work budgets
   before any provider reservation or receipt preparation;
 - `ProposedEffectEnvelope` is immutable and non-authorizing and binds the durably
   reserved single-use operation ID, plan-genesis root, proposed effect/count/type/
@@ -14502,7 +14509,7 @@ Deliverables:
   validated-plan root, proposal root and pre-fixed lineage identity under the admitted
   receipt/witness capacity and privacy contracts;
 - `PolicySignatureAdmitted` binds exact receipt roots and policy/signature evidence;
-  v0.111.106 then commits a signature-free acceptance intent and canonical
+  v0.217.0 then commits a signature-free acceptance intent and canonical
   witness set, and `AcceptedEffectEnvelopePrepared` binds proposal, validated plan,
   lineage, receipts, intent, witness set, signatures and policy but remains non-
   executable;
@@ -14532,7 +14539,7 @@ Exit criteria:
 - Acceptance authenticates a lineage identity fixed before receipt preparation.
 - No non-authorizing admission stage can reach `Started` or effect authority.
 
-### v0.111.104 - Prior-State-Compatible Historical Outcome Finality
+### v0.215.0 - Prior-State-Compatible Historical Outcome Finality
 
 Goal: ensure historical outcome evidence refines the operation's actual prior state
 rather than contradicting durable acceptance, start or dispatch facts.
@@ -14541,18 +14548,18 @@ Deliverables:
 
 - canonical operation-level `PriorExecutionState` values are
   `PreAcceptanceCandidate`, `AcceptedNotStarted`, `AcceptedStarted` and terminal
-  detailed knowledge; v0.111.110 refines every permit under an accepted-started plan
+  detailed knowledge; v0.221.0 refines every permit under an accepted-started plan
   independently because operation `Started` does not imply permit dispatch;
 - the normative compatibility matrix permits `NeverAccepted` only from
   `PreAcceptanceCandidate`, `AcceptedNeverStarted` only from `AcceptedNotStarted`, and
-  accepted-started no-effect only from a complete v0.111.110 per-permit proof vector;
+  accepted-started no-effect only from a complete v0.221.0 per-permit proof vector;
   a terminal prior state accepts only monotonic confirming evidence or enters conflict;
 - any `NeverAccepted` evidence joined with durable acceptance/start/dispatch roots and
   any `AcceptedNeverStarted` evidence joined with durable start/dispatch roots forms a
   canonical contradiction and projects `Conflicting`, never `ProvenNoEffect`;
 - general `HistoricalOutcomeFinalityProof` is a prior-state-indexed sum type rather
-  than one structure with universally required fields; v0.111.107 defines its top-
-  level variants and v0.111.110 selects delivery closure or no-dispatch evidence per
+  than one structure with universally required fields; v0.218.0 defines its top-
+  level variants and v0.221.0 selects delivery closure or no-dispatch evidence per
   permit according to that permit's authenticated dispatch state;
 - pre-dispatch no-effect variants instead carry a final authenticated
   `NoDispatchAuthorizationProof`; local absence, a missing cache entry or an
@@ -14584,14 +14591,14 @@ Exit criteria:
 - Dispatch-authorized uncertainty refines to no-effect only through `StartedNoEffect`.
 - Incompatible positive evidence becomes canonical conflict.
 
-### v0.111.105 - Write-Once Consequence Generations
+### v0.216.0 - Write-Once Consequence Generations
 
 Goal: make every consequence slot immutable after terminal publication and advance
 retries or repeat occurrences only through one authenticated successor generation.
 
 Deliverables:
 
-- each v0.111.102 slot follows exactly `Vacant -> Active -> Terminal`; transitions use
+- each v0.213.0 slot follows exactly `Vacant -> Active -> Terminal`; transitions use
   expected-leaf CAS, and `Terminal` is immutable under policy, recovery, compaction,
   migration, restore and administrator action;
 - retry or repeat authority creates a distinct `ConsequenceSlotKey` with the next
@@ -14601,9 +14608,9 @@ Deliverables:
   consequence_kind)` binds current generation/sequence and terminal slot root; one
   expected-head CAS admits exactly one successor and rejects generation skipping,
   duplicate successors and alternate consequence IDs;
-- v0.111.108 composes generation-head advancement, slot publication, history append,
+- v0.219.0 composes generation-head advancement, slot publication, history append,
   request commitment and local capability/budget reservation into one durable local
-  authority transaction; v0.111.111 reconciles an external provider separately;
+  authority transaction; v0.222.0 reconciles an external provider separately;
 - a retry after `ResolutionProvenNoEffect` additionally consumes the signed policy
   decision, new capability/budget, prior consequence outcome and query closure; other
   terminal kinds remain non-repeatable unless their admitted occurrence policy names a
@@ -14634,7 +14641,7 @@ Exit criteria:
 - Every retry or repeat occurrence has one higher authenticated successor key.
 - At most one successor claims a terminal predecessor.
 
-### v0.111.106 - Non-Self-Referential Acceptance Witness Frontier
+### v0.217.0 - Non-Self-Referential Acceptance Witness Frontier
 
 Goal: define exactly what witnesses and providers sign so acceptance signatures never
 commit recursively to their own bytes.
@@ -14649,7 +14656,7 @@ Deliverables:
 - witnesses sign only a domain-separated transcript containing the exact intent root,
   witness identity/key epoch, suite and witness role; no witness transcript contains
   its own signature, another resulting signature or `WitnessSetRoot`;
-- canonical `WitnessSetRoot` commits the v0.111.109 durable witness-admission receipts,
+- canonical `WitnessSetRoot` commits the v0.220.0 durable witness-admission receipts,
   including signer identity, key epoch, role, suite and signature bytes, in
   deterministic identity order; duplicate/missing/unauthorized signers, unverifiable
   durability checkpoints, threshold/diversity failure, invalid signatures and
@@ -14687,7 +14694,7 @@ Exit criteria:
 - Acceptance binds one exact verified witness set to one signature-free intent root.
 - Threshold, signer or transcript substitution cannot preserve acceptance authority.
 
-### v0.111.107 - State-Specific Historical Finality Proofs
+### v0.218.0 - State-Specific Historical Finality Proofs
 
 Goal: require only evidence that can exist in the operation's authenticated prior
 state while proving pre-dispatch absence from final authority rather than observation.
@@ -14704,10 +14711,10 @@ Deliverables:
 - `AcceptedNeverStarted` binds `PriorExecutionState::AcceptedNotStarted`, final
   non-start evidence and a matching `NoDispatchAuthorizationProof`; accepted state
   alone cannot imply that dispatch authority was absent;
-- accepted-started no-effect binds a complete v0.111.110 permit-proof vector: each
+- accepted-started no-effect binds a complete v0.221.0 permit-proof vector: each
   never-authorized permit supplies final no-dispatch evidence, while each
-  dispatch-authorized permit supplies typed started-no-effect evidence, v0.111.100
-  `DeliveryClosureProof` and complete v0.111.101 effect-boundary coverage;
+  dispatch-authorized permit supplies typed started-no-effect evidence, v0.211.0
+  `DeliveryClosureProof` and complete v0.212.0 effect-boundary coverage;
 - `Committed` carries exact positive acceptance/start/result/effect evidence,
   `Conflicting` carries the minimal complete contradiction set, and `Unknown` retains
   the known frontier and missing proof obligations without projecting no effect;
@@ -14738,11 +14745,11 @@ Exit criteria:
 - No-dispatch evidence comes from final authenticated authority state, not observation.
 - Only a dispatch-authorized permit requires delivery closure.
 
-### v0.111.108 - Atomic Consequence Authority Transition
+### v0.219.0 - Atomic Consequence Authority Transition
 
 Goal: publish each local consequence generation, slot, history entry, budget and local
 reservation as one durable authority decision, then reconcile external provider state
-through the explicit v0.111.111 protocol.
+through the explicit v0.222.0 protocol.
 
 Deliverables:
 
@@ -14760,7 +14767,7 @@ Deliverables:
   result is exposed as authority and no local component is selected as the winner
   during recovery;
 - provider reservation or activation is never claimed to share that local atomicity;
-  v0.111.111 requires an inert provider reservation before local commit and exact
+  v0.222.0 requires an inert provider reservation before local commit and exact
   committed-transition evidence before separate provider activation;
 - no local consequence capability, budget child or executable request is returned
   before the local transition commits; no executable provider handle is ever returned
@@ -14768,12 +14775,12 @@ Deliverables:
 - prepared transactions are non-authorizing and carry one immutable transaction ID,
   complete component digests and bounded custody; restart must finish the exact commit
   or refuse/freeze it, never reconstruct missing authority or advance only one root;
-- provider-side reservations use v0.111.111 idempotent reserve/query/activate/abort
+- provider-side reservations use v0.222.0 idempotent reserve/query/activate/abort
   identities and remain conservatively charged while the outcome is ambiguous;
-  v0.111.115 permits abort only from a durable local pre-commit abort fence plus
+  v0.226.0 permits abort only from a durable local pre-commit abort fence plus
   authoritative provider non-activation evidence;
 - retry and occurrence successors consume the exact terminal predecessor from
-  v0.111.105 and use the matching tagged generation; resolution generations cannot be
+  v0.216.0 and use the matching tagged generation; resolution generations cannot be
   replayed as repeatable occurrences or vice versa;
 - compaction, migration, restore and sync retain one proof that the generation head,
   slot leaf, history entry, reservation and emergency composite root came from the same
@@ -14796,20 +14803,20 @@ Exit criteria:
 - No local consequence authority escapes before one durable local transition commits.
 - Resolution generations and occurrence sequences are distinct canonical identities.
 
-### v0.111.109 - Durable Witness Admission Receipts
+### v0.220.0 - Durable Witness Admission Receipts
 
 Goal: count a witness toward acceptance only after its signed evidence is durably
 admitted under a queryable retention commitment.
 
 Deliverables:
 
-- canonical `WitnessAdmissionReceipt` binds the exact v0.111.106 acceptance-intent
+- canonical `WitnessAdmissionReceipt` binds the exact v0.217.0 acceptance-intent
   root, witness namespace/incarnation, identity/key epoch, role/suite, witness
   signature, durable journal or checkpoint sequence/root, capacity/retention
   generation, query/recovery identity and domain-separated durability acknowledgement;
 - witness signing and admission are ordered `IntentVerified -> StatementSigned ->
   StatementJournaled -> CheckpointFinalized -> DurabilityAcknowledged ->
-  ReceiptBuilt`; v0.111.112 fixes the checkpoint over the prepared witness statement,
+  ReceiptBuilt`; v0.223.0 fixes the checkpoint over the prepared witness statement,
   not the final receipt that contains the checkpoint root;
 - receipt verification proves checkpoint inclusion/consistency, witness incarnation
   continuity, active key epoch, capacity reservation and retention horizon under the
@@ -14849,7 +14856,7 @@ Exit criteria:
 - Every counted witness has verifiable durable admission and retention evidence.
 - Crash, rollback or compaction cannot manufacture or silently erase threshold status.
 
-### v0.111.110 - Per-Permit Dispatch-State Finality
+### v0.221.0 - Per-Permit Dispatch-State Finality
 
 Goal: derive accepted-started no-effect from each permit's authenticated dispatch
 state rather than assuming operation-level `Started` authorized every permit.
@@ -14870,12 +14877,12 @@ Deliverables:
   final revocation of that exact prepared slot permits `NoDispatchAuthorizationProof`,
   and response loss or local non-observation cannot imply revocation;
 - `DispatchAuthorizedUnknown` requires typed started-no-effect provider evidence,
-  v0.111.100 `DeliveryClosureProof` and complete v0.111.101 boundary coverage for that
+  v0.211.0 `DeliveryClosureProof` and complete v0.212.0 boundary coverage for that
   exact permit/request/provider epoch;
 - `Terminal` accepts only monotonic confirmation of its exact committed/no-effect/
   conflicting terminal knowledge or produces conflict; terminal evidence cannot be
   replaced by a weaker no-dispatch proof;
-- canonical `AcceptedStartedNoEffectProof` consumes one exact active v0.111.117
+- canonical `AcceptedStartedNoEffectProof` consumes one exact active v0.228.0
   `LineagePermitStateCheckpoint`, then supplies one compatible finality proof for every
   permit ever admitted across all generations; independently supplied lineage,
   inventory, state-map or knowledge roots, current-plan-only proof, omission,
@@ -14903,7 +14910,7 @@ Exit criteria:
 - Every accepted-started no-effect claim accounts for every admitted permit.
 - Delivery closure is required exactly for permits that reached dispatch authority.
 
-### v0.111.111 - Cross-Domain Consequence Activation
+### v0.222.0 - Cross-Domain Consequence Activation
 
 Goal: reconcile one atomic local consequence-authority transition with a provider that
 has an independent durability and failure domain.
@@ -14912,11 +14919,11 @@ Deliverables:
 
 - canonical activation lifecycle is `LocalPrepared -> ProviderReservedInert ->
   LocalAuthorityCommitted -> ProviderActivationAuthorizedUnknown ->
-  ProviderActivated -> LocalActive`; the separate v0.111.115 pre-commit abort branch
+  ProviderActivated -> LocalActive`; the separate v0.226.0 pre-commit abort branch
   starts from `ProviderReservedInert`; every transition binds one consequence
   transaction ID, request commitment, provider namespace/incarnation/epoch,
   reservation generation and exact predecessor evidence;
-- `LocalPrepared` contains the complete proposed v0.111.108 local transaction and
+- `LocalPrepared` contains the complete proposed v0.219.0 local transaction and
   provider reservation intent but is non-authorizing and bounded by durable custody;
 - `ProviderReservedInert` atomically consumes provider capacity and returns a signed,
   queryable inert-reservation receipt; it cannot execute, activate a request, mint or
@@ -14924,9 +14931,9 @@ Deliverables:
 - `LocalAuthorityCommitted` atomically publishes the generation head, slot, history,
   request, local budget/reservation and inert provider receipt under one resulting
   emergency root; a provider outage afterward leaves committed-but-inactive authority;
-- before sending any provider activation byte, v0.111.113 durably publishes
+- before sending any provider activation byte, v0.224.0 durably publishes
   `ProviderActivationAuthorizedUnknown`, consumes the one activation authority and
-  binds exact reservation/request/provider/query identities under v0.111.95 ordering;
+  binds exact reservation/request/provider/query identities under v0.206.0 ordering;
 - provider activation requires a cryptographic commit receipt for the exact local
   authority transition/emergency root plus the unknown-authorization root and performs
   one idempotent activation CAS; the provider exposes query/result identity, never a
@@ -14938,7 +14945,7 @@ Deliverables:
 - response loss after activation authorization is query-only, and no replacement
   reservation, generation or consequence ID may activate while provider admission or
   consequence outcome is unknown;
-- v0.111.115 permits ordinary provider abort only before `LocalAuthorityCommitted`,
+- v0.226.0 permits ordinary provider abort only before `LocalAuthorityCommitted`,
   after `LocalAbortFenced` permanently consumes local commit/activation authority;
   committed authority must reconcile activation or use governed abandonment;
 - providers lacking inert reservation, exact commit-receipt activation, idempotent
@@ -14966,7 +14973,7 @@ Exit criteria:
 - Provider activation cannot be attempted before durable unknown outcome publication.
 - Ambiguous activation cannot create replacement consequence authority.
 
-### v0.111.112 - Non-Recursive Witness Durability Frontier
+### v0.223.0 - Non-Recursive Witness Durability Frontier
 
 Goal: prove durable witness admission without requiring a checkpoint to commit to a
 receipt that contains that checkpoint's own root.
@@ -15015,7 +15022,7 @@ Exit criteria:
 - Threshold verification proves statement durability without a commitment fixed point.
 - Later receipt archival cannot rewrite the original durability proof.
 
-### v0.111.113 - Conservative Provider Activation Ordering
+### v0.224.0 - Conservative Provider Activation Ordering
 
 Goal: make every consequence activation attempt durably unknown before any activation
 request can cross into the provider failure domain.
@@ -15027,13 +15034,13 @@ Deliverables:
   lineage/permit/kind/generation, reservation ID, request commitment, provider
   namespace/incarnation/epoch, exact local authority/emergency roots, query identity
   and activation-attempt sequence;
-- activation follows the v0.111.95 ordering rule: expected-root CAS and flush
+- activation follows the v0.206.0 ordering rule: expected-root CAS and flush
   `ResolutionOutcomeUnknown`, consume the affine one-shot activation authority, then
   expose the provider client or send the first activation byte;
 - the consumed activation authority cannot be reconstructed, cloned, refunded or
   replaced after crash, timeout, cancellation or response loss; recovery from the
   unknown state is query-only under the exact reservation/request/provider identity;
-- a provider negative query is observational only; v0.111.116 requires a typed
+- a provider negative query is observational only; v0.227.0 requires a typed
   `ConsequenceActivationFinalityProof` with complete activation-delivery closure before
   refining the unknown state to never activated or permitting a successor generation;
 - provider activation verifies the exact unknown-authorization root and committed
@@ -15049,7 +15056,7 @@ Deliverables:
   closure evidence rather than reactivation;
 - cancellation and deadlines after unknown authorization cannot abort, release
   capacity or select a replacement; they retain conservative charge and enter the same
-  reconciliation path as response loss until v0.111.116 terminal activation finality;
+  reconciliation path as response loss until v0.227.0 terminal activation finality;
 - tests instrument CAS, WAL append, file/directory flush, capability consumption,
   first provider byte, provider admission, response receive, local activation receipt
   and terminal evidence persistence, killing before and after every boundary; negative
@@ -15064,11 +15071,11 @@ Verification:
 Exit criteria:
 
 - No provider activation byte can leave before durable resolution uncertainty.
-- Activation response loss is query-only until typed v0.111.116 finality, never direct
+- Activation response loss is query-only until typed v0.227.0 finality, never direct
   replacement activation.
 - Provider admission is never misreported as terminal consequence completion.
 
-### v0.111.114 - Lineage-Wide Permit Inventory Finality
+### v0.225.0 - Lineage-Wide Permit Inventory Finality
 
 Goal: account for every permit ever admitted in an effect-plan lineage before proving
 aggregate no-effect, including permits removed or replaced by later amendments.
@@ -15091,8 +15098,8 @@ Deliverables:
   exactly one immutable admission entry, every successor descends from it and every
   entry derives from an admitted plan; current state/active-plan membership is a
   separate deterministic non-destructive view;
-- `AcceptedStartedNoEffectProof` consumes the exact active v0.111.117
-  `LineagePermitStateCheckpoint`, its inventory count/order and one v0.111.110
+- `AcceptedStartedNoEffectProof` consumes the exact active v0.228.0
+  `LineagePermitStateCheckpoint`, its inventory count/order and one v0.221.0
   compatible finality proof for every admitted permit, not independently supplied
   roots or merely the current plan's permit set;
 - revoked-before-dispatch and tombstoned permits require final authenticated
@@ -15101,10 +15108,10 @@ Deliverables:
 - any omitted, duplicated, unknown, conflicting, stale-generation or incompletely
   covered inventory entry blocks aggregate no-effect; a current generation with no
   active effects cannot hide an old `OutcomeUnknown` permit;
-- v0.111.117 binds the inventory/event root to current permit-state, effect-knowledge
-  and dispatch-state maps plus the expected prior composite head; v0.111.119 then
+- v0.228.0 binds the inventory/event root to current permit-state, effect-knowledge
+  and dispatch-state maps plus the expected prior composite head; v0.230.0 then
   publishes one resulting composite head that binds the consistent successor checkpoint;
-- v0.111.118 bounds transitions, evidence, bytes and verification work; duplicate
+- v0.229.0 bounds transitions, evidence, bytes and verification work; duplicate
   evidence cannot append authority, and compaction may replace old detail only with
   bounded-depth proof-preserving immutable summaries that remain enumerable and bound
   to the inventory root;
@@ -15128,7 +15135,7 @@ Exit criteria:
 - Current-plan no-effect cannot conceal an older ambiguous or committed permit.
 - Every lineage-wide no-effect proof covers the exact complete inventory root.
 
-### v0.111.115 - Pre-Commit Consequence Abort Fence
+### v0.226.0 - Pre-Commit Consequence Abort Fence
 
 Goal: ensure provider reservation abort is possible only after all local commit and
 activation authority is permanently consumed before the abort request.
@@ -15177,7 +15184,7 @@ Exit criteria:
 - Local commit and local abort fence are mutually exclusive durable successors.
 - Committed consequences cannot use ordinary abort to erase unresolved authority.
 
-### v0.111.116 - Consequence Activation Finality Proof
+### v0.227.0 - Consequence Activation Finality Proof
 
 Goal: prove both historical provider non-activation and permanent closure of every
 delayed activation path before resolving activation uncertainty to no effect.
@@ -15186,12 +15193,12 @@ Deliverables:
 
 - canonical `ConsequenceActivationFinalityProof` binds consequence transaction,
   lineage/permit/kind/generation, inert reservation, activation request commitment,
-  v0.111.113 unknown-authorization root, provider namespace/incarnation/epoch, query
+  v0.224.0 unknown-authorization root, provider namespace/incarnation/epoch, query
   identity, activation delivery profile and evidence frontier;
 - the proof contains a domain-separated activation `DeliveryClosureProof` covering
   every admitted client, proxy, retry buffer, queue, dead-letter, partition-recovery and
   provider-admission layer plus the exact activation replay-fence/epoch root;
-- v0.111.100 closure machinery may be reused only under a distinct activation-request
+- v0.211.0 closure machinery may be reused only under a distinct activation-request
   domain tag and schema; execution-request, ordinary effect or unrelated consequence
   closure cannot substitute for activation closure;
 - typed `ProviderActivationOutcome` is `NeverActivated`, `Activated`, `Conflicting` or
@@ -15228,7 +15235,7 @@ Exit criteria:
 - A successor generation requires permanent closure of every old activation path.
 - Provider admission and consequence effect outcome remain distinct states.
 
-### v0.111.117 - Authoritative Lineage Permit State Checkpoint
+### v0.228.0 - Authoritative Lineage Permit State Checkpoint
 
 Goal: bind append-only permit history and every authoritative current permit map into
 one rollback-resistant checkpoint consumed by lineage-wide finality.
@@ -15243,7 +15250,7 @@ Deliverables:
 - every authority-changing permit admission, amendment, dispatch, evidence join,
   revocation, terminalization or tombstone transition prepares the inventory append,
   all affected map successors and one inert checkpoint successor under the expected
-  predecessor/prior-composite CAS; v0.111.119 then constructs a new emergency composite
+  predecessor/prior-composite CAS; v0.230.0 then constructs a new emergency composite
   head that binds the checkpoint root and activates the complete transition;
 - canonical projection proves every inventory admission/transition through the event
   count is reflected exactly in the permit-state, effect-knowledge and dispatch maps,
@@ -15279,7 +15286,7 @@ Exit criteria:
 - Lineage finality consumes exactly the checkpoint authorized by the active head.
 - Omitted transitions or stale maps cannot preserve checkpoint authority.
 
-### v0.111.118 - Bounded Permit Inventory And Finality Work
+### v0.229.0 - Bounded Permit Inventory And Finality Work
 
 Goal: keep lineage history, conflict retention and finality verification predictably
 bounded under repeated evidence, amendments and reconciliation.
@@ -15304,7 +15311,7 @@ Deliverables:
 - genuine conflict detail beyond the live bound moves to a separately keyed, encrypted,
   append-only conflict-evidence archive with its own item/byte/work/retention bounds;
   archive summaries preserve contradiction commitments needed by current authority;
-- every permit reserves one non-borrowable fixed-size v0.111.120 evidence-saturation
+- every permit reserves one non-borrowable fixed-size v0.231.0 evidence-saturation
   leaf and independently accounted authentication budget at admission; ordinary
   history, archive, amendments and other permits cannot consume this emergency capacity;
 - amendment and reconciliation attempts consume persistent rate/work budgets before
@@ -15312,7 +15319,7 @@ Deliverables:
   evidence cannot reset budgets or create free verification work;
 - hard-limit exhaustion never drops an admitted permit, conflict or unknown outcome;
   when a minimally authenticated structurally valid candidate cannot be fully admitted,
-  v0.111.120 atomically marks the affected scope saturated before any earlier finality
+  v0.231.0 atomically marks the affected scope saturated before any earlier finality
   or cleanup authority remains usable; untrusted/unvalidated overflow creates no marker;
 - finality verification declares exact item/byte/proof/depth budgets and returns typed
   `ResourceLimit` without a partial no-effect result or cached authority; high-resource
@@ -15334,7 +15341,7 @@ Exit criteria:
 - Finality verification has protocol-fixed item, byte, depth and work ceilings.
 - Limit exhaustion preserves every admitted uncertainty and returns no partial proof.
 
-### v0.111.119 - Acyclic Lineage Checkpoint Publication
+### v0.230.0 - Acyclic Lineage Checkpoint Publication
 
 Goal: publish lineage checkpoints and emergency composite heads without either
 canonical commitment depending on its own resulting root.
@@ -15357,7 +15364,7 @@ Deliverables:
   local cache, map root or status field selects the resulting head independently;
 - checkpoint preparation and new-head construction are inert durable stages with one
   transaction ID and bounded custody; external publication and local activation reuse
-  v0.111.67-v0.111.68 expected-head reconciliation and cannot expose a half transition;
+  v0.178.0-v0.179.0 expected-head reconciliation and cannot expose a half transition;
 - response loss queries the exact external new-head identity; recovery may finish the
   prepared checkpoint/head publication or retain the complete prior active head, never
   synthesize a missing root, rebase the checkpoint or select by arrival order;
@@ -15384,7 +15391,7 @@ Exit criteria:
 - The active head selects exactly one transitively bound checkpoint and resulting maps.
 - Recovery cannot construct, rebase or activate a commitment fixed point.
 
-### v0.111.120 - Evidence Admission Saturation Fence
+### v0.231.0 - Evidence Admission Saturation Fence
 
 Goal: fail closed when authenticated contradictory evidence cannot fit in bounded live
 or archive storage without allowing untrusted overflow to revoke authority.
@@ -15404,19 +15411,19 @@ Deliverables:
 - before marker publication, bounded authentication and structural framing validate an
   admitted source, signature/MAC suite, provider epoch, object kind, lengths and exact
   candidate commitment using an independent emergency evidence-admission budget;
-  v0.111.122 additionally proves exact permit relevance before the marker can block
+  v0.233.0 additionally proves exact permit relevance before the marker can block
   authority, while full semantic outcome processing may remain incomplete;
 - malformed, unauthenticated, stale-source or over-budget public bytes are rejected or
   quarantined under ordinary abuse limits and cannot create a saturation marker, change
   authority roots or consume another permit's non-borrowable marker slot;
 - when a minimally valid candidate cannot be fully admitted, one expected-head CAS uses
-  v0.111.117-v0.111.119 to append the saturation transition, update the fixed leaf and
+  v0.228.0-v0.230.0 to append the saturation transition, update the fixed leaf and
   publish a new active composite head before returning resource refusal;
 - `Saturated` blocks finality, cleanup, retry/new generation, compensation selection,
   dependency reopening, authority-summary projection and custody/key/quota release for
   the affected scope; read, bounded query, evidence recovery and governance remain;
 - every pre-saturation proof/token binds an older active composite head and is rejected;
-  v0.111.121 separates historical verification from current consequence authority and
+  v0.232.0 separates historical verification from current consequence authority and
   requires a fresh external-anchor witness at each protected effect linearization point;
 - additional candidates while saturated cannot amplify fixed authority state; they use
   separately bounded quarantine/archive recovery capacity, while the first marker's
@@ -15426,7 +15433,7 @@ Deliverables:
   scope; public authentication-budget exhaustion alone rate-limits that source and
   cannot manufacture saturation, while admitted providers retain separate reserved lanes;
 - recovery expands/repairs archive capacity, fully admits and projects every retained
-  candidate and satisfies the v0.111.123 evidence-source closure contract, then appends
+  candidate and satisfies the v0.234.0 evidence-source closure contract, then appends
   `EvidenceAdmissionSaturationResolved` under a new expected head; it never deletes the
   marker, reopens its generation or restores a pre-saturation proof by fiat, and the
   next generation becomes healthy only through a separately authenticated transition
@@ -15449,7 +15456,7 @@ Exit criteria:
 - Untrusted overflow cannot create a saturation fence or consume its reserved slot.
 - Saturation recovery fully admits evidence before any blocked authority can resume.
 
-### v0.111.121 - Current Composite Head Authority Witness
+### v0.232.0 - Current Composite Head Authority Witness
 
 Goal: prevent an offline or stale peer from using historically valid authority after a
 newer externally anchored head has fenced that authority.
@@ -15474,7 +15481,7 @@ Deliverables:
 - the witness is not a portable signed snapshot: an anchor-side
   `AuthorizeCurrentConsequence` expected-head CAS atomically verifies the current head,
   consumes the witness identity and records one consequence admission before returning
-  a receipt bound to the exact provider/hardware/local executor operation; v0.111.126
+  a receipt bound to the exact provider/hardware/local executor operation; v0.237.0
   supplies clone-aggregated capacity and failover semantics for that online service;
 - the anchor CAS is the authority linearization point: if saturation publishes first,
   admission fails; if consequence admission publishes first, the next composite head
@@ -15482,11 +15489,11 @@ Deliverables:
   revoke it;
 - provider, hardware-backed and local destructive APIs require the exact anchor receipt
   before their first irreversible effect, but the cloneable receipt alone grants no raw
-  mutation authority; v0.111.127 consumes it through the endpoint's clone-safe exact-
+  mutation authority; v0.238.0 consumes it through the endpoint's clone-safe exact-
   effect mechanism and durably reconciles one terminal or ambiguous result;
 - witness formats, anchor-CAS mechanics and reconciliation remain `WritePrepared` and
-  non-authorizing until v0.111.126 admits enforceable provider capacity/reserved fence
-  and recovery lanes, v0.111.127 admits clone-safe endpoint consumption and v0.111.132
+  non-authorizing until v0.237.0 admits enforceable provider capacity/reserved fence
+  and recovery lanes, v0.238.0 admits clone-safe endpoint consumption and v0.243.0
   closes any hardware-output path to its terminal effect;
 - head generation, anchor epoch, consequence-class, scope, policy-root or finality-
   frontier mismatch returns typed `CurrentAuthorityUnavailable` and leaves prepared
@@ -15496,7 +15503,7 @@ Deliverables:
   authority;
 - a profile that explicitly requires offline protected execution must pre-issue
   separately typed, bounded and non-revocable authority that fixes operation count,
-  resource ceiling, consequence classes, scopes and provider epoch, and v0.111.124
+  resource ceiling, consequence classes, scopes and provider epoch, and v0.235.0
   additionally makes every effect identity clone-safe; publication of a later
   saturation head cannot revoke already issued authority retroactively, and the CLI/
   policy/audit output states that limitation before issuance;
@@ -15525,7 +15532,7 @@ Exit criteria:
 - Offline execution exists only through explicit bounded authority whose inability to
   honor later revocation is declared and tested.
 
-### v0.111.122 - Permit-Relevant Saturation Eligibility
+### v0.233.0 - Permit-Relevant Saturation Eligibility
 
 Goal: ensure an authenticated but unrelated object cannot saturate another operation,
 lineage or permit before full semantic evaluation.
@@ -15575,7 +15582,7 @@ Exit criteria:
 - Bounded eligibility never claims the deferred semantic outcome.
 - Authenticated but unrelated or duplicate evidence cannot revoke current authority.
 
-### v0.111.123 - Evidence Source Closure Proof
+### v0.234.0 - Evidence Source Closure Proof
 
 Goal: prohibit saturation recovery from omitting authenticated evidence that arrived
 after bounded quarantine or archive capacity was exhausted.
@@ -15589,10 +15596,10 @@ Deliverables:
   provider epoch, affected lineage/permit, saturation generation and interval, opening
   saturation head, final source sequence frontier and fence, provider/result-log
   checkpoint, knowledge/archive/quarantine roots, recovery transition identity and the
-  v0.111.125 completeness-assurance profile/evidence roots;
+  v0.236.0 completeness-assurance profile/evidence roots;
 - the proof accounts for every relevant source sequence through the final fence as an
   admitted candidate, authenticated duplicate, legally irrelevant item with its
-  v0.111.122 eligibility disposition, or permanently retained contradiction; gaps,
+  v0.233.0 eligibility disposition, or permanently retained contradiction; gaps,
   unexplained truncation and disposition classes that discard uncertainty are invalid;
 - source-log pages and inclusion/consistency proofs permit bounded streaming recovery;
   local retention capacity need not hold every candidate simultaneously, but recovery
@@ -15604,7 +15611,7 @@ Deliverables:
   queryable and verified final frontier and all relevant candidates are admitted and
   projected under one new expected-head transition;
 - closure formats and state transitions remain `WritePrepared` and non-authorizing
-  until v0.111.125 admits the selected completeness-assurance profile and evidence
+  until v0.236.0 admits the selected completeness-assurance profile and evidence
   roots; no intermediate release may resume protected authority from provider assertion;
 - an offline, unavailable or non-queryable source keeps the permit saturated; policy
   may instead authorize a governed terminal abandonment that permanently preserves the
@@ -15634,7 +15641,7 @@ Exit criteria:
 - Missing source completeness preserves saturation or ends only in explicit permanent
   governed abandonment.
 
-### v0.111.124 - Clone-Safe Offline Consequence Authority
+### v0.235.0 - Clone-Safe Offline Consequence Authority
 
 Goal: make optional pre-issued offline authority bounded per exact effect and resistant
 to workspace, disk, VM and process cloning.
@@ -15645,14 +15652,14 @@ Deliverables:
   and policy epoch, authority generation, consequence/effect class, exact operation/
   lineage/permit/request/effect identity, downstream idempotency key, provider/hardware
   namespace and epoch, resource charge, expiry/retirement rule and consumption mode;
-  v0.111.134 additionally makes the authorized recipient principal and authentication-
+  v0.245.0 additionally makes the authorized recipient principal and authentication-
   key epoch part of this authority rather than delivery-only metadata;
 - operation count, byte/work ceiling or an affine token stored in `.saga/` is never
   clone-safe authority by itself; every protected effect has one preallocated exact
   identity and one externally or hardware-enforced consumption location;
-- admitted consumption modes are hardware-monotonic one-use slots, v0.111.85/v0.111.89
+- admitted consumption modes are hardware-monotonic one-use slots, v0.196.0/v0.200.0
   non-equivocating statically partitioned provider ranges, exact operation identities
-  with provider-enforced idempotency plus the permanent v0.111.94 replay fence, or
+  with provider-enforced idempotency plus the permanent v0.205.0 replay fence, or
   threshold-issued one-time capabilities whose consumption is externally enforced;
 - each mode declares rollback, clone, failover, retention, availability and privacy
   assumptions in the provider capability and activation matrix; a signed capability
@@ -15683,16 +15690,16 @@ Deliverables:
   effect classes, clone-safety mechanism and non-revocation limitation without exposing
   private operation membership or stable cross-realm identifiers;
 - grant creation remains `WritePrepared` and cannot release a usable capability until
-  v0.111.128-v0.111.131 complete failure-atomic issuance, inert activation and crash-
-  safe delivery/possession confirmation and v0.111.134-v0.111.135 bind the recipient
+  v0.239.0-v0.242.0 complete failure-atomic issuance, inert activation and crash-
+  safe delivery/possession confirmation and v0.245.0-v0.246.0 bind the recipient
   and cryptographically gate external activation on the durable local decision;
-  v0.111.138-v0.111.140 additionally order activation through the current-head anchor,
+  v0.249.0-v0.251.0 additionally order activation through the current-head anchor,
   make recipient migration lifecycle-safe and prevent threshold decision equivocation;
-  v0.111.142-v0.111.145 make recipient-set changes enforceable, bound/fence anchor
+  v0.253.0-v0.256.0 make recipient-set changes enforceable, bound/fence anchor
   revalidation, permit safe post-non-admission abort and fix exact threshold assumptions;
-  v0.111.146-v0.111.148 atomically order recipient validation with effect consumption,
+  v0.257.0-v0.259.0 atomically order recipient validation with effect consumption,
   reserve revalidation recovery capacity and separate threshold safety from availability;
-  v0.111.149-v0.111.169 fence pending-effect executors, close/refund recovery reserves,
+  v0.260.0-v0.280.0 fence pending-effect executors, close/refund recovery reserves,
   require complete reserve-slice disposition, define total-nonresponsive fault sets and
   make eventual progress conditional on explicit temporal/resource assumptions plus one
   affine worst-case capacity reservation per admitted request, permanent negative
@@ -15723,14 +15730,14 @@ Exit criteria:
 - Purely local irreversible effects remain inert unless exclusive idempotent ownership
   is independently proven.
 
-### v0.111.125 - Assurance-Qualified Evidence Source Closure
+### v0.236.0 - Assurance-Qualified Evidence Source Closure
 
 Goal: prevent a Byzantine evidence source from satisfying saturation closure with one
 internally consistent but incomplete or forked log view.
 
 Deliverables:
 
-- every `EvidenceSourceClosureProof` segment binds the v0.111.60 assurance profile ID,
+- every `EvidenceSourceClosureProof` segment binds the v0.171.0 assurance profile ID,
   threat boundary, provider capability root and exact hardware, witness or independent-
   receipt evidence roots that support its completeness claim;
 - `ProviderAssertedComplete` remains valid only under the explicit honest linearizable-
@@ -15746,7 +15753,7 @@ Deliverables:
   chain of assurance-profile transitions and coverage roots; a stronger label on the
   final segment cannot upgrade an earlier provider-asserted or uncovered interval;
 - proof composition validates complete, non-overlapping interval coverage and binds
-  each v0.111.122 eligibility disposition to the same assured source sequence; evidence
+  each v0.233.0 eligibility disposition to the same assured source sequence; evidence
   from another observer, epoch, source or interval cannot fill a gap by substitution;
 - independently observed omitted suffixes, forked checkpoints, inconsistent counters
   or witness/receipt equivocation move the source/permit to explicit conflict or keep it
@@ -15774,7 +15781,7 @@ Exit criteria:
 - Protected recovery rejects provider assertion whenever equivocation is in scope.
 - A split view or independently observed omission never resolves saturation.
 
-### v0.111.126 - Clone-Aggregated Anchor Admission Capacity
+### v0.237.0 - Clone-Aggregated Anchor Admission Capacity
 
 Goal: operate `AuthorizeCurrentConsequence` as a bounded, clone-safe online admission
 service without letting client floods consume its recovery path.
@@ -15785,7 +15792,7 @@ Deliverables:
   current-consequence admission support, provider namespace/incarnation, principal/
   realm derivation, operation/idempotency domain, assurance/failover mode, privacy
   profile and count/byte/work/concurrency/retained-ambiguity hard limits;
-- one local v0.111.80-owned consequence budget reserves before one provider-side atomic
+- one local v0.191.0-owned consequence budget reserves before one provider-side atomic
   quota admission; both bind exact head, authority-witness, operation, consequence/
   effect identity, idempotency key, charge, provider epoch and admission generation;
 - provider accounting aggregates restored stores, cloned workspaces, devices, replicas,
@@ -15806,7 +15813,7 @@ Deliverables:
 - bounded batching commits an ordered list of individually identified expected-head
   admissions under one provider CAS; every item retains its own quota charge, result and
   ordering position, and no item may cross an intervening head transition; batch mode
-  remains disabled until v0.111.129 proves semantic independence and all-or-none
+  remains disabled until v0.240.0 proves semantic independence and all-or-none
   publication for the complete member set;
 - denial, exhaustion and throttling are local/provider resource states only and never
   prove non-execution, saturation, revocation or absence; protected callers keep work
@@ -15833,7 +15840,7 @@ Exit criteria:
   or reconcile already admitted consequences.
 - Every admission is exactly queryable, idempotent and ordered against its expected head.
 
-### v0.111.127 - Clone-Safe Consequence Execution
+### v0.238.0 - Clone-Safe Consequence Execution
 
 Goal: ensure one valid anchor admission receipt cannot execute the same semantic effect
 multiple times after the executor workspace is cloned.
@@ -15847,12 +15854,12 @@ Deliverables:
 - an anchor receipt is immutable admission evidence and an input to checked execution,
   never a bearer capability for arbitrary filesystem, key, quota, custody or accounting
   mutation; raw executor APIs cannot accept the receipt without the typed consumption;
-- provider effects atomically consume the admission ID through the v0.111.94 permanent
+- provider effects atomically consume the admission ID through the v0.205.0 permanent
   idempotency/replay-fence record before the effect boundary; exact replay returns the
   original pending/terminal/ambiguous result and changed effect commitment is conflict;
 - hardware effects atomically consume an attested monotonic one-use slot bound to the
   admission/effect identity only when the hardware transaction is the terminal semantic
-  effect boundary; v0.111.132 governs hardware output passed to any downstream executor;
+  effect boundary; v0.243.0 governs hardware output passed to any downstream executor;
 - local filesystem effects are admitted only when semantically idempotent over one exact
   immutable content/resource-instance identity and an uncloneable boundary proves
   exclusive ownership; path strings, mutable names, inode reuse, locks and local ledger
@@ -15891,7 +15898,7 @@ Exit criteria:
 - Exact replay returns one original result; changed effect identity is conflict.
 - Local idempotent deletion never implies shared erasure or shared capacity release.
 
-### v0.111.128 - Failure-Atomic Offline Grant Issuance
+### v0.239.0 - Failure-Atomic Offline Grant Issuance
 
 Goal: prevent an ambiguous or response-lost offline-grant issuance from allocating a
 replacement range, slot or capability.
@@ -15899,10 +15906,10 @@ replacement range, slot or capability.
 Deliverables:
 
 - canonical issuance lifecycle is `GrantTemplateCommitted -> InertExternalReservation
-  -> GrantIssueCommitted`; v0.111.130 extends it through sealing/activation and
-  v0.111.131 separately governs delivery/possession, with no state inferred from missing
+  -> GrantIssueCommitted`; v0.241.0 extends it through sealing/activation and
+  v0.242.0 separately governs delivery/possession, with no state inferred from missing
   local bytes or an unverified provider response;
-- `OfflineGrantIssuance` binds issuance ID, exact v0.111.124 grant commitment,
+- `OfflineGrantIssuance` binds issuance ID, exact v0.235.0 grant commitment,
   provider/hardware/threshold namespace and epoch, slot/range/counter identity, maximum
   count/byte/work/custody/key/quota charge, expected prior issuance root and expiry rule;
 - `GrantTemplateCommitted` durably reserves the complete local maximum charge and stores
@@ -15910,12 +15917,12 @@ Deliverables:
   range, threshold share, authorization token or usable grant can exist;
 - `InertExternalReservation` records the provider/hardware operation ID and an exact
   queryable pending/ambiguous reservation that cannot authorize consumption before
-  v0.111.130 activation; timeout, response loss, restart or clone leaves both charges;
+  v0.241.0 activation; timeout, response loss, restart or clone leaves both charges;
 - `GrantIssueCommitted` binds one externally reserved consumption mechanism to one grant
   commitment under an expected-root CAS before final sealing; a different grant, issuance
   ID, range, slot, charge or provider epoch cannot reuse or replace that reservation;
 - `FinalGrantSealed` and `GrantActivated` remain unavailable to callers until the
-  v0.111.130 cryptographic activation contract completes; v0.111.131 then delivers the
+  v0.241.0 cryptographic activation contract completes; v0.242.0 then delivers the
   exact activated grant without combining delivery and possession acknowledgement;
 - abort before external reservation releases only the local prepared charge; later abort
   requires authenticated proof that no grant bytes, usable slot/range or consumable
@@ -15946,7 +15953,7 @@ Exit criteria:
 - External reservations remain charged until exact terminal reconciliation.
 - Reconnect accounts for issuance and consumption as one continuous history.
 
-### v0.111.129 - Semantically Independent Anchor Admission Batches
+### v0.240.0 - Semantically Independent Anchor Admission Batches
 
 Goal: ensure individually valid consequences cannot enter one anchor batch when their
 combined effects, dependencies or authority transitions are incompatible.
@@ -15955,7 +15962,7 @@ Deliverables:
 
 - canonical `BatchAdmissionProof` binds expected composite head, ordered member count/
   root, each exact authority witness/admission/effect commitment, aggregate budget/
-  capacity root, v0.111.133 evaluator-derived N-way lifecycle-footprint proof, policy/
+  capacity root, v0.244.0 evaluator-derived N-way lifecycle-footprint proof, policy/
   provider epochs and batch CAS ID;
 - member ordering is canonical by domain-separated consequence identity after proving
   independence; caller order, arrival timing, thread schedule or provider grouping
@@ -15966,18 +15973,18 @@ Deliverables:
 - affected scopes are disjoint or carry one typed compatibility proof from a closed
   commutativity table; overlapping key destruction, cleanup/custody release, quota
   mutation, compensation, dependency reopening or policy transition is incompatible by
-  default, caller-supplied scopes are non-authoritative, and v0.111.133 validates the
+  default, caller-supplied scopes are non-authoritative, and v0.244.0 validates the
   complete batch against whole-lifecycle/N-way invariants;
 - no member depends on another member's result, terminal evidence, released resource or
   successor head; result-dependent consequences require a later head and individual or
   later independent-batch admission after predecessor terminalization;
 - every member uses compatible policy, provider, key, executor and anchor epochs, and
   aggregate checked count/byte/work/concurrency/custody/quota charges fit both local and
-  v0.111.126 provider capacity before any member admission is visible;
+  v0.237.0 provider capacity before any member admission is visible;
 - one all-or-none expected-head provider CAS publishes the ordered member admissions and
   per-member receipts; failure, exhaustion, head race or semantic conflict publishes no
   member, consumes no effect authority and returns exact query-only batch reconciliation;
-- provider execution still applies v0.111.127 clone-safe consumption independently per
+- provider execution still applies v0.238.0 clone-safe consumption independently per
   member; batch admission neither merges idempotency identities nor permits one member's
   terminal result to satisfy another member's execution evidence;
 - crash recovery queries the batch CAS ID and accepts only the complete canonical member
@@ -15987,7 +15994,7 @@ Deliverables:
   denial and timing; padding members consume separate capacity and never become effects,
   evidence, dependency satisfaction or admission-authority placeholders;
 - batch formats and pairwise checks remain `WritePrepared` and non-authorizing until
-  v0.111.133 admits the trusted footprint evaluator/N-way invariant proof and v0.111.137
+  v0.244.0 admits the trusted footprint evaluator/N-way invariant proof and v0.248.0
   admits bounded dynamic footprints, semantic projection and provider proof verification;
 - tests cover cleanup versus compensation, two consequences for one permit/slot,
   overlapping key destruction, dependency ordering, result-dependent members, policy/
@@ -16008,7 +16015,7 @@ Exit criteria:
 - Result-dependent or overlapping incompatible consequences require later authority.
 - Batch failure cannot publish or execute a subset of members.
 
-### v0.111.130 - Inert Offline Grant Activation Boundary
+### v0.241.0 - Inert Offline Grant Activation Boundary
 
 Goal: ensure no prepared template, external reservation, provider receipt, threshold
 share or hardware token is usable before one exact grant activation linearizes.
@@ -16017,12 +16024,12 @@ Deliverables:
 
 - canonical activation continuation is `GrantIssueCommitted -> FinalGrantSealed ->
   GrantActivationAuthorizedUnknown -> GrantActivated -> GrantActivationReconciled`,
-  with typed abort/conflict states and the exact v0.111.128 issuance ID; these states
-  remain `WritePrepared` until v0.111.134 binds recipient authority and v0.111.135
+  with typed abort/conflict states and the exact v0.239.0 issuance ID; these states
+  remain `WritePrepared` until v0.245.0 binds recipient authority and v0.246.0
   defines the authenticated authorization receipt and competing abort fence, and cannot
-  authorize protected activation until v0.111.138 and v0.111.140 close anchor ordering
+  authorize protected activation until v0.249.0 and v0.251.0 close anchor ordering
   and threshold non-equivocation; revalidation and threshold profiles remain inactive
-  until v0.111.143-v0.111.145 close negative fencing, abort and exact quorum semantics;
+  until v0.254.0-v0.256.0 close negative fencing, abort and exact quorum semantics;
 - `GrantTemplateCommitted` contains only domain-separated grant fields/commitment and
   sealed construction inputs under independently provisioned protected pending storage;
   no bearer bytes, provider signature, threshold share set or hardware authorization
@@ -16031,7 +16038,7 @@ Deliverables:
   threshold namespace and epoch, exact slot/range/counter, maximum charge and expiry,
   but provider/hardware enforcement rejects every consume/effect request until activation;
 - reservation receipts and threshold preparation shares are purpose-tagged inert
-  evidence, cannot satisfy v0.111.124/v0.111.127 consumption and are rejected if replayed
+  evidence, cannot satisfy v0.235.0/v0.238.0 consumption and are rejected if replayed
   as grant, activation, delivery, possession or terminal-effect evidence;
 - `FinalGrantSealed` is a canonical protected envelope bound to the inert reservation
   and expected activation identity but lacks usable `GrantActivationEvidence`; copying
@@ -16039,7 +16046,7 @@ Deliverables:
 - before requesting external activation, `GrantActivationAuthorizedUnknown` durably
   consumes local issuance authority, binds expected active head/root and conservatively
   records that external activation may occur; crash cannot restore a pre-activation
-  retry, and v0.111.135 requires the external authority to verify this durable root;
+  retry, and v0.246.0 requires the external authority to verify this durable root;
 - provider, hardware or threshold authority atomically compares reservation/grant/
   issuance identity and moves exactly one `ReservedInert -> Activated` successor before
   returning canonical `GrantActivationEvidence`; changed commitment or second successor
@@ -16047,10 +16054,10 @@ Deliverables:
 - threshold activation shares are released only for the exact activated commitment and
   combine into one domain-separated activation evidence object; preparation shares,
   mixed epochs, subsets or shares for another issuance cannot form a usable grant;
-  v0.111.135 requires every participant to verify both local receipt roots and durably
+  v0.246.0 requires every participant to verify both local receipt roots and durably
   record its unique successor before releasing a share;
 - hardware reservations cannot emit a downstream authorization token or consume the
-  effect slot before activation; activated hardware use still inherits v0.111.132 when
+  effect slot before activation; activated hardware use still inherits v0.243.0 when
   the terminal semantic effect occurs outside the hardware transaction;
 - local `GrantActivated` publication verifies external activation evidence and attaches
   it to the sealed envelope under one expected-root CAS; response loss queries the exact
@@ -16058,11 +16065,11 @@ Deliverables:
 - abort before external reservation destroys only sealed template inputs; abort after
   reservation requires authenticated terminal cancellation while inert, and after
   `GrantActivationAuthorizedUnknown` only exact query/reconciliation or governed
-  permanent retirement is allowed; v0.111.138 may create a successor authorization
+  permanent retirement is allowed; v0.249.0 may create a successor authorization
   generation only from authenticated final anchor non-admission, preserving the same
-  grant/reservation/capacity and permanently fencing the old attempt; v0.111.143 bounds
-  that revalidation and v0.111.144 adds its mutually exclusive safe abort branch;
-- no activated bytes leave protected pending storage before v0.111.131 creates a durable
+  grant/reservation/capacity and permanently fencing the old attempt; v0.254.0 bounds
+  that revalidation and v0.255.0 adds its mutually exclusive safe abort branch;
+- no activated bytes leave protected pending storage before v0.242.0 creates a durable
   delivery attempt; logs, status, diagnostics and blind-store metadata expose no grant,
   slot occupancy, recipient or activation-membership oracle;
 - tests attempt consumption/export after every template/reserve/seal/authorize/activate/
@@ -16083,7 +16090,7 @@ Exit criteria:
 - External activation has one queryable successor for one exact grant commitment.
 - Crashes cannot turn an inert reservation into a replacement or implicitly active grant.
 
-### v0.111.131 - Crash-Safe Offline Grant Delivery
+### v0.242.0 - Crash-Safe Offline Grant Delivery
 
 Goal: prevent partial, crashed or response-lost grant delivery from causing unsafe
 retransmission or being mistaken for recipient possession.
@@ -16091,12 +16098,12 @@ retransmission or being mistaken for recipient possession.
 Deliverables:
 
 - canonical handoff lifecycle is `DeliveryPrepared -> DeliveryUnknown -> Delivered ->
-  PossessionConfirmed`; it starts only from one v0.111.130 activated grant and never
+  PossessionConfirmed`; it starts only from one v0.241.0 activated grant and never
   combines transport acknowledgement with proof of recipient possession;
 - `GrantDeliveryAttempt` binds issuance/grant/activation commitment, recipient identity
   and key/epoch, delivery-attempt ID, exact channel/provider/descriptor identity,
   protected pending-storage generation, confirmation suite/transcript and prior state;
-  v0.111.134 requires this recipient/key epoch to equal the authority already committed
+  v0.245.0 requires this recipient/key epoch to equal the authority already committed
   by the grant, so delivery metadata cannot redirect an activated grant;
 - `DeliveryPrepared` reserves channel/provider capacity and stores the exact activated
   grant only in purpose-separated `ProviderHeld`, `VolatileLocked` or `PlatformSealed`
@@ -16120,12 +16127,12 @@ Deliverables:
   or can use it and does not authorize pending-storage cleanup;
 - `PossessionConfirmed` uses a fresh domain-separated challenge/response or admitted
   provider operation bound to grant commitment, recipient, delivery attempt, channel,
-  activation and challenge sequence; v0.111.134 requires proof of recipient private-key
+  activation and challenge sequence; v0.245.0 requires proof of recipient private-key
   control or authenticated decryption, and delivery acknowledgements or knowledge of
   public grant bytes cannot substitute;
 - possession confirmation proves only recipient access to the exact activated grant;
   it cannot satisfy grant consumption, consequence execution, terminal effect, quota/
-  custody release or replay-fence evidence required by v0.111.124/v0.111.127;
+  custody release or replay-fence evidence required by v0.235.0/v0.238.0;
 - protected pending grant material remains until possession confirmation and durable
   issuance/handoff reconciliation; cleanup is idempotent, separately authorized and
   reports unknown provider/platform copies instead of claiming cryptographic erasure;
@@ -16151,7 +16158,7 @@ Exit criteria:
 - Delivery acknowledgement never substitutes for possession confirmation.
 - Possession confirmation never substitutes for grant consumption or effect evidence.
 
-### v0.111.132 - Terminal Hardware Effect Path
+### v0.243.0 - Terminal Hardware Effect Path
 
 Goal: prevent a cloneable hardware authorization output from being replayed through a
 downstream path when hardware slot consumption is not itself the semantic effect.
@@ -16168,9 +16175,9 @@ Deliverables:
 - when hardware emits an authorization token, signature, unwrap result, key handle or
   command for another endpoint, that output is non-authorizing evidence until the final
   effect provider atomically consumes the same admission/effect identity under the
-  permanent v0.111.94 idempotency/replay fence only when its v0.111.136 output class can
+  permanent v0.205.0 idempotency/replay fence only when its v0.247.0 output class can
   remain inert; exportable key/plaintext release is itself a terminal effect;
-- every intermediate layer inherits v0.111.88/v0.111.95 dispatch-before-handoff,
+- every intermediate layer inherits v0.199.0/v0.206.0 dispatch-before-handoff,
   `OutcomeUnknown`, exact query and no-regeneration requirements; automatic middleware
   retry is disabled or included in the complete path and deduplication horizon;
 - proxy, queue, retry/dead-letter, failover and downstream namespaces bind the same
@@ -16184,7 +16191,7 @@ Deliverables:
   token issuance alone proves neither effect completion nor no effect;
 - local filesystem/key/accounting APIs cannot accept a hardware authorization token as
   raw mutation authority; they must be the terminal hardware transaction or satisfy the
-  corresponding v0.111.127 endpoint consumption and result contract;
+  corresponding v0.238.0 endpoint consumption and result contract;
 - hardware/provider rotation and failover preserve consumed slot, admission identity,
   downstream replay fence and query route before successor activation; unavailable
   continuity freezes the effect and retains all charges/custody;
@@ -16206,7 +16213,7 @@ Exit criteria:
 - Cloneable hardware output alone never authorizes downstream mutation.
 - Every terminal claim covers the complete delivery and failover path.
 
-### v0.111.133 - Whole-Lifecycle N-Way Batch Independence
+### v0.244.0 - Whole-Lifecycle N-Way Batch Independence
 
 Goal: prove a consequence batch remains compatible across every success, failure and
 recovery path, not merely through pairwise scopes at admission time.
@@ -16215,7 +16222,7 @@ Deliverables:
 
 - one trusted deterministic consequence evaluator derives each member's canonical
   `LifecycleAuthorityFootprint`; callers may supply hints for diagnostics but cannot
-  provide authoritative read/write/scope/compatibility claims; v0.111.137 defines exact,
+  provide authoritative read/write/scope/compatibility claims; v0.248.0 defines exact,
   committed-superset and refusal handling for runtime-discovered resources;
 - each footprint binds consequence kind/schema, exact read set, write set, authority/
   permit/slot consumption, dependency edges, provider/hardware operations, key/custody/
@@ -16239,11 +16246,11 @@ Deliverables:
   key, compensation or terminal evidence requires a later composite head;
 - canonical batch proof binds complete footprint vector, N-way invariant result,
   deterministic member order, aggregate budgets/capacity and expected head; provider
-  re-evaluates or verifies the proof before the all-or-none CAS; v0.111.137 defines the
+  re-evaluates or verifies the proof before the all-or-none CAS; v0.248.0 defines the
   admitted proof/attestation suites and prohibits trusting a serialized assertion;
 - model/property tests permute execution, response loss, ambiguity, terminal evidence,
   abort, compensation, cleanup and reconciliation order and prove all permitted traces
-  reach equivalent allowed terminal semantic projections under v0.111.137 while
+  reach equivalent allowed terminal semantic projections under v0.248.0 while
   retaining distinct physical WAL/event roots and ordering evidence;
 - evaluator work has protocol-fixed members, footprint entries, state combinations,
   dependency edges, bytes and steps; limit exhaustion refuses before reservation and
@@ -16270,14 +16277,14 @@ Exit criteria:
 - N-way invariant checking rejects higher-order conflicts that pairwise checks miss.
 - Every permitted execution/failure ordering reaches an equivalent allowed terminal set.
 
-### v0.111.134 - Recipient-Bound Offline Grant Authority
+### v0.245.0 - Recipient-Bound Offline Grant Authority
 
 Goal: make the intended recipient part of offline grant authority before activation,
 rather than a delivery-time routing or audit claim.
 
 Deliverables:
 
-- canonical `RecipientBoundGrantAuthority` extends the v0.111.124 grant commitment with
+- canonical `RecipientBoundGrantAuthority` extends the v0.235.0 grant commitment with
   realm, issuer, authorized principal, recipient authentication/decryption key ID and
   epoch, audience, purpose, consequence/effect identity, activation identity and one
   closed transferability class;
@@ -16303,10 +16310,10 @@ Deliverables:
   they remain evidence of recipient access only and never become grant-consumption or
   terminal-effect evidence;
 - recipient replacement, key-epoch migration or transfer consumes and permanently
-  retires the old grant authority under the lifecycle-state-specific v0.111.139
+  retires the old grant authority under the lifecycle-state-specific v0.250.0
   transition; no separately identified successor may allocate fresh slot, quota or
   effect authority while the old grant may remain usable, and rewrapping, alias mutation
-  or delivery retry cannot bypass that rule; v0.111.142 requires an enforceable
+  or delivery retry cannot bypass that rule; v0.253.0 requires an enforceable
   recipient-set authority transition for any same-lineage handoff;
 - already possessed authority is not retroactively revoked by recipient/key rotation;
   policy declares expiry and reconciliation behavior, while ambiguous old possession
@@ -16333,7 +16340,7 @@ Exit criteria:
 - Delivery cannot redirect authority by changing recipient metadata.
 - Possession proves control of recipient cryptographic authority, not knowledge of bytes.
 
-### v0.111.135 - Durable Grant Activation Authorization And Abort Fence
+### v0.246.0 - Durable Grant Activation Authorization And Abort Fence
 
 Goal: make external grant activation cryptographically depend on one durable local
 authorization decision and exclude a competing local abort decision.
@@ -16347,7 +16354,7 @@ Deliverables:
   provider/hardware/threshold epoch and exact successor commitment;
 - activation authority is determined by the current active composite head at the local
   authorization preparation; the original issuing head remains immutable provenance
-  but cannot alone authorize activation, and v0.111.138 makes the anchor-side
+  but cannot alone authorize activation, and v0.249.0 makes the anchor-side
   `AuthorizeCurrentConsequence` expected-head CAS the actual authority linearization
   point so local preparation cannot race a later head;
 - local post-issue successors are mutually exclusive:
@@ -16364,7 +16371,7 @@ Deliverables:
 - each threshold participant independently verifies the complete receipts and policy,
   atomically records exactly one activation-or-abort successor in durable participant
   state, and releases its share only after that record; mixed decisions, epochs, roots
-  or delayed shares cannot combine, and v0.111.140 additionally requires intersecting
+  or delayed shares cannot combine, and v0.251.0 additionally requires intersecting
   decision quorums and fenced membership reconfiguration;
 - provider migration carries the exact inert predecessor, activation/abort decision,
   current-head witness, consumed-successor state and query route before successor
@@ -16373,7 +16380,7 @@ Deliverables:
 - response loss remains query-only: local recovery accepts only evidence matching the
   authorization receipt and expected successor, while missing, split-view or ambiguous
   external state remains charged and cannot create another reservation or decision;
-- this milestone specializes the v0.111.115 pre-commit fence for issued offline grants;
+- this milestone specializes the v0.226.0 pre-commit fence for issued offline grants;
   governance may retire permanently ambiguous authority but cannot rewrite an abort as
   activation, claim non-activation without complete evidence or reuse the slot;
 - tests cover activation without either local root, forged/mismatched root fields,
@@ -16397,7 +16404,7 @@ Exit criteria:
 - Activation authorization and abort fencing are mutually exclusive durable successors.
 - A stale clone, old head or migrated provider cannot bypass the local decision.
 
-### v0.111.136 - Hardware Output Authority Taxonomy
+### v0.247.0 - Hardware Output Authority Taxonomy
 
 Goal: classify hardware outputs by the authority already exposed so downstream replay
 fencing is claimed only where it can still provide exactly-once semantics.
@@ -16410,7 +16417,7 @@ Deliverables:
   refuse in protected profiles;
 - an `OpaqueAudienceToken` is encrypted/authenticated for one named final provider and
   binds admission/grant/effect identity, purpose, audience, endpoint, epoch and expiry;
-  it remains inert until that provider consumes it under the v0.111.94 replay fence;
+  it remains inert until that provider consumes it under the v0.205.0 replay fence;
 - a `NonExportableProviderHandle` is usable only through one identified provider/session
   family with rollback-resistant handle state, exact query and permanent effect-ID
   deduplication; export, generic signing/decryption or provider substitution is refused;
@@ -16418,7 +16425,7 @@ Deliverables:
   ID/commitment, downstream endpoint, policy/provider/hardware epochs, expiry and replay-
   fence identity; broad signatures, missing fields or use at another endpoint are
   already reusable authority and are refused for downstream exactly-once claims;
-  v0.111.141 admits this class only when the named final provider atomically consumes it;
+  v0.252.0 admits this class only when the named final provider atomically consumes it;
 - release of a raw key, plaintext, unwrapped secret, seed, generic signature or other
   exportable authority is itself the terminal semantic effect
   `ExportableSecretRelease`; evidence records exposure/ambiguity immediately and Sagnir
@@ -16449,11 +16456,11 @@ Verification:
 Exit criteria:
 
 - Exportable secret release is modeled as the terminal effect and never downstream proof.
-- Only audience-bound tokens, non-exportable handles and v0.111.141 provider-consumed
+- Only audience-bound tokens, non-exportable handles and v0.252.0 provider-consumed
   scoped authorizations can defer authority to a provider.
 - Protected profiles refuse output classes whose replay assumptions cannot be enforced.
 
-### v0.111.137 - Dynamic Batch Footprints And Semantic Projection
+### v0.248.0 - Dynamic Batch Footprints And Semantic Projection
 
 Goal: admit runtime-discovered batch resources only under bounded commitments and prove
 order equivalence over semantic state rather than physical log bytes.
@@ -16514,22 +16521,22 @@ Exit criteria:
 - Batch equivalence preserves distinct audit histories while comparing canonical semantics.
 - Providers rerun an admitted evaluator or verify a sound bound proof/attestation.
 
-### v0.111.138 - Anchor-Ordered Offline Grant Activation
+### v0.249.0 - Anchor-Ordered Offline Grant Activation
 
 Goal: close the current-head time-of-check/time-of-use window by ordering protected
 grant activation through the authoritative external-anchor admission CAS.
 
 Deliverables:
 
-- protected activation extends the local v0.111.135 decision with
+- protected activation extends the local v0.246.0 decision with
   `GrantAnchorAdmissionUnknown -> GrantAnchorAdmitted -> GrantActivated`; local
   `GrantActivationAuthorizedUnknown` is durable preparation and never the current-head
   authority linearization point by itself;
 - before the first anchor request byte, `GrantAnchorAdmissionUnknown` durably consumes
   the one anchor-admission attempt and binds grant/issuance/activation/recipient,
-  both v0.111.135 local roots, current composite head/policy roots, reservation/external
+  both v0.246.0 local roots, current composite head/policy roots, reservation/external
   predecessor, effect identity, charge and anchor request/idempotency identity;
-- the existing v0.111.121/v0.111.126 `AuthorizeCurrentConsequence` expected-head CAS is
+- the existing v0.232.0/v0.237.0 `AuthorizeCurrentConsequence` expected-head CAS is
   the sole current-authority linearization point: it verifies the head is still current,
   atomically records the exact grant activation as an in-flight consequence and returns
   a canonical `GrantAnchorAdmissionReceipt`;
@@ -16538,9 +16545,9 @@ Deliverables:
   after exact query closes the old anchor attempt, `GrantActivationRevalidationFenced`
   permanently consumes that local authorization generation and may prepare a successor
   against the new head without rebasing, changing grant/reservation/capacity or reusing
-  the consumed request/idempotency identity; v0.111.143 requires permanent negative
+  the consumed request/idempotency identity; v0.254.0 requires permanent negative
   replay fencing, complete old-path closure and cumulative generation bounds, while
-  v0.111.144 permits abort instead of another generation;
+  v0.255.0 permits abort instead of another generation;
 - once anchor admission succeeds, later heads cannot retroactively revoke that admitted
   activation: every successor head accounts for the in-flight/terminal consequence, and
   a head transition omitting it is invalid rather than a reason to replay activation;
@@ -16548,7 +16555,7 @@ Deliverables:
   `GrantIssueCommitted`, `GrantActivationAuthorizedUnknown` and
   `GrantAnchorAdmissionReceipt` roots, including their common head/policy/grant/
   reservation/effect fields, before one external `ReservedInert -> Activated` CAS;
-- an anchor receipt is evidence consumed by the exact v0.111.127 endpoint mechanism,
+- an anchor receipt is evidence consumed by the exact v0.238.0 endpoint mechanism,
   not a bearer activation capability; changed provider, effect, recipient, charge,
   reservation or local root is conflict and cannot obtain a second admission;
 - response loss at anchor admission is exact query only; provider activation cannot
@@ -16579,7 +16586,7 @@ Exit criteria:
 - Every protected activation is ordered by one anchor expected-head admission CAS.
 - Head advancement either precedes and refuses admission or follows an accounted admission.
 
-### v0.111.139 - Lifecycle-Safe Grant Recipient Migration
+### v0.250.0 - Lifecycle-Safe Grant Recipient Migration
 
 Goal: change a grant recipient without creating replacement consumption authority while
 an old activated or delivered grant may still be usable.
@@ -16594,7 +16601,7 @@ Deliverables:
   cancellation proves the old reservation cannot activate and its charge/slot state is
   reconciled; the replacement is a fresh issuance, never an alias mutation;
 - `GrantIssueCommitted` or `FinalGrantSealed` authority that is not activated requires
-  the v0.111.135 abort fence plus terminal external inert-reservation cancellation before
+  the v0.246.0 abort fence plus terminal external inert-reservation cancellation before
   replacement capacity can be allocated;
 - an activated grant with no delivery attempt may be replaced only after enforceable,
   queryable external retirement proves the exact old activation/slot can never execute;
@@ -16608,11 +16615,11 @@ Deliverables:
   governed recipient handoff may issue a new recipient envelope only over the same exact
   external slot, effect/idempotency identity, charge, activation lineage and expiry, so
   old and new copies still compete for one externally enforced semantic effect; this
-  remains `WritePrepared` until v0.111.142 defines the recipient-set authority CAS;
+  remains `WritePrepared` until v0.253.0 defines the recipient-set authority CAS;
 - such same-authority handoff records immutable old/new envelope and recipient roots,
   does not refund or duplicate quota and does not claim old bytes were revoked; profiles
   requiring recipient exclusivity must wait for enforceable old-recipient retirement;
-  v0.111.142 also bounds recipient-set fanout, transition depth, bytes and proof work;
+  v0.253.0 also bounds recipient-set fanout, transition depth, bytes and proof work;
 - consumed, terminally retired or authoritatively expired grants cannot be migrated into
   renewed effect authority; any later effect is a new operation admitted from a current
   head with independent policy, budget and consequence identity;
@@ -16640,7 +16647,7 @@ Exit criteria:
 - Unknown or non-revocable old authority blocks replacement consumption capacity.
 - Same-authority handoff preserves one external effect and discloses non-revocation.
 
-### v0.111.140 - Threshold Grant Decision Non-Equivocation
+### v0.251.0 - Threshold Grant Decision Non-Equivocation
 
 Goal: ensure threshold participants cannot form both valid activation and abort
 certificates for one grant across partitions or membership changes.
@@ -16652,11 +16659,11 @@ Deliverables:
   anchor admission root when activating, decision kind, expected predecessor/successor,
   participant-set root, configuration epoch, `N`, Byzantine fault bound `f`, threshold/
   quorum rule, policy root and provider/threshold namespace;
-- this milestone inherits v0.111.89 non-equivocation in addition to participant-local
+- this milestone inherits v0.200.0 non-equivocation in addition to participant-local
   durability: every activation and abort quorum intersects every conflicting decision
   quorum in more than `f` participants, expressed for symmetric thresholds as
-  `2q > N + f` and verified from the committed configuration; v0.111.145 defines the
-  exact supported symmetric/asymmetric forms, reconfiguration and v0.111.85 rollback
+  `2q > N + f` and verified from the committed configuration; v0.256.0 defines the
+  exact supported symmetric/asymmetric forms, reconfiguration and v0.196.0 rollback
   resistance, and protected threshold operation remains inactive until it completes;
 - an honest participant verifies all local/anchor receipts and atomically records one
   append-only decision successor before releasing a share; it never signs both decision
@@ -16697,7 +16704,7 @@ Exit criteria:
 - Membership change preserves non-equivocation or stops threshold grant decisions.
 - Conflicting certificates freeze authority and are never resolved by local preference.
 
-### v0.111.141 - Scoped Authorization Final-Provider Boundary
+### v0.252.0 - Scoped Authorization Final-Provider Boundary
 
 Goal: admit an exported scoped signature or authorization only when one named final
 provider can enforce its exact audience, effect and replay-fence restrictions.
@@ -16712,7 +16719,7 @@ Deliverables:
   and provider policy reject every other audience, endpoint, purpose, request/effect and
   epoch, and the named final provider is the sole admitted semantic-effect executor;
 - before the effect, that provider atomically consumes the authorization commitment and
-  exact effect/idempotency identity under the permanent v0.111.94 replay fence; exact
+  exact effect/idempotency identity under the permanent v0.205.0 replay fence; exact
   replay returns the original result, while changed input or endpoint is conflict;
 - exported bytes remain copyable and audit reports that exposure; exactly-once refers
   only to final-provider semantic execution, never to signature presentation, transport,
@@ -16752,7 +16759,7 @@ Exit criteria:
 - The final provider atomically replay-fences the exact effect before execution.
 - Any authorization reusable outside that boundary is a terminal exportable release.
 
-### v0.111.142 - Enforceable Grant Recipient-Set Transition
+### v0.253.0 - Enforceable Grant Recipient-Set Transition
 
 Goal: make same-authority recipient handoff an authenticated transition enforced by the
 terminal consumption mechanism rather than an envelope-only rewrap.
@@ -16761,7 +16768,7 @@ Deliverables:
 
 - every recipient-bound grant authority has an immutable lineage ID and a canonical
   `GrantRecipientAuthorityState` whose initial generation/root contains the original
-  recipient/key epoch committed by v0.111.134, plus exact transfer mode and bounds;
+  recipient/key epoch committed by v0.245.0, plus exact transfer mode and bounds;
 - canonical `GrantRecipientSetTransition` binds lineage, unchanged grant/activation/
   external slot/effect/idempotency/charge/expiry identities, old/new recipient-set roots,
   generation, transition class, issuer and policy/anchor authorization, expected
@@ -16770,14 +16777,14 @@ Deliverables:
   `ReplaceExclusive` atomically removes old recipients and adds the new set, while
   `AddConcurrent` explicitly preserves named old recipients alongside the new set;
   omission or an ambiguous transfer mode refuses;
-- current policy, the grant issuer/key epoch and a v0.111.121 current-head anchor
+- current policy, the grant issuer/key epoch and a v0.232.0 current-head anchor
   admission authorize the transition; recipient possession, local rewrap, delivery
   metadata, key rotation or an old grant signature cannot authorize it alone;
 - the terminal provider atomically compares the old recipient-set root and updates to
   exactly one successor before accepting a new-recipient use; hardware or threshold
   consumers provide equivalent rollback-resistant single-successor enforcement and
   exact query, or the transition is unsupported and refused; protected use remains
-  `WritePrepared` until v0.111.146 puts recipient-set mutation and effect consumption on
+  `WritePrepared` until v0.257.0 puts recipient-set mutation and effect consumption on
   the same composite predecessor/CAS;
 - every use presents the immutable grant commitment plus an authenticated current-set
   inclusion/transition proof; an old envelope remains usable only when its recipient is
@@ -16819,7 +16826,7 @@ Exit criteria:
 - Transition mode states exactly whether old recipients remain authorized.
 - Recipient fanout and transition history remain bounded without multiplying effects.
 
-### v0.111.143 - Bounded Anchor Revalidation And Negative Closure
+### v0.254.0 - Bounded Anchor Revalidation And Negative Closure
 
 Goal: prevent delayed failed activation requests and repeated head churn from creating
 ambiguous authority or unbounded grant/anchor state.
@@ -16829,12 +16836,12 @@ Deliverables:
 - canonical `GrantAnchorNonAdmissionFence` binds grant/activation lineage, authorization
   generation, anchor request/idempotency identity, expected head/policy, exact final
   non-admission result/reason, anchor namespace/epoch, predecessor and permanent
-  v0.111.94 replay-fence entry;
+  v0.205.0 replay-fence entry;
 - authenticated final non-admission becomes reusable authority only after the anchor
   durably records that negative fence and exact query proves the request can never
   transition to admitted under any current or migrated anchor/provider epoch;
 - every proxy, queue, retry buffer, dead-letter path, failover endpoint and migration
-  route that could carry the old request satisfies v0.111.100 complete delivery closure
+  route that could carry the old request satisfies v0.211.0 complete delivery closure
   before `GrantActivationRevalidationFenced` can authorize a successor or abort branch;
 - closure binds the complete route inventory, final no-dispatch/non-admission evidence,
   replay-fence retention horizon and provider migration roots; timeout, local absence,
@@ -16847,7 +16854,7 @@ Deliverables:
   every attempt reserves from that budget before local authorization or network output;
 - head churn, denial or response loss beyond any bound leaves the grant inert and
   query-only; no permissive mode, restart, clone, recipient change, anchor migration or
-  governance override silently resets counters or drops retained ambiguity; v0.111.147
+  governance override silently resets counters or drops retained ambiguity; v0.258.0
   reserves non-borrowable capacity so exhaustion cannot block closure or safe abort;
 - a successor generation uses a fresh authorization/request identity, preserves the
   grant/reservation/slot/effect/recipient-set/capacity/expiry lineage and references the
@@ -16875,14 +16882,14 @@ Exit criteria:
 - Revalidation consumes one bounded lineage budget that clones and head churn cannot reset.
 - Exhausted revalidation remains inert rather than growing authority or retained state.
 
-### v0.111.144 - Post-Non-Admission Grant Abort Fence
+### v0.255.0 - Post-Non-Admission Grant Abort Fence
 
 Goal: allow an unwanted grant to terminate safely after final anchor non-admission
 without racing another revalidation generation or leaking reserved authority.
 
 Deliverables:
 
-- after v0.111.143 closes one generation, the only local successors are
+- after v0.254.0 closes one generation, the only local successors are
   `GrantActivationRevalidationFenced -> NextActivationPrepared | GrantAbortFenced`;
   both contend on the same expected lineage/head state CAS and exactly one consumes all
   remaining revalidation-or-abort authority;
@@ -16898,7 +16905,7 @@ Deliverables:
 - terminal external cancellation atomically proves the exact reservation remains inert
   and can never activate; response loss is query-only, and no local cleanup, charge
   release or slot reuse occurs from timeout, absence or partial threshold cancellation;
-  v0.111.147 supplies the protected cancellation/query reserve after normal exhaustion;
+  v0.258.0 supplies the protected cancellation/query reserve after normal exhaustion;
 - if any anchor admission, provider activation, delivery ambiguity, possession or
   consumption evidence exists, this abort branch refuses and the corresponding active/
   ambiguous lifecycle reconciliation remains authoritative;
@@ -16928,7 +16935,7 @@ Exit criteria:
 - External cancellation occurs only after all activation/revalidation authority is fenced.
 - Final non-admission can end an unwanted inert grant without fabricating capacity release.
 
-### v0.111.145 - Exact Rollback-Resistant Threshold Quorum Profiles
+### v0.256.0 - Exact Rollback-Resistant Threshold Quorum Profiles
 
 Goal: make every supported activation/abort threshold configuration prove honest
 intersection and remember prior decisions across rollback and reconfiguration.
@@ -16942,13 +16949,13 @@ Deliverables:
 - every configuration validates `N > 0`, `f < N`, threshold bounds and honest-intersection
   equations for every conflicting pair: symmetric `2q > N + f`; asymmetric
   `2q_activation > N + f`, `2q_abort > N + f` and
-  `q_activation + q_abort > N + f`; v0.111.148 adds checked arithmetic and separates
+  `q_activation + q_abort > N + f`; v0.259.0 adds checked arithmetic and separates
   safety-only configurations from profiles claiming progress with `f` unavailable;
 - participant-set root, exact quorum form/parameters, configuration epoch, fault model,
   decision kind and grant/predecessor roots are included in each share and certificate;
   duplicate identities, weights, aliases or cross-configuration shares never count;
-- this milestone inherits both v0.111.85 rollback-resistant checkpoint continuity and
-  v0.111.89 non-equivocating allocation: participant decision state, signed-share map,
+- this milestone inherits both v0.196.0 rollback-resistant checkpoint continuity and
+  v0.200.0 non-equivocating allocation: participant decision state, signed-share map,
   predecessor/configuration root and conflict evidence share one rollback-resistant
   checkpoint before any share leaves the participant;
 - restored, stale, forked or checkpoint-unverifiable participants are query-only and
@@ -16987,7 +16994,7 @@ Exit criteria:
 - Participant rollback cannot erase a prior signed decision.
 - Weighted/custom or unsafe reconfiguration remains non-authorizing.
 
-### v0.111.146 - Atomic Recipient Validation And Effect Consumption
+### v0.257.0 - Atomic Recipient Validation And Effect Consumption
 
 Goal: eliminate check-before-transition races by validating recipient authority and
 consuming the one effect in the same terminal-authority state transition.
@@ -17005,7 +17012,7 @@ Deliverables:
   epoch is in the expected current set, compares slot/effect/idempotency/request fields,
   moves `Unused -> EffectPending` and records the result/query identity before the first
   semantic effect or downstream handoff; `EffectPending` remains non-dispatching until
-  v0.111.149 selects atomic terminal execution or one fenced executor lifecycle;
+  v0.260.0 selects atomic terminal execution or one fenced executor lifecycle;
 - a queued, retried, prevalidated or restored request cannot carry membership authority
   past this CAS; the terminal executor revalidates the exact expected set root at
   consumption, and a stale root returns conflict/refusal before effect execution;
@@ -17033,7 +17040,7 @@ Deliverables:
   effect; reverse the race, queue/delay old requests, restore clones, race concurrent
   additions/consumers, lose effect responses, migrate providers and exercise hardware/
   threshold split-transaction refusal, plus duplicate internal executors, process death
-  after `EffectPending`, queue redelivery and stale executor generations under v0.111.149.
+  after `EffectPending`, queue redelivery and stale executor generations under v0.260.0.
 
 Verification:
 
@@ -17051,7 +17058,7 @@ Exit criteria:
 - Replacement wins before effect, or consumption wins and permanently closes migration.
 - No cached membership proof can authorize a stale recipient after replacement.
 
-### v0.111.147 - Protected Grant Revalidation Recovery Reserve
+### v0.258.0 - Protected Grant Revalidation Recovery Reserve
 
 Goal: preserve negative closure, conflict retention and safe abort after ordinary
 revalidation budgets are exhausted.
@@ -17072,17 +17079,17 @@ Deliverables:
   recovery cannot borrow, transfer, refund or exhaust this reserve; ordinary budget
   exhaustion changes available actions to exact query/close/conflict/abort only;
 - local and external accounting aggregate cloned workspaces, devices, replicas, sessions,
-  endpoints and identities under the original grant lineage as in v0.111.126; rename,
+  endpoints and identities under the original grant lineage as in v0.237.0; rename,
   restart, recipient transition or provider migration neither multiplies nor resets it;
 - each recovery action consumes or conservatively retains its typed reserve slice before
   work/network output; response loss and ambiguity remain charged while exact query
-  reuses the same operation identity and cannot allocate a replacement slice; v0.111.150
+  reuses the same operation identity and cannot allocate a replacement slice; v0.261.0
   defines the only authenticated close/refund path for unused terminal reserve capacity;
 - route closure may use only the precommitted bounded route inventory and its reserve;
   an unexpected route/epoch freezes the grant and records conflict without converting
   the reserve into unbounded discovery or ordinary activation capacity;
 - abort remains available after every ordinary generation/count/byte/work/receipt limit
-  only after v0.111.143 negative fencing/closure; reserve exhaustion or corruption leaves
+  only after v0.254.0 negative fencing/closure; reserve exhaustion or corruption leaves
   the grant inert/charged and cannot fabricate cancellation, no-effect or capacity release;
 - anchor/provider failover carries remaining reserve, consumed slices, ambiguity and
   query routes under one non-equivocating transition; stale endpoints are query/refusal
@@ -17093,7 +17100,7 @@ Deliverables:
   negative-fence publication, all-route closure, conflict retention, abort fence,
   cancellation and cancellation query remain available; clone/Sybil, response-loss,
   unexpected-route, reserve-corruption and failover cases remain bounded/fail closed;
-  v0.111.150 adds close-response loss, clone double-refund and close-time migration.
+  v0.261.0 adds close-response loss, clone double-refund and close-time migration.
 
 Verification:
 
@@ -17111,7 +17118,7 @@ Exit criteria:
 - Recovery reserve is preallocated, non-borrowable and clone-aggregated.
 - Missing recovery capacity refuses issuance or leaves the grant inert without overclaim.
 
-### v0.111.148 - Threshold Safety, Quorum Reachability And Checked Arithmetic
+### v0.259.0 - Threshold Safety, Quorum Reachability And Checked Arithmetic
 
 Goal: distinguish safe threshold configurations from configurations whose quorum remains
 reachable under a declared total-nonresponse bound, without claiming scheduler/network
@@ -17122,10 +17129,10 @@ Deliverables:
 - every protected threshold capability declares one reachability class:
   `SafetyOnly` or `QuorumReachable { total_nonresponsive: u_total }`, bound into
   configuration roots, shares, certificates, provider policy and CLI/audit output;
-- all classes retain v0.111.145 safety equations; a symmetric reachability profile also
+- all classes retain v0.256.0 safety equations; a symmetric reachability profile also
   requires `q <= N - u_total`, while an asymmetric profile requires both
   `q_activation <= N - u_total` and `q_abort <= N - u_total` so either quorum can be
-  assembled with up to `u_total` nonresponsive participants; v0.111.153 fixes the exact
+  assembled with up to `u_total` nonresponsive participants; v0.264.0 fixes the exact
   Byzantine-withholding overlap semantics;
 - configuration admission derives and verifies the combined feasible region rather than
   assuming safety implies reachability; when the same simple bound is used for Byzantine
@@ -17134,7 +17141,7 @@ Deliverables:
   asymmetric profiles satisfy every same-kind, cross-kind and reachability inequality;
 - a safe configuration whose quorum exceeds `N - u_total` is admitted only as `SafetyOnly`;
   `QuorumReachable` claims only enough potentially responsive participants, not eventual
-  message delivery, fair scheduling or progress; v0.111.151 defines any stronger claim;
+  message delivery, fair scheduling or progress; v0.262.0 defines any stronger claim;
 - decode first enforces protocol-fixed maxima for `N`, `f`, quorum fields, participant
   count and configuration bytes; all `2q`, `N + f`, mixed-quorum sums, subtractions and
   old/new joint checks use widened checked arithmetic with explicit overflow/underflow
@@ -17169,7 +17176,7 @@ Exit criteria:
 - Reachable profiles can assemble a quorum under the declared withholding bound only.
 - Quorum arithmetic cannot wrap, saturate or depend on host integer width.
 
-### v0.111.149 - Fenced Grant Pending-Effect Execution
+### v0.260.0 - Fenced Grant Pending-Effect Execution
 
 Goal: ensure one `EffectPending` grant state cannot be executed by multiple provider
 workers, restored processes or queue consumers.
@@ -17185,7 +17192,7 @@ Deliverables:
   is outside that atomic boundary;
 - `FencedDispatch` uses the authenticated lifecycle `EffectPending ->
   DispatchAuthorizedUnknown -> (EffectTerminal | EffectConflicting)` and inherits
-  v0.111.88, v0.111.95, v0.111.127 and v0.111.132 without weakening any boundary;
+  v0.199.0, v0.206.0, v0.238.0 and v0.243.0 without weakening any boundary;
 - the `EffectPending` successor binds one affine dispatch authority, executor generation,
   fencing token, complete request/effect commitment, downstream idempotency/replay-fence
   identity, provider/queue path, query route and expected result domain;
@@ -17208,8 +17215,8 @@ Deliverables:
   delivery closure and permanent replay-fence retention; automatic retries outside the
   declared path or an endpoint without exact query/deduplication refuse protected mode;
 - hardware is `AtomicTerminalEffect` only when slot consumption and semantic effect are
-  one hardware transaction; emitted tokens/handles/signatures follow v0.111.132/
-  v0.111.141 and the complete fenced downstream path instead;
+  one hardware transaction; emitted tokens/handles/signatures follow v0.243.0/
+  v0.252.0 and the complete fenced downstream path instead;
 - provider migration/reconfiguration carries pending executor generation, dispatch
   authority/fence, unknown state, replay map, queue inventory, result and query route
   before serving dispatch or query; stale epochs cannot dispatch;
@@ -17234,7 +17241,7 @@ Exit criteria:
 - No stale worker or restored process can hand off an already-owned pending effect.
 - Post-dispatch uncertainty resolves by exact query, never redispatch.
 
-### v0.111.150 - Recovery Reserve Terminal Closure And Refund
+### v0.261.0 - Recovery Reserve Terminal Closure And Refund
 
 Goal: return unused revalidation recovery capacity exactly once only after every
 operation and delayed route is terminally closed.
@@ -17246,7 +17253,7 @@ Deliverables:
   ambiguous/remaining slices, accounting provider/epoch, closure operation identity,
   predecessor and resulting local/external accounting roots;
 - close preflight proves every activation/revalidation generation is admitted-terminal or
-  permanently negative-fenced, every route has v0.111.100 closure, cancellation or
+  permanently negative-fenced, every route has v0.211.0 closure, cancellation or
   activation result is reconciled and no pending conflict, query, executor, recipient-
   set migration, provider migration or delayed provider epoch can consume reserve;
 - `RecoveryReserveClosing` atomically consumes all remaining close/refund authority and
@@ -17256,7 +17263,7 @@ Deliverables:
   publishes one authenticated `RecoveryReserveReleaseReceipt` for only the verified
   unused slices; spent slices remain charged, while ambiguous, conflict-retention and
   unavailable-provider slices block entry into `RecoveryReserveClosing` until their own
-  terminal proof or admitted permanent-retention disposition exists; v0.111.152 fixes
+  terminal proof or admitted permanent-retention disposition exists; v0.263.0 fixes
   the complete slice partition and prohibits unresolved residuals inside `Closed`;
 - response loss while closing remains charged and query-only; exact retry/query returns
   the original release result, while changed slice counts, roots, grant, provider epoch
@@ -17293,7 +17300,7 @@ Exit criteria:
 - One authenticated accounting transition returns each unused slice at most once.
 - Closing response loss remains charged and query-only across clone and migration.
 
-### v0.111.151 - Threshold Reachability And Eventual Progress Contract
+### v0.262.0 - Threshold Reachability And Eventual Progress Contract
 
 Goal: separate Byzantine safety, quorum reachability and eventual protocol progress
 under explicit network, scheduler, reconfiguration and resource assumptions.
@@ -17302,12 +17309,12 @@ Deliverables:
 
 - canonical `ThresholdFaultModel` separates `byzantine_or_equivocating: b` from
   `total_nonresponsive: u_total`; safety intersections use `b`, quorum reachability uses
-  `u_total`, and v0.111.153 defines Byzantine-withholding overlap and joint-configuration
+  `u_total`, and v0.264.0 defines Byzantine-withholding overlap and joint-configuration
   counting precisely; a simple profile may commit `b = u_total = f` without making
   equality implicit;
-- v0.111.145 equations become symmetric `2q > N + b` and asymmetric
+- v0.256.0 equations become symmetric `2q > N + b` and asymmetric
   `2q_activation > N + b`, `2q_abort > N + b`,
-  `q_activation + q_abort > N + b`; v0.111.148 reachability becomes
+  `q_activation + q_abort > N + b`; v0.259.0 reachability becomes
   `q <= N - u_total` for each required decision, all under widened checked arithmetic;
 - capability classes are `SafetyOnly`, `QuorumReachable` and
   `EventuallySynchronousProgress`; the first two make no scheduler/message-delivery
@@ -17324,7 +17331,7 @@ Deliverables:
   retained-evidence budgets apply before and after stabilization; dedicated decision/
   reconciliation reserves prevent ordinary floods from blocking already admitted work,
   while exhausted assumptions produce explicit unavailable state rather than false progress;
-  v0.111.154 defines the capacity-at-stabilization premise and temporal liveness model;
+  v0.265.0 defines the capacity-at-stabilization premise and temporal liveness model;
 - partitions, perpetual message loss, unstable reconfiguration, insufficient authenticated
   delivery or unfair scheduling preserve safety but invalidate the progress capability;
   no bounded-time progress claim is made in a fully asynchronous or indefinitely
@@ -17358,7 +17365,7 @@ Exit criteria:
 - Eventual progress is claimed only under explicit eventual-synchrony and fairness assumptions.
 - Fully asynchronous or indefinitely partitioned execution has no bounded-time progress claim.
 
-### v0.111.152 - Complete Recovery Reserve Slice Disposition
+### v0.263.0 - Complete Recovery Reserve Slice Disposition
 
 Goal: close a recovery reserve only after every slice has a terminal accounting
 disposition, with no unresolved residual hidden inside a terminal state.
@@ -17414,7 +17421,7 @@ Exit criteria:
 - Every initial slice has exactly one terminal disposition before any refund is credited.
 - A late-resolving slice delays closure without enabling partial or duplicate release.
 
-### v0.111.153 - Total-Nonresponsive Threshold Fault Semantics
+### v0.264.0 - Total-Nonresponsive Threshold Fault Semantics
 
 Goal: make quorum reachability count every participant that does not respond, including
 Byzantine participants that withhold, under one precise old/new configuration model.
@@ -17465,7 +17472,7 @@ Exit criteria:
 - Every reachability equation and joint configuration uses the same explicit set model.
 - Exceeding the reachability premise changes availability state, never quorum safety.
 
-### v0.111.154 - Resource-Sound Temporal Progress Verification
+### v0.265.0 - Resource-Sound Temporal Progress Verification
 
 Goal: claim eventual progress only when eventual synchrony, fairness and sufficient
 decision/reconciliation capacity all hold at the stabilization point.
@@ -17474,7 +17481,7 @@ Deliverables:
 
 - `EventuallySynchronousProgress` binds a canonical `ProgressResourcePremise` covering
   the minimum retry, coordinator-generation, message, byte/work, in-flight, evidence and
-  reconciliation capacity required for one complete bounded decision round; v0.111.155
+  reconciliation capacity required for one complete bounded decision round; v0.266.0
   turns that premise into one affine per-request reservation rather than a shared check;
 - because the pre-stabilization period is unbounded, finite cumulative budgets do not by
   themselves prove liveness: the progress claim is conditional on the complete resource
@@ -17507,7 +17514,7 @@ Deliverables:
 - tests place stabilization immediately before, at and after resource exhaustion; vary
   `B`/`U_total` overlap, fair and unfair schedules, Byzantine coordinators, resource
   renewal, restart/clone attempts, joint reconfiguration and permanent partition; the
-  temporal model also races concurrent status/reservation CAS attempts under v0.111.155.
+  temporal model also races concurrent status/reservation CAS attempts under v0.266.0.
 
 Verification:
 
@@ -17517,7 +17524,7 @@ Verification:
 - `cargo test -p sagnir-policy`
 - `cargo test -p sagnir-sync`
 - temporal model checking under explicit fairness/eventual-synchrony/resource assumptions;
-- composed v0.111.155 model proves progress-status iff one matching aggregate reservation
+- composed v0.266.0 model proves progress-status iff one matching aggregate reservation
   owns the complete premise and concurrent capacity/status CAS attempts cannot overbook it;
 - stabilization-boundary, exhaustion, renewal and joint-consensus liveness suite.
 
@@ -17528,7 +17535,7 @@ Exit criteria:
 - Arbitrary pre-stabilization execution may exhaust progress, but cannot violate safety
   or fabricate renewed capacity.
 
-### v0.111.155 - Affine Per-Request Progress Round Reservation
+### v0.266.0 - Affine Per-Request Progress Round Reservation
 
 Goal: prevent concurrent requests, restored clones or coordinator generations from
 advertising eventual progress against the same remaining decision capacity.
@@ -17536,12 +17543,12 @@ advertising eventual progress against the same remaining decision capacity.
 Deliverables:
 
 - the provisional request lifecycle separates eligible, reservation-unknown, reserved,
-  active/query-only and terminal conditions; v0.111.157 fixes the canonical request-state
+  active/query-only and terminal conditions; v0.268.0 fixes the canonical request-state
   names and keeps them distinct from aggregate capability availability;
   eligible/reservation-unknown requests are non-authorizing/query-only and may advertise
   at most `QuorumReachable`;
 - the transition to `ProgressRoundReserved` atomically compares the current authenticated
-  provider-capacity root, verifies the complete v0.111.154 resource premise, reserves its
+  provider-capacity root, verifies the complete v0.265.0 resource premise, reserves its
   exact worst-case capacity and publishes `EventuallySynchronousProgress` status in one
   expected-root CAS; no separate status check, optimistic promise or local lock can grant
   the progress class;
@@ -17564,11 +17571,11 @@ Deliverables:
   and reservation identity; exact replay returns the existing pending/active/terminal
   result, while a changed request, epoch, vector or provider root cannot share it;
 - loss or ambiguity of the reservation response remains fully charged and query-only;
-  another reservation is forbidden until v0.111.156 permanently fences authenticated
+  another reservation is forbidden until v0.267.0 permanently fences authenticated
   non-admission and closes every delivery route, or the original request reaches an
   admitted terminal state;
 - a capability may become unavailable immediately, but request terminality requires exact
-  reservation/result query and complete downstream closure under v0.111.157; otherwise
+  reservation/result query and complete downstream closure under v0.268.0; otherwise
   the request remains reservation-unknown or active/query-only with its full charge;
 - an `Active` request consumes only the reserved vector and records coordinator/retry/work/
   evidence usage monotonically; exhausting a dimension changes capability availability
@@ -17596,7 +17603,7 @@ Verification:
 - `cargo test -p sagnir-policy`
 - `cargo test -p sagnir-sync`
 - eligible/reservation-unknown/reserve-CAS/reserved/active/query-only/terminal/
-  closed-unavailable accounting model, finalized by v0.111.157;
+  closed-unavailable accounting model, finalized by v0.268.0;
 - concurrent-admission, clone-replay, Byzantine-coordinator and joint-reservation suite.
 
 Exit criteria:
@@ -17605,7 +17612,7 @@ Exit criteria:
 - Live reservations cannot oversubscribe any authenticated provider-capacity dimension.
 - Ambiguous admission stays charged and terminal release/refund occurs exactly once.
 
-### v0.111.156 - Progress Reservation Non-Admission Fence And Route Closure
+### v0.267.0 - Progress Reservation Non-Admission Fence And Route Closure
 
 Goal: prevent a delayed old reservation request from consuming capacity after a negative
 query and a successor reservation generation.
@@ -17622,7 +17629,7 @@ Deliverables:
   old identity can never become admitted in any current or migrated provider epoch;
 - every proxy, queue, retry/dead-letter buffer, coordinator handoff, failover endpoint and
   migration route that could carry the old reservation request satisfies the complete
-  v0.111.100 delivery-closure contract before any successor generation is prepared;
+  v0.211.0 delivery-closure contract before any successor generation is prepared;
 - canonical `ProgressReservationGenerationClosed` binds the negative fence, complete
   route inventory/closure proof, conservative capacity disposition, retained query/
   refusal routes and previous generation root in one authenticated successor;
@@ -17662,7 +17669,7 @@ Exit criteria:
 - Every retry generation descends from permanent non-admission fencing and route closure.
 - Successful request identities are permanently single-use.
 
-### v0.111.157 - Progress Capability And Request State Separation
+### v0.268.0 - Progress Capability And Request State Separation
 
 Goal: separate aggregate progress availability from the terminality and query obligations
 of each reserved request.
@@ -17673,19 +17680,19 @@ Deliverables:
   Unavailable, Recovering}` and canonical per-request axis is
   `ProgressRequestState::{Eligible, ReservationUnknown, Reserved, Active,
   ActiveQueryOnly, Terminal, ClosedUnavailable}`; encoded tags, transitions, policy,
-  status, logs and proofs never reuse one axis as the other; v0.111.159 adds the distinct
+  status, logs and proofs never reuse one axis as the other; v0.270.0 adds the distinct
   pre-dispatch `ReservedPaused` state and fixes request-local execution eligibility;
 - capability status derives from authenticated aggregate capacity, provider/connectivity,
   synchrony/fairness premise and reconfiguration health; it may become `Unavailable`
-  immediately when capacity falls below v0.111.154/v0.111.155 requirements without
+  immediately when capacity falls below v0.265.0/v0.266.0 requirements without
   asserting that any request is closed, unreserved, no-effect or refundable;
-- aggregate capability loss does not itself choose a request successor; v0.111.159 derives
+- aggregate capability loss does not itself choose a request successor; v0.270.0 derives
   each request's continued execution, pre-dispatch pause or post-handoff query-only state
   from that request's own reservation/path/configuration/dispatch evidence;
 - `ReservationUnknown` remains conservative and query-only regardless of capability
   recovery; status `Recovering` or `Healthy` cannot promote it to `Reserved`, redispatch
   it or allocate a replacement without the exact authenticated reservation result;
-- `ClosedUnavailable` is terminal only after v0.111.156 negative fencing/route closure or
+- `ClosedUnavailable` is terminal only after v0.267.0 negative fencing/route closure or
   complete reservation/operation/result query proves that no current, delayed or migrated
   provider can reserve, consume or retain the vector and terminal accounting is reconciled;
 - `Terminal` records a successfully completed or otherwise terminally reconciled request
@@ -17724,7 +17731,7 @@ Exit criteria:
 - Ambiguous requests remain charged and query-only across exhaustion and recovery.
 - Only fully reconciled terminal request states can release capacity exactly once.
 
-### v0.111.158 - Bounded Progress Reservation Attempts And Protected Closure Reserve
+### v0.269.0 - Bounded Progress Reservation Attempts And Protected Closure Reserve
 
 Goal: bound retry-generation history while preserving enough non-borrowable capacity to
 query, fence and close the final non-admitted reservation attempt.
@@ -17752,20 +17759,20 @@ Deliverables:
   reserve slices; each closure action conservatively consumes its typed slice before
   work/output and response loss remains charged/query-only under the same operation ID;
 - each successor generation atomically advances the lineage counters and references the
-  v0.111.156 negative fence/route-closure root for its predecessor before its first byte;
+  v0.267.0 negative fence/route-closure root for its predecessor before its first byte;
   concurrent clones/processes contend on one expected lineage root and cannot allocate
   independent generation or provider-attempt budgets;
 - when any retry bound is exhausted, the current attempt retains exact query, negative-
   fence, route-closure, conflict-retention and final-generation-close authority from the
   protected reserve, but no successor generation can be created;
-- after exhausted-lineage closure completes, v0.111.157/v0.111.159 may move the request
+- after exhausted-lineage closure completes, v0.268.0/v0.270.0 may move the request
   toward reconciled `ClosedUnavailable`; exhaustion alone cannot fabricate closure,
   terminal non-admission, no-effect evidence or capacity release;
 - restart, clone, rename, identity churn, provider migration/failover, compaction and
   archive/restore preserve cumulative counters, retained evidence, remaining reserve and
   closed-generation roots; missing continuity freezes retries and keeps capacity charged;
 - terminal lineage accounting partitions consumed/unused/permanently retained reserve
-  slices under the v0.111.150/v0.111.152 exactly-once closure rules and retains the unique
+  slices under the v0.261.0/v0.263.0 exactly-once closure rules and retains the unique
   release/refusal roots needed to prevent replay refunds;
 - privacy profiles expose only admitted attempt/resource buckets while encrypted exact
   lineage counters and reserve accounting remain authoritative;
@@ -17790,7 +17797,7 @@ Exit criteria:
 - Ordinary work cannot consume the reserve required to close the final attempt.
 - Exhaustion disables successors but preserves bounded query/fence/closure authority.
 
-### v0.111.159 - Request-Local Progress Eligibility And Reserved Pause
+### v0.270.0 - Request-Local Progress Eligibility And Reserved Pause
 
 Goal: let valid existing reservations continue when aggregate capacity blocks only new
 admissions, while making pre-dispatch pause and post-handoff ambiguity explicit.
@@ -17802,8 +17809,8 @@ Deliverables:
   pausing or changing any existing request that already owns a valid affine reservation;
 - canonical request axis becomes `ProgressRequestState::{Eligible, ReservationUnknown,
   Reserved, ReservedPaused, Active, ActiveQueryOnly, Terminal, ClosedUnavailable}`;
-  all encoded transitions and unknown variants fail closed under the v0.111.157 dual-axis
-  contract; v0.111.160 adds durable dispatch-authorized ambiguity and v0.111.164 adds
+  all encoded transitions and unknown variants fail closed under the v0.268.0 dual-axis
+  contract; v0.271.0 adds durable dispatch-authorized ambiguity and v0.275.0 adds
   protected `DispatchAnchorAdmissionUnknown`/`DispatchAnchorAdmitted` substates;
 - each request derives a separate authenticated `ProgressExecutionEligibility` from its
   reservation integrity/remaining typed slices, exact provider and route health,
@@ -17815,14 +17822,14 @@ Deliverables:
 - before any dispatch/handoff authorization or output, temporary request-local provider,
   path, connectivity, synchrony or configuration uncertainty moves `Reserved ->
   ReservedPaused`; the complete reservation remains charged and no output is permitted;
-  v0.111.160 makes pause contend atomically with dispatch on one request-authority root;
+  v0.271.0 makes pause contend atomically with dispatch on one request-authority root;
 - `ReservedPaused -> Reserved` requires one exact authenticated expected-root CAS that
   revalidates the unchanged reservation, provider/path, current configuration/policy,
   remaining request-owned slices and absence of any dispatch/handoff-unknown successor;
-  it does not require free aggregate capacity for another admission; v0.111.161 bounds
+  it does not require free aggregate capacity for another admission; v0.272.0 bounds
   cumulative pause/revalidation churn and preserves final query/closure capacity, while
-  v0.111.162 proves that changed eligibility remains inside the original resource and
-  authority envelope before resume and v0.111.163 keeps that proof non-authorizing;
+  v0.273.0 proves that changed eligibility remains inside the original resource and
+  authority envelope before resume and v0.274.0 keeps that proof non-authorizing;
 - once any downstream handoff is authorized/unknown, request-local failure moves the
   request to monotonic `ActiveQueryOnly`; it can advance only by exact query/reconciliation
   to `Terminal`/`ClosedUnavailable` and can never return to `Active`, `ReservedPaused` or
@@ -17860,7 +17867,7 @@ Exit criteria:
 - Pre-dispatch uncertainty pauses and revalidates without releasing capacity.
 - Post-handoff query-only state is monotonic and can never dispatch again.
 
-### v0.111.160 - Atomic Progress Pause, Dispatch And Resume Authority
+### v0.271.0 - Atomic Progress Pause, Dispatch And Resume Authority
 
 Goal: ensure pause, dispatch authorization and paused-request recovery have one shared
 linearization point and cannot expose a hidden dispatch-capable path.
@@ -17872,7 +17879,7 @@ Deliverables:
   executor generation/fence, affine dispatch authority, handle-materialization state,
   dispatch/handoff identity, remaining typed slices, query route and predecessor root;
 - `Reserved -> ReservedPaused`, unprotected `Reserved -> DispatchAuthorizedUnknown`,
-  protected `Reserved -> DispatchAnchorAdmissionUnknown` under v0.111.164 and
+  protected `Reserved -> DispatchAnchorAdmissionUnknown` under v0.275.0 and
   `ReservedPaused -> Reserved` each consume the exact same authenticated
   `ProgressRequestAuthorityState` predecessor through one expected-state CAS; separate
   tables, caches, local locks or eventually consistent roots cannot authorize branches;
@@ -17882,10 +17889,10 @@ Deliverables:
 - the dispatch branch consumes the same reserved predecessor; unprotected dispatch
   publishes and durably flushes `DispatchAuthorizedUnknown` before any provider/client/
   queue/device handle, downstream byte, queue visibility or semantic output, while
-  protected dispatch first publishes v0.111.164 `DispatchAnchorAdmissionUnknown` before
+  protected dispatch first publishes v0.275.0 `DispatchAnchorAdmissionUnknown` before
   its first anchor byte and reaches dispatch unknown only after exact admitted receipt;
   once either branch wins, pause/resume is illegal and ambiguity is query-only;
-  v0.111.163 additionally requires fresh policy and protected-consequence admission at
+  v0.274.0 additionally requires fresh policy and protected-consequence admission at
   dispatch rather than treating compatible `Reserved` state as execution authority;
 - a dispatch-capable handle is an affine, generation-bound result of the successful
   dispatch transition and is materialized only after required state and directory/
@@ -17921,7 +17928,7 @@ Exit criteria:
 - Pause winners expose no dispatch-capable handle; dispatch winners cannot later pause.
 - Revalidation cannot race a prepared, hidden or already-authorized handoff.
 
-### v0.111.161 - Bounded Progress Pause Lineage And Protected Final Closure
+### v0.272.0 - Bounded Progress Pause Lineage And Protected Final Closure
 
 Goal: bound repeated pause/revalidation churn while retaining enough non-borrowable
 capacity to determine and close the request after exhaustion.
@@ -17951,13 +17958,13 @@ Deliverables:
   `ReservedPaused` while the protected reserve permits only its precommitted final exact
   query, conflict retention, fence/closure and reconciled transition toward
   `ClosedUnavailable`;
-- if dispatch/handoff became unknown before exhaustion was observed, v0.111.160 wins and
+- if dispatch/handoff became unknown before exhaustion was observed, v0.271.0 wins and
   the request is monotonic `ActiveQueryOnly`; pause-lineage exhaustion cannot revoke,
   redispatch or classify that handoff and its protected query/closure path remains intact;
 - restart, clone, process/device identity change, global recovery, provider migration/
   failover, compaction and archive/restore preserve counters, evidence, remaining reserve,
   executor fences and eligibility roots; missing continuity freezes resume and retains charge;
-- terminal pause-lineage accounting inherits v0.111.150/v0.111.152 exactly-once slice
+- terminal pause-lineage accounting inherits v0.261.0/v0.263.0 exactly-once slice
   disposition, keeping consumed/unused/permanently-retained proof and replay-fence roots;
 - privacy profiles reveal only admitted pause/revalidation buckets while encrypted exact
   counters and accounting remain authoritative;
@@ -17982,7 +17989,7 @@ Exit criteria:
 - Pause-budget exhaustion disables resume but preserves final query/fence/closure capacity.
 - Restart, recovery, migration and clones cannot reset pause counters or rearm dispatch.
 
-### v0.111.162 - Non-Widening Progress Resume Compatibility
+### v0.273.0 - Non-Widening Progress Resume Compatibility
 
 Goal: permit a paused request to resume only when current requirements still fit its
 original affine reservation and authority envelope.
@@ -17990,7 +17997,7 @@ original affine reservation and authority envelope.
 Deliverables:
 
 - canonical `ProgressResumeCompatibilityProof` binds operation/request/reservation,
-  paused request-authority and pause-lineage roots, original and current v0.111.154
+  paused request-authority and pause-lineage roots, original and current v0.265.0
   `ProgressResourcePremise` roots, original and current configuration/policy/provider/
   path epochs, original admitted authority envelope, current required resource vector,
   remaining typed reserved vector, compatibility result and predecessor root;
@@ -18015,7 +18022,7 @@ Deliverables:
   increased retry/coordinator bounds, added/fallback routes, larger evidence retention,
   wider participant sets, stronger progress classes or result-domain expansion refuse
   resume even when current aggregate capacity appears available;
-- the v0.111.160 shared request-authority CAS commits the old and new premise/
+- the v0.271.0 shared request-authority CAS commits the old and new premise/
   configuration roots plus the typed compatibility proof in the same transition that
   consumes `ReservedPaused` and mints the fresh bounded executor generation; stale,
   substituted or separately published proof/configuration roots cannot satisfy resume;
@@ -18025,13 +18032,13 @@ Deliverables:
   cannot masquerade as resume; any widening requires terminal reconciliation of the old
   charged request followed by admission of a new operation under a new identity;
 - compatibility failure leaves the request charged `ReservedPaused` and query-only; the
-  bounded v0.111.161 protected final query/fence/conflict/closure path remains available,
+  bounded v0.272.0 protected final query/fence/conflict/closure path remains available,
   but repeated policy edits, reconnects or migration attempts cannot create new ordinary
   revalidation capacity or release the reservation;
 - successful path/connectivity revalidation proves only current eligibility under the
   bound premise; it does not prove that the unknown stabilization point has occurred,
   establish future fair delivery or make eventual progress unconditional. Progress claims
-  remain explicitly conditional on v0.111.151/v0.111.154 eventual-synchrony assumptions;
+  remain explicitly conditional on v0.262.0/v0.265.0 eventual-synchrony assumptions;
 - restart, clone, restore, compaction and provider migration preserve the original premise,
   authority envelope, remaining vector, compatibility lineage and refusal evidence;
   missing continuity freezes resume and retains the charge;
@@ -18057,7 +18064,7 @@ Exit criteria:
 - Ordinary revalidation cannot widen request semantics, authority or progress claims.
 - Connectivity recovery is never represented as proof of protocol stabilization.
 
-### v0.111.163 - Fresh Dispatch Authorization After Compatible Resume
+### v0.274.0 - Fresh Dispatch Authorization After Compatible Resume
 
 Goal: ensure resource-compatible resume never substitutes for current policy and
 consequence authorization at dispatch.
@@ -18072,14 +18079,14 @@ Deliverables:
   dispatch re-evaluates current policy against the exact principal/key epoch, request/
   effect, scope, result domain, configuration root and request-authority predecessor, and
   requires an explicit positive decision under the still-current policy root;
-- protected consequences independently acquire or revalidate the exact v0.111.121
+- protected consequences independently acquire or revalidate the exact v0.232.0
   `CurrentCompositeHeadAuthorityWitness` and consume it through the anchor-side
   `AuthorizeCurrentConsequence` expected-head CAS at the established consequence
   linearization point; compatibility state/proofs are not inputs that can satisfy,
   weaken, refresh or bypass that authority requirement;
-- the v0.111.160 dispatch transition binds the fresh policy decision and, where required,
+- the v0.271.0 dispatch transition binds the fresh policy decision and, where required,
   exact anchor admission receipt/current composite-head root before durable
-  `DispatchAuthorizedUnknown`, handle materialization or first output; v0.111.164 inserts
+  `DispatchAuthorizedUnknown`, handle materialization or first output; v0.275.0 inserts
   durable local anchor-admission unknown/admitted states before that dispatch transition;
   policy denial, principal/key revocation, head advancement, saturation or authority-epoch
   change that linearizes before anchor admission invalidates dispatch even when every
@@ -18087,7 +18094,7 @@ Deliverables:
 - compatibility CAS and dispatch admission contend with policy/head/revocation/saturation
   transitions through authenticated expected roots; local and external CAS operations are
   not described as one atomic transaction unless an admitted profile proves they share a
-  transactional failure domain, and v0.111.164 otherwise reconciles the durable unknown;
+  transactional failure domain, and v0.275.0 otherwise reconciles the durable unknown;
 - resume does not refresh issuance time, expiry, freshness, principal/key validity,
   policy epoch, head witness, authorization generation or historical operation token;
   stale but historically verifiable authority remains non-authorizing and cannot be
@@ -18095,8 +18102,8 @@ Deliverables:
 - current authorization failure leaves the request charged `Reserved` or returns it to
   a bounded `ReservedPaused` successor through the shared authority CAS without output
   only before external admission or after authenticated final non-admission and permanent
-  replay fencing under v0.111.164; repeated denial/revocation/head churn consumes the
-  v0.111.161 lineage and cannot mint additional reservation, compatibility, policy-query
+  replay fencing under v0.275.0; repeated denial/revocation/head churn consumes the
+  v0.272.0 lineage and cannot mint additional reservation, compatibility, policy-query
   or anchor-admission capacity;
 - status/audit output distinguishes resource-compatible, current-policy-denied, revoked,
   stale-head, saturated and dispatch-authorized states without presenting compatibility
@@ -18122,7 +18129,7 @@ Exit criteria:
 - Dispatch requires fresh positive policy and protected-consequence authority.
 - Resume cannot refresh or rehabilitate stale, revoked or superseded authority.
 
-### v0.111.164 - Durable Dispatch Anchor Admission Reconciliation
+### v0.275.0 - Durable Dispatch Anchor Admission Reconciliation
 
 Goal: close the cross-system crash window between local dispatch state and external
 current-head consequence admission.
@@ -18134,20 +18141,20 @@ Deliverables:
   DispatchAuthorizedUnknown -> Active`; unknown tags and any shortcut from `Reserved`
   directly to anchor-admitted/dispatch-authorized state fail closed;
 - before the first anchor request byte, one durable expected-root CAS consumes the exact
-  v0.111.160 request-authority predecessor and dispatch generation, publishes
+  v0.271.0 request-authority predecessor and dispatch generation, publishes
   `DispatchAnchorAdmissionUnknown` and binds operation/request/reservation, principal/key,
   policy/configuration/current-head roots, consequence/scope/result domain, remaining
   charge, attempt generation, anchor namespace/epoch/route, unique idempotency identity
-  and the immutable v0.111.165 semantic-dispatch root;
+  and the immutable v0.276.0 semantic-dispatch root;
 - durability of the unknown state and required parent directory/provider metadata is
   confirmed before anchor transport-envelope/frame construction, handle acquisition,
-  connection write, queue visibility or callback registration; v0.111.165 semantic
+  connection write, queue visibility or callback registration; v0.276.0 semantic
   provider-request bytes are already frozen, and a crash before durability sends nothing;
 - while anchor admission is unknown, the request is charged and only exact authenticated
   idempotent query/reconciliation under the same admission identity and route is allowed;
   pause, resume, ordinary revalidation, new dispatch generation, alternate anchor route/
   identity, local abort, capacity release and any dispatch/provider handle are forbidden;
-- the v0.111.121/v0.111.126 `AuthorizeCurrentConsequence` CAS remains the sole authority
+- the v0.232.0/v0.237.0 `AuthorizeCurrentConsequence` CAS remains the sole authority
   linearization point and atomically records the exact in-flight consequence at the
   external anchor; retries/query return the same admitted receipt, authenticated final
   non-admission or explicit still-unknown result without creating another consequence;
@@ -18170,12 +18177,12 @@ Deliverables:
   domain, identical durability/rollback semantics and crash-equivalence to the canonical
   unknown-state protocol; mixed, remote or uncertain deployments must use the full chain;
 - admission/reconciliation/query/fence/route-closure work consumes preallocated typed
-  request and v0.111.158/v0.111.161 protected closure slices before output; response loss,
+  request and v0.269.0/v0.272.0 protected closure slices before output; response loss,
   clones, restart, migration and repeated unknown query cannot top up or reset accounting;
 - migration/failover transfers the complete unknown/admitted record, anchor idempotency
   identity, receipt/query route, current-head accounting and local executor fences before
   reconciliation; stale providers and restored clones remain query-only and cannot fork
-  dispatch; v0.111.166 makes these states durable across every store lifecycle and defines
+  dispatch; v0.277.0 makes these states durable across every store lifecycle and defines
   fail-closed handling when their original anchor can never be queried again;
 - tests crash and race immediately before/after local unknown-state CAS/flush, first anchor
   byte, anchor commit, lost response, local admitted-receipt publication, dispatch-unknown
@@ -18198,7 +18205,7 @@ Exit criteria:
 - Unknown admission permits exact reconciliation only and never a replacement attempt.
 - Admitted consequences always reconcile forward; final non-admission is permanently fenced.
 
-### v0.111.165 - Immutable Semantic Dispatch Commitment
+### v0.276.0 - Immutable Semantic Dispatch Commitment
 
 Goal: freeze the exact protected consequence before anchor admission so later mutable
 state or encoding changes cannot alter what the anchor admitted.
@@ -18206,7 +18213,7 @@ state or encoding changes cannot alter what the anchor admitted.
 Deliverables:
 
 - canonical `SemanticDispatchCommitment` binds operation/request/reservation and
-  consequence/effect identity, canonical v0.111.167 inner semantic-intent digest, staged
+  consequence/effect identity, canonical v0.278.0 inner semantic-intent digest, staged
   immutable input/object roots, endpoint/provider/hardware namespace and
   epoch, downstream idempotency key, result schema/decoder identity and permitted result
   domain, codec/cryptographic suite revision, policy/current-head roots, resource charge
@@ -18220,7 +18227,7 @@ Deliverables:
   staging, durably flushed, re-read/verified and pinned under one non-authorizing staging
   root; the anchor-unknown CAS consumes that root and no mutable worktree/configuration/
   cache/provider callback can supply semantic bytes afterward;
-- only v0.111.167 receipt/proof/consumption wrapping, transport-level connection setup,
+- only v0.278.0 receipt/proof/consumption wrapping, transport-level connection setup,
   authenticated channel establishment and outer-frame materialization over the frozen
   semantic root may occur after anchor admission; re-encoding the inner intent under a
   newer codec, selecting defaults, resolving paths, adding semantic outer headers or
@@ -18231,7 +18238,7 @@ Deliverables:
   silently regenerate it from newer source/configuration;
 - `AuthorizeCurrentConsequence`, its anchor admission receipt,
   `DispatchAnchorAdmissionUnknown`, `DispatchAnchorAdmitted`,
-  `DispatchAuthorizedUnknown` and v0.111.127 `ConsequenceExecutionConsumption` all bind
+  `DispatchAuthorizedUnknown` and v0.238.0 `ConsequenceExecutionConsumption` all bind
   the identical semantic-dispatch root; mismatch is permanent conflict/query-only and
   cannot be repaired by substituting a receipt, endpoint, decoder or downstream key;
 - successful anchor admission pins the exact semantic material, decoder and suite for
@@ -18242,7 +18249,7 @@ Deliverables:
   request bytes or downstream idempotency identity; migration transfers the exact bound
   execution/query capability or remains query-only. A different endpoint/request requires
   authenticated final non-admission fencing before a new operation, or governed permanent
-  scope abandonment under v0.111.166 when non-admission can never be established;
+  scope abandonment under v0.277.0 when non-admission can never be established;
 - privacy profiles expose only admitted coarse semantic-dispatch state while roots,
   endpoint identity, staged object membership, decoder/suite and custody generation remain
   encrypted and absent from blind-store names, public logs and untrusted diagnostics;
@@ -18268,7 +18275,7 @@ Exit criteria:
 - Post-freeze mutable state or encoding changes cannot alter admitted semantic dispatch.
 - Exact reconstruction never depends on unpinned current worktree or configuration state.
 
-### v0.111.166 - Persistent Anchor Admission Lifecycle And Scope Abandonment
+### v0.277.0 - Persistent Anchor Admission Lifecycle And Scope Abandonment
 
 Goal: preserve anchor admission ambiguity across every durable-store lifecycle and fail
 closed when the original idempotency namespace becomes permanently unreachable.
@@ -18307,13 +18314,13 @@ Deliverables:
   authorization; it explicitly does not claim non-admission, no-effect or safe refund;
 - scope abandonment always blocks local retry, replacement admission, compensation
   selection, dependency reopening and authority reuse; it may claim global execution
-  refusal or physical resource release only under v0.111.168 enforceable endpoint fencing.
+  refusal or physical resource release only under v0.279.0 enforceable endpoint fencing.
   Local-authority-only abandonment preserves permanent possible execution, charge and
   custody while historical possible-admission evidence remains verifiable;
 - if the anchor/idempotency namespace later returns or a delayed receipt appears, exact
   reconciliation records admitted/non-admitted evidence for audit and conflict handling
   without reversing local scope disablement or refunding the old charge; whether endpoint
-  execution is refused or remains possible is determined only by the v0.111.168 fence-
+  execution is refused or remains possible is determined only by the v0.279.0 fence-
   versus-consumption result and assurance class;
 - abandonment authority cannot come solely from the unreachable anchor, local operator or
   stale governance snapshot; policy names an independent threshold/current-head mechanism,
@@ -18341,7 +18348,7 @@ Exit criteria:
 - Permanent unreachability means indefinite charge or governed permanent disablement.
 - Timeout, expiry, migration and budget exhaustion never imply non-admission or refund.
 
-### v0.111.167 - Non-Circular Authorized Dispatch Envelope
+### v0.278.0 - Non-Circular Authorized Dispatch Envelope
 
 Goal: separate the immutable effect admitted by the anchor from receipt-bearing execution
 wrapping so no request commitment depends on its own admission receipt.
@@ -18352,10 +18359,10 @@ Deliverables:
   AnchorAdmissionReceipt(SemanticDispatchRoot) -> AuthorizedDispatchEnvelope`; no format,
   API, digest or documentation uses ambiguous "whole request" language across layers;
 - inner `SemanticDispatchIntent` contains the exact operation/request/reservation,
-  one v0.111.169 stable consequence/effect leaf and its bytes, immutable input/object
+  one v0.280.0 stable consequence/effect leaf and its bytes, immutable input/object
   roots, one logical endpoint/provider/hardware idempotency domain and epoch, downstream
   idempotency key, resource identity/charge, result schema/decoder/domain, codec/suite
-  revision and protected custody generation fixed by v0.111.165, but contains no receipt,
+  revision and protected custody generation fixed by v0.276.0, but contains no receipt,
   proof chain, channel binding or transport authentication;
 - domain-separated `SemanticDispatchRoot` commits the complete canonical inner bytes and
   schema revision using independent test vectors; receipt placeholders, zero/sentinel
@@ -18363,7 +18370,7 @@ Deliverables:
   dependencies are structurally unrepresentable and rejected by decoders/builders;
 - canonical outer `AuthorizedDispatchEnvelope` is constructed only after anchor admission
   and binds the immutable intent bytes or authenticated reference/root, exact anchor
-  receipt, current-head proof chain, v0.111.127 consumption identity, endpoint channel
+  receipt, current-head proof chain, v0.238.0 consumption identity, endpoint channel
   binding, transport authentication, outer codec revision and replay-fenced envelope ID;
 - outer fields are authorization/transport evidence only and cannot select or alter
   endpoint namespace/epoch, effect semantics/bytes, input roots, result domain/schema,
@@ -18378,7 +18385,7 @@ Deliverables:
   noncritical transport fields cannot affect semantic projection or result verification;
 - a receipt from another endpoint, realm, head, consequence, semantic root, resource or
   idempotency identity is substitution conflict even when the effect bytes match; wrapping
-  one intent in multiple envelopes cannot multiply endpoint consumption under v0.111.127;
+  one intent in multiple envelopes cannot multiply endpoint consumption under v0.238.0;
 - protected staging retains canonical inner bytes separately from outer envelopes and
   receipts; checkpoint, compaction, archive, restore and migration preserve layer identity,
   decoder lifetime and root linkage without flattening/re-encoding the inner intent;
@@ -18404,7 +18411,7 @@ Exit criteria:
 - Outer authorization and transport data cannot change the admitted effect.
 - Endpoints independently recompute the inner root before consuming exact authority.
 
-### v0.111.168 - Endpoint-Enforced Abandonment Race Semantics
+### v0.279.0 - Endpoint-Enforced Abandonment Race Semantics
 
 Goal: state exactly whether scope abandonment can prevent an already admitted consequence
 from executing at terminal endpoints.
@@ -18412,7 +18419,7 @@ from executing at terminal endpoints.
 Deliverables:
 
 - canonical `DispatchAnchorAbandonmentAssurance::{EndpointEnforced, LocalAuthorityOnly}`
-  is fixed per v0.111.169 semantic-effect leaf before admission and recorded in semantic
+  is fixed per v0.280.0 semantic-effect leaf before admission and recorded in semantic
   intent, anchor receipt, endpoint capability descriptor, custody/accounting and
   abandonment state; unknown, downgraded or mixed assurance classes fail closed;
 - `EndpointEnforced` requires the leaf's one terminal provider/hardware/quota/key/custody/
@@ -18445,7 +18452,7 @@ Deliverables:
 - policies requesting leaf resource release or non-execution proof require
   `EndpointEnforced` plus a complete leaf fence certificate and refuse endpoints unable to
   provide it before admission; operation-wide claims additionally require the complete
-  v0.111.169 leaf map and aggregate outcome; permissive UI cannot upgrade either claim;
+  v0.280.0 leaf map and aggregate outcome; permissive UI cannot upgrade either claim;
 - migration/failover preserves the consume-or-fence predecessor and blocks a new endpoint
   epoch until the old domain proves consumption, installs/transfers the fence or remains
   conservatively possible; a new route cannot escape an old winning fence or duplicate a
@@ -18474,7 +18481,7 @@ Exit criteria:
 - A consumption winner remains authoritative; a fence winner is permanently refused.
 - Local-only abandonment makes no global prevention, no-effect or safe-release claim.
 
-### v0.111.169 - Leaf-Scoped Dispatch And Composite Outcome Projection
+### v0.280.0 - Leaf-Scoped Dispatch And Composite Outcome Projection
 
 Goal: prevent endpoint-local consume-or-fence winners from being misrepresented as one
 atomic result for a multi-effect operation.
@@ -18501,8 +18508,8 @@ Deliverables:
   contend on the exact plan/inventory generation. A successor inventory cannot activate
   until each old route proves consumption, fence installation/transfer or conservative
   unresolved retention, so no endpoint can appear outside a completed fence certificate;
-- authoritative per-leaf outcomes use the existing v0.111.87 `EffectKnowledgeMap` and
-  v0.111.91 resolution map rather than a scalar operation winner; each leaf records
+- authoritative per-leaf outcomes use the existing v0.198.0 `EffectKnowledgeMap` and
+  v0.202.0 resolution map rather than a scalar operation winner; each leaf records
   consumed-pending/terminal, fenced-before-consumption, unknown, conflict and local-only-
   possibly-executable knowledge with exact endpoint/fence/receipt evidence;
 - deterministic non-authorizing aggregate projection reports `AllLeavesFencedNoExecution`
@@ -18515,7 +18522,7 @@ Deliverables:
 - dependencies, compensation and emergency resolution consume exact leaf witnesses:
   fenced/no-execution leaves cannot satisfy committed-effect dependencies, consumed leaves
   remain authoritative even when siblings were fenced, and partial compensation follows
-  v0.111.91 per-permit rules without pretending irreversible effects rolled back;
+  v0.202.0 per-permit rules without pretending irreversible effects rolled back;
 - resource, quota, custody, key and retention accounting is partitioned per leaf; release/
   refund requires that leaf's exact terminal disposition and ownership proof, while shared
   or unresolved resources remain conservatively charged. Aggregate completion cannot
@@ -18525,7 +18532,7 @@ Deliverables:
   distributed transaction protocol provides durable prepare, one authoritative decision,
   participant fencing, crash/partition recovery and terminal proof; a collection of local
   endpoint CAS winners, coordinator memory or best-effort compensation is insufficient;
-  v0.111.129 all-or-none batch admission/publication does not imply all-or-none execution;
+  v0.240.0 all-or-none batch admission/publication does not imply all-or-none execution;
 - checkpoint, compaction, archive, restore, sync and migration preserve the complete leaf/
   inventory maps, aggregate projection inputs and mixed outcomes; mixed-version peers that
   understand only scalar consumed/fenced state are read-only/refuse for affected plans;
@@ -18553,7 +18560,7 @@ Exit criteria:
 - Mixed leaf winners remain explicit partial or ambiguous state, never a global winner.
 - All-or-none multi-domain claims require a separately admitted distributed transaction.
 
-### v0.112.0 - Quarantine Namespace And Trust Isolation
+### v0.281.0 - Quarantine Namespace And Trust Isolation
 
 Goal: ensure untrusted remote data cannot influence trusted state before full
 re-admission.
@@ -18580,9 +18587,9 @@ Deliverables:
   v0.99.1 and aggregate across all actors, devices, replicas, peers, bundles,
   connections, and concurrent sessions under store/realm ceilings; identity or
   bundle fanout cannot multiply quarantine capacity;
-- quarantine capture atomically consumes the exact live v0.111.1 reservation
-  lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.169 daemon cutover, non-circular suite bridge,
+- quarantine capture atomically consumes the exact live v0.112.0 reservation
+  lease under the v0.113.0 clock/privacy and v0.114.0 key/accounting contracts,
+  requires the v0.115.0-v0.280.0 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -18645,7 +18652,7 @@ Deliverables:
   dispatch authority, bounded pause-lineage closure capacity, non-widening resume,
   fresh dispatch authorization, durable anchor reconciliation, immutable semantic
   dispatch, persistent anchor lifecycle, non-circular execution envelopes and explicit
-  endpoint abandonment assurance plus leaf-scoped composite outcomes through v0.111.169,
+  endpoint abandonment assurance plus leaf-scoped composite outcomes through v0.280.0,
   admitted authentication suite/provider-capacity mode,
   and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
@@ -18660,7 +18667,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.169 and cannot move a partially staged bundle into
+  lease under v0.112.0-v0.280.0 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -18679,7 +18686,7 @@ Exit criteria:
   materialization dependency.
 - Re-admission executes the complete typed ingest pipeline without carrying
   quarantine trust state forward.
-- v0.113.0 semantic verification can begin only from this isolated namespace
+- v0.282.0 semantic verification can begin only from this isolated namespace
   and must bind every resume checkpoint to its exact quarantine generation.
 - No decryption or resumable semantic state begins while bytes exist only behind
   a mutable source `PreflightedBundle` handle.
@@ -18693,7 +18700,7 @@ Exit criteria:
 - Restart retains atomically complete charged candidates; incomplete leases
   expire and clean up without wall-clock reconstruction or privacy downgrade
   once exact authenticated metadata is available, while key-unavailable recovery
-  remains fail-closed under v0.111.3.
+  remains fail-closed under v0.114.0.
 - Candidate metadata is durably reprotected during conversion, and observable
   privacy buckets never replace its exact authenticated quota charge.
 - Missing daemon-root or store-quarantine-key authority blocks durable candidate
@@ -18706,7 +18713,7 @@ Exit criteria:
 - Suite rotation cannot form a commitment cycle, and protected capacity claims
   require an authenticated provider-enforced mode rather than a local estimate.
 
-### v0.113.0 - Bundle Import
+### v0.282.0 - Bundle Import
 
 Goal: import verified bundles safely, including encrypted bundles.
 
@@ -18797,7 +18804,7 @@ Exit criteria:
   non-copyable files; rollback/clone limits and duplicate-publication defenses
   are exactly those declared by v0.110.2.
 
-### v0.114.0 - Sync Negotiation
+### v0.283.0 - Sync Negotiation
 
 Goal: exchange local and remote heads before transfer.
 
@@ -18843,7 +18850,7 @@ Exit criteria:
 - Both peers authenticate the exact negotiated security parameters before
   exchanging trusted bundle state.
 
-### v0.115.0 - Partition And Anti-Entropy Model Gate
+### v0.284.0 - Partition And Anti-Entropy Model Gate
 
 Goal: model distributed convergence and hostile ordering before implementing
 live sync transfer.
@@ -19152,14 +19159,14 @@ Exit criteria:
   reference through locator equivalence, resolve concurrent representative
   transitions by arrival order, or trust partial remote state.
 
-### v0.115.1 - Sealed-Private Distributed Invariant Closure Gate
+### v0.284.1 - Sealed-Private Distributed Invariant Closure Gate
 
 Goal: compose every sealed-private format admitted after the original partition
-model into the pre-sync distributed model before v0.116.0 transfers live state.
+model into the pre-sync distributed model before v0.285.0 transfers live state.
 
 Deliverables:
 
-- extend the v0.115.0 model with exact v0.92.1 multi-instance forward and
+- extend the v0.284.0 model with exact v0.92.1 multi-instance forward and
   reverse logical index keys and canonical ledger-projection completeness;
 - concurrent creation, transfer, merge, redaction, reintroduction, and
   reconciliation of multiple encryption instances for one semantic commitment
@@ -19370,7 +19377,7 @@ Deliverables:
   and eventual convergence under documented authority, availability, and
   partition assumptions;
 - counterexample corpus and deterministic bounded model-check command required
-  by the v0.116.0 release gate;
+  by the v0.285.0 release gate;
 - immutable model-run manifest records model source digest, tool and solver
   versions, exact command/configuration, random or search seeds, host resource
   limits, operational wall-clock timeout, state/depth/transition limits, result
@@ -19425,13 +19432,13 @@ Exit criteria:
   instance, overwrite endpoint-local placement, extend expired quota rights,
   overclaim a target attestation, bypass neutral policy, or resurrect content
   through a redacted placeholder.
-- v0.116.0 begins only after the composed model has no known counterexample
+- v0.285.0 begins only after the composed model has no known counterexample
   within admitted bounds.
 - "Within admitted bounds" is a reproducible machine-readable claim naming
   exact bounds, assumptions, reductions, property classes, explored-state
   counts, completion status, timeout/resources, and model/tool digests.
 
-### v0.116.0 - Sync Transfer
+### v0.285.0 - Sync Transfer
 
 Goal: transfer proof-carrying bundles to a remote endpoint.
 
@@ -19455,14 +19462,14 @@ Deliverables:
   actor/device/replica identity changes, and valid-signature floods share the
   store/realm aggregate ceilings; they cannot multiply capacity or evict already
   admitted ambiguous/superseded authority evidence;
-- live transfer reservations inherit v0.111.2 process-epoch expiry and metadata-
-  protection rules plus the v0.111.3 key/accounting lifecycle; process restart
+- live transfer reservations inherit v0.113.0 process-epoch expiry and metadata-
+  protection rules plus the v0.114.0 key/accounting lifecycle; process restart
   cleans incomplete transfer leases before a new attempt, unavailable keys
   refuse rather than reinitialize state, and protocol/log output exposes only
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
-- protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.169 suite,
+- protected transfer admission requires the active v0.115.0 daemon-root
+  descriptor with v0.117.0 prefix cutover and v0.119.0-v0.280.0 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -19501,8 +19508,8 @@ Deliverables:
   bounded pause closure, non-widening resume, fresh dispatch authorization, durable
   anchor reconciliation, immutable semantic dispatch and persistent anchor lifecycle
   plus non-circular envelopes, endpoint abandonment assurance and leaf-scoped outcome
-  projection through v0.111.169, and the
-  v0.111.7 reconciled active store key;
+  projection through v0.280.0, and the
+  v0.118.0 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
   descriptor/anchor mismatch, confidentiality downgrade, cyclic or retiring-key-
@@ -19550,7 +19557,7 @@ Deliverables:
 - split-trust remote response;
 - local sync result fact;
 - protocol tests;
-- release-gate dependency on the successful v0.115.1 composed model artifact;
+- release-gate dependency on the successful v0.284.1 composed model artifact;
 - capability stripping, transcript substitution, token replay, cross-endpoint,
   cross-bundle, expired token, cancelled token, and range-extension tests.
 
@@ -19571,7 +19578,7 @@ Exit criteria:
   order and receiver capacity never select the authoritative competing
   transition or become authoritative rejection evidence.
 
-### v0.117.0 - Sparse Materialization And Partial Clone
+### v0.286.0 - Sparse Materialization And Partial Clone
 
 Goal: let large or compartmentalized realms fetch and materialize only admitted
 state.
@@ -19641,7 +19648,7 @@ Exit criteria:
 - A redacted placeholder remains an explicit non-content state and cannot be
   upgraded into availability, completeness, repair, or proof success.
 
-### v0.118.0 - Native Transport Adapters
+### v0.287.0 - Native Transport Adapters
 
 Goal: carry the same Sagnir protocol over practical decentralized transports.
 
@@ -19665,7 +19672,7 @@ Exit criteria:
 - Protocol meaning does not change with transport.
 - Local-first exchange remains possible without a hosted service.
 
-### v0.119.0 - Git Import And Export Bridge
+### v0.288.0 - Git Import And Export Bridge
 
 Goal: ease adoption without making Git the native storage or trust model.
 
@@ -19690,7 +19697,7 @@ Exit criteria:
   Sagnir semantics cannot survive export.
 - Git is an interoperability boundary, not Sagnir's backend.
 
-### v0.120.0 - Private Anti-Entropy And Discovery
+### v0.289.0 - Private Anti-Entropy And Discovery
 
 Goal: reconcile encrypted peers while limiting head, graph, and access-pattern
 leakage.
@@ -19738,7 +19745,7 @@ Exit criteria:
 - Locator-index reconciliation remains bounded per operation with logarithmic
   proofs while preserving every admitted node, candidate, and conflict head.
 
-### v0.121.0 - Minimal Daemon
+### v0.290.0 - Minimal Daemon
 
 Goal: provide optional local and remote daemon support.
 
@@ -19771,10 +19778,10 @@ Exit criteria:
   declared assumptions without being mistaken for an authorized semantic
   verifier.
 
-### v0.121.1 - Erasure Evidence Format Admission Stop
+### v0.290.1 - Erasure Evidence Format Admission Stop
 
 Goal: freeze the irreversible erasure state machine, evidence formats, and
-provider contracts before v0.122.0 dispatches any destructive operation.
+provider contracts before v0.291.0 dispatches any destructive operation.
 
 Deliverables:
 
@@ -19798,7 +19805,7 @@ Deliverables:
 - provider capability contract for idempotency, post-crash query, authentication,
   assurance, revocation, retirement, compromise, contradiction, and permanent
   ambiguity;
-- provider-capacity destruction/release evidence format binds the v0.111.9
+- provider-capacity destruction/release evidence format binds the v0.120.0
   original handle charge, destruction operation/idempotency token, provider
   confirmation, final inventory observation, daemon/store reconciliation roots,
   remaining-reference proof and atomic released-capacity transition;
@@ -19829,7 +19836,7 @@ Deliverables:
   replay;
 - format admission fails when p95 latency, peak memory, evidence size, provider
   fanout amplification, or journal replay cost exceeds declared thresholds;
-- explicit implementation stop: v0.122.0 may not dispatch a destructive request
+- explicit implementation stop: v0.291.0 may not dispatch a destructive request
   or persist final erasure formats until this admission is complete.
 
 Verification:
@@ -19852,7 +19859,7 @@ Exit criteria:
 - Erasure formats pass parser-hardening and operational performance rejection
   thresholds before destructive implementation begins.
 
-### v0.122.0 - Redaction And Cryptographic Erasure
+### v0.291.0 - Redaction And Cryptographic Erasure
 
 Goal: implement the irreversible local redaction and key-destruction state
 machine, preserve honest historical evidence, and define normative contracts
@@ -19861,7 +19868,7 @@ for later receipt, repair, and archive integrations.
 Deliverables:
 
 - implementation of the formats, state machine, provider contracts, privacy
-  rules, and non-resurrection invariants admitted by v0.121.1;
+  rules, and non-resurrection invariants admitted by v0.290.1;
 - durable encoding as one monotonic irreversible operation phase plus
   orthogonal per-recovery-path, controlled-copy, storage-notice, and residual
   results, never one mutually exclusive flat enum;
@@ -19951,7 +19958,7 @@ Deliverables:
   idempotency token before retrying; Sagnir never interprets timeout, missing
   response, local key-file absence, or an uncommitted success response as proof
   of destruction;
-- every v0.111.9 provider-handle charge remains consumed through destruction
+- every v0.120.0 provider-handle charge remains consumed through destruction
   ambiguity; durable confirmed destruction is reconciled with provider inventory,
   daemon journal, originating store reservation/descriptor and all reachable
   references before one compare-and-swap releases capacity, while lost release/
@@ -20050,8 +20057,8 @@ Deliverables:
 - notices are encrypted or transcript-bound to one endpoint and storage epoch,
   supersede only receipts already known to that endpoint, and cannot become a
   reusable cross-epoch or cross-provider correlation oracle;
-- normative storage-notice verification and application contract that v0.124.0
-  implements after receipt semantics exist; v0.122.0 admits schemas and vectors
+- normative storage-notice verification and application contract that v0.293.0
+  implements after receipt semantics exist; v0.291.0 admits schemas and vectors
   but does not claim live remote deletion acknowledgement;
 - canonical `RedactedBody` state distinct from missing, promised, sparse,
   unavailable, quarantined, corrupt, or never-fetched state;
@@ -20080,13 +20087,13 @@ Deliverables:
   tombstoned encryption instance;
 - normative non-resurrection contracts for future availability repair and
   archive restoration, implemented and tested only when those paths arrive in
-  v0.125.0 and v0.126.0/v1.6.0;
+  v0.294.0 and v0.295.0/v1.6.0;
 - pre-redaction ciphertext returned by a stale or offline peer enters
   non-materializable quarantine, is recorded as stale redaction evidence, and
   cannot satisfy a promise, receipt, repair, or availability requirement;
 - receipt and archive supersession schemas derived from the private tombstone;
-  executable remote receipt handling is deferred to v0.124.0 and archive
-  behavior remains a v0.126.0 contract until v1.6.0 implements archival;
+  executable remote receipt handling is deferred to v0.293.0 and archive
+  behavior remains a v0.295.0 contract until v1.6.0 implements archival;
 - backup, VM-snapshot, recovery-kit, and air-gapped-device restore admission
   begins in restricted non-decrypting, non-materializing mode;
 - restore admission compares local checkpoints and crypto epochs with every
@@ -20171,7 +20178,7 @@ Exit criteria:
   sparse-fetch, local repack, cache, or GC path implemented by this release
   treats a redacted body as recoverable data.
 - Storage-notice, repair, and archive integration contracts are canonical, but
-  v0.122.0 does not claim executable guarantees for later subsystems.
+  v0.291.0 does not claim executable guarantees for later subsystems.
 - Restored state cannot decrypt or materialize protected content until it meets
   the configured current-redaction evidence requirement.
 - Cryptographic erasure is not reported successful if the erased data key can
@@ -20206,7 +20213,7 @@ Exit criteria:
   uncontrolled residuals independently rather than collapsing them into one
   success boolean.
 
-### v0.123.0 - Reachability, Repack, And Safe Garbage Collection
+### v0.292.0 - Reachability, Repack, And Safe Garbage Collection
 
 Goal: maintain production stores without deleting state required for integrity,
 recovery, partial clones, or policy.
@@ -20258,7 +20265,7 @@ Exit criteria:
   available for live records while the redacted record remains undecryptable.
 - Integrity and local availability are reported as separate properties.
 
-### v0.124.0 - Remote Storage Receipts And Availability Semantics
+### v0.293.0 - Remote Storage Receipts And Availability Semantics
 
 Goal: distinguish remote protocol acceptance from evidence that bytes are
 durably stored and retrievable.
@@ -20313,10 +20320,10 @@ Exit criteria:
 - Remote deletion never begins before required replacement availability is
   proven, unless policy explicitly accepts reduced availability for the
   affected live records.
-- This milestone turns the v0.122.0 storage-notice contract into executable
+- This milestone turns the v0.291.0 storage-notice contract into executable
   receipt supersession and remote deletion acknowledgement.
 
-### v0.125.0 - Availability Replication And Repair
+### v0.294.0 - Availability Replication And Repair
 
 Goal: maintain configured availability rather than merely recording storage
 receipts.
@@ -20335,7 +20342,7 @@ Deliverables:
 - mixed-pack replacement and repair coordinate across providers so at least the
   configured number and diversity of replacement receipts exist before old
   packs are deleted;
-- repair resumes incomplete v0.124.0 replacements, but never chooses an old
+- repair resumes incomplete v0.293.0 replacements, but never chooses an old
   mixed pack as a source for a tombstoned encryption instance;
 - optional evaluated erasure-coding profile with shard commitment and repair
   semantics;
@@ -20357,14 +20364,14 @@ Exit criteria:
   admitted redaction tombstone.
 - Multi-provider replacement preserves configured availability for surviving
   live records through partial failure and partition.
-- This milestone turns the v0.122.0 repair non-resurrection contract into
+- This milestone turns the v0.291.0 repair non-resurrection contract into
   executable repair behavior.
 - Provider count alone cannot satisfy diversity policy when providers share one
   administrative failure domain.
 
 ## Phase 11: Hardening And Portability
 
-### v0.126.0 - Verifiable Archive Pack Concept
+### v0.295.0 - Verifiable Archive Pack Concept
 
 Goal: keep a future path for disk-space relief without making deletion part of
 the early trust model.
@@ -20383,7 +20390,7 @@ Deliverables:
 - redaction-index and tombstone overlay concept preventing archive rehydration
   from restoring superseded encryption instances;
 - mixed-content archive replacement and receipt-supersession contract matching
-  the v0.109.0 pack capability and v0.124.0 remote replacement ordering;
+  the v0.109.0 pack capability and v0.293.0 remote replacement ordering;
 - stale archive bodies are quarantined and reported, not materialized or used
   as repair sources;
 - receipt-only downstream clone concept;
@@ -20408,7 +20415,7 @@ Exit criteria:
   claim an executable archival deletion or restoration guarantee before
   v1.6.0.
 
-### v0.127.0 - Malicious Corpus
+### v0.296.0 - Malicious Corpus
 
 Goal: make hostile input testing part of normal development.
 
@@ -20490,7 +20497,7 @@ Exit criteria:
 
 - Known malicious bytes stay rejected across releases.
 
-### v0.128.0 - Expanded Fuzzing
+### v0.297.0 - Expanded Fuzzing
 
 Goal: expand fuzz and model testing beyond the parser scaffolds added earlier.
 
@@ -20642,7 +20649,7 @@ Exit criteria:
   milestone broadens duration, sanitizer coverage, cross-format composition,
   and corpus scale rather than introducing fuzzing for the first time.
 
-### v0.129.0 - Full-System Formal Model Composition
+### v0.298.0 - Full-System Formal Model Composition
 
 Goal: compose and re-check the model-first subsystem work against the complete
 pre-1.0 design.
@@ -21053,7 +21060,7 @@ Deliverables:
   authority evidence, no arrival-order authority selection, and eventual
   convergence under documented assumptions;
 - model execution instructions and CI smoke bounds.
-- model-run manifests inherit v0.115.1 exact bounds, assumptions, property
+- model-run manifests inherit v0.284.1 exact bounds, assumptions, property
   classes, reductions, coverage counters, resources, seeds/configuration, and
   completion-status requirements.
 
@@ -21090,7 +21097,7 @@ Exit criteria:
 - This release is full-system assurance, not the first time foundational
   formats are modeled.
 
-### v0.130.0 - Crash And Concurrency Assurance
+### v0.299.0 - Crash And Concurrency Assurance
 
 Goal: exercise local mutation behavior at every admitted interruption and race
 boundary.
@@ -21107,183 +21114,183 @@ Deliverables:
 - two-phase bundle quarantine/decrypt/typed-ingest/WAL-publication crash and
   cancellation tests proving no skipped trust stage;
 - candidate preflight/quarantine crashes across aggregate quota reservation,
-  v0.111.1 lease creation/progress/idle-expiry/absolute-expiry, integrity-bound
+  v0.112.0 lease creation/progress/idle-expiry/absolute-expiry, integrity-bound
   capture, partial write, item/byte/signature/page/work counter debit, atomic
   lease-to-candidate charge conversion, completion/expiry races, restart orphan
-  reconciliation, v0.111.2 process-epoch change, complete-versus-partial restart
-  classification, v0.111.3 first provisioning, key-agent ownership, encrypted-
+  reconciliation, v0.113.0 process-epoch change, complete-versus-partial restart
+  classification, v0.114.0 first provisioning, key-agent ownership, encrypted-
   metadata key unavailability/replay, mixed-epoch rotation, early-retirement
   refusal, store migration, candidate reprotection, opaque cleanup, exact/coarse
-  counter separation, v0.111.4 daemon-journal reserve/provider/result/descriptor
-  boundaries, v0.111.5 quarantine-key provisioning/rotation/rewrap/realm-adoption
-  boundaries, v0.111.6 plaintext-prefix/cutover/descriptor publication boundaries,
-  v0.111.7 six-stage store/daemon/provider reconciliation and pending-finalize
-  boundaries, v0.111.8 journal-key create/wrap/MAC/cutover/suite-transition
-  boundaries, v0.111.9 provider-capacity reserve/inventory/abandon/destruction-
-  release boundaries, v0.111.10 old-transition/genesis/new-activation boundaries,
-  v0.111.11 capability-discovery/token/atomic-quota/static-slot race boundaries,
-  v0.111.12 independent authorization/descriptor-CAS/compromise-recovery
-  boundaries, v0.111.13 key-reconciliation/rotation-lease/staged-record/
+  counter separation, v0.115.0 daemon-journal reserve/provider/result/descriptor
+  boundaries, v0.116.0 quarantine-key provisioning/rotation/rewrap/realm-adoption
+  boundaries, v0.117.0 plaintext-prefix/cutover/descriptor publication boundaries,
+  v0.118.0 six-stage store/daemon/provider reconciliation and pending-finalize
+  boundaries, v0.119.0 journal-key create/wrap/MAC/cutover/suite-transition
+  boundaries, v0.120.0 provider-capacity reserve/inventory/abandon/destruction-
+  release boundaries, v0.121.0 old-transition/genesis/new-activation boundaries,
+  v0.122.0 capability-discovery/token/atomic-quota/static-slot race boundaries,
+  v0.123.0 independent authorization/descriptor-CAS/compromise-recovery
+  boundaries, v0.124.0 key-reconciliation/rotation-lease/staged-record/
   prepared-manifest/atomic-publication boundaries,
-  v0.111.14 encryption-key/nonce/outer-frame/ciphertext-HMAC/opaque-index/profile-
-  transition boundaries, v0.111.15 preflight/budget/key-before-lease/fair-queue/
+  v0.125.0 encryption-key/nonce/outer-frame/ciphertext-HMAC/opaque-index/profile-
+  transition boundaries, v0.126.0 preflight/budget/key-before-lease/fair-queue/
   critical-deadline/cancellation boundaries,
-  v0.111.16 capsule-anchor/key-set/private-descriptor/cold-start/switch boundaries,
-  v0.111.17 old-read/new-write/semantic-root/manifest/activation/key-retirement
-  boundaries, v0.111.18 segment/batch/cover/profile-health/backup boundaries,
-  v0.111.19 process-clock/debit/refill/reset/queue-reconstruction boundaries,
-  v0.111.20 local-prepare/external-pending/reconcile/local-activate/finalize
-  boundaries, v0.111.21 frontier/pin/stream/catch-up/final-tail/maintenance-CAS
-  boundaries, v0.111.22 slot-reserve/encrypt/commit/bitmap/refresh boundaries,
-  v0.111.23 ticket/grant/result/debt/checkpoint/compaction boundaries,
-  v0.111.24 segment-reserve/materialize/seal/directory-sync/publish boundaries,
-  v0.111.25 work-reserve/charge/checkpoint/restart/age-authority boundaries,
-  v0.111.26 ledger-key/grant-reserve/journal-commit/grant-complete/anchor
-  boundaries, v0.111.27 recovery-set/query/charge/restart/exhaustion boundaries,
-  v0.111.28 certificate/checkpoint/current-leaf/completion/frontier boundaries,
-  v0.111.29 staging-arena/materialize/fsync/publish/cleanup/health boundaries,
-  v0.111.30 recovery-charge/reconcile/restart/reset/activation boundaries,
-  v0.111.31 copy-challenge/diversity/classification/repair boundaries,
-  v0.111.32 accounting-key/provision/bootstrap/checkpoint/rotation boundaries,
-  v0.111.33 ledger-append/checkpoint/proof/current-leaf/compaction boundaries,
-  v0.111.34 frontier-prepare/external-reconcile/pre-lease/ambiguity boundaries,
-  v0.111.35 copy-lock/challenge/retain/recheck/release boundaries,
-  v0.111.36 token-deliver/query/threshold/supersede/loss boundaries,
-  v0.111.37 reconcile/satisfy/checkpoint/lease-CAS boundaries,
-  v0.111.38 availability-prepare/reconcile/prove/activate/finalize boundaries,
-  v0.111.39 discovery-authorize/query/receipt/import boundaries,
-  v0.111.40 grant/handoff/lease/result/debt/cancel boundaries,
-  v0.111.41 assure/challenge/attest/verify/activate boundaries,
-  v0.111.42 pre-auth/coordinate/allocate/reserve/reconcile boundaries,
-  v0.111.43 handoff-resume/query/charge/require/recover boundaries,
-  v0.111.44 proof-prepare/migrate/challenge/activate/retire boundaries,
-  v0.111.45 payload-reserve/write/sync/publish/handoff/cleanup boundaries,
-  v0.111.46 emergency-prepare/fence/activate/quarantine/finalize boundaries,
-  v0.111.47 verify-reserve/challenge/reconcile/activate/reset boundaries,
-  v0.111.48 relay/cover/query/respond/log/health boundaries,
-  v0.111.49 classify/fence/query/bridge/adopt/compensate boundaries,
-  v0.111.50 pending-effect/retain/destroy/reconcile/quota-release boundaries,
-  v0.111.51 stage/pad/cover/schedule/cleanup/profile-health boundaries,
-  v0.111.52 observer-claim/authenticate/account/relay/blind-slot boundaries,
-  v0.111.53 key-reserve/create/verify/descriptor/rotate/retire boundaries,
-  v0.111.54 submit/snapshot/fence/inventory/prove/reconcile boundaries,
-  v0.111.55 classify/refine/bridge/compensate/normalize boundaries,
-  v0.111.56 reserve/retain/renew/decoder/abandon/release boundaries,
-  v0.111.57 finalize/close/archive/anchor/destroy boundaries,
-  v0.111.58 prepare/activate/negotiate/refuse/rollback boundaries,
-  v0.111.59 knowledge/resolve/normalize/reconcile/cleanup boundaries,
-  v0.111.60 accept/attest/witness/receipt/fence/downgrade boundaries,
-  v0.111.61 append/map/project/prove/compact boundaries,
-  v0.111.62 clock/frontier/reserve/renew/anchor/destroy boundaries,
-  v0.111.63 parse/verify/stage/activate/consume-token boundaries,
-  v0.111.64 accept/fence/result-append/status-CAS/compact boundaries,
-  v0.111.65 receipt-prepare/retain/accept/witness/execute/abort boundaries,
-  v0.111.66 witness/authorize/reserve/root-check/compose/consume boundaries,
-  v0.111.67 prepare-axis/publish-head/reopen/late-evidence/cleanup boundaries,
-  v0.111.68 composite-prepare/external-CAS/query-reconcile/local-activate/side-effect
-  boundaries, v0.111.69 evidence-project/refine/conflict/publish boundaries,
-  v0.111.70 affine-move/compose/consume/query-only-reconcile boundaries,
-  v0.111.71 receipt-capacity-reserve/prepare/charge/abort/compact boundaries and
-  v0.111.72 pad/batch/cover/degrade/log-retain privacy boundaries,
-  v0.111.73 conflict-admit/block/refine/resolve boundaries,
-  v0.111.74 non-accept/accept/eligible/non-start/commit boundaries,
-  v0.111.75 active-witness/compose-consequence/consume/reconcile boundaries,
-  v0.111.76 local-reserve/provider-reserve/prepare/query/release boundaries and
-  v0.111.77 observer-select/blind-refuse/cover/degrade boundaries,
-  v0.111.78 eligible/start-reserve/start/effect/no-effect boundaries,
-  v0.111.79 conflict-disable/anchor/destroy/release boundaries,
-  v0.111.80 token-compose/child-budget/consume/reconcile boundaries and
-  v0.111.81 range-slot-consume/query/rotate/replay-refuse boundaries,
-  v0.111.82 started/no-effect/project/policy boundaries,
-  v0.111.83 plan-commit/start-consume/permit-consume/query boundaries,
-  v0.111.84 child-reserve/checkpoint/panic-charge/refund boundaries,
-  v0.111.85 slot-root/checkpoint/finality/restore boundaries,
-  v0.111.86 evidence-key/provision/rotate/archive/retire boundaries,
-  v0.111.87 per-effect-join/project/compensate/conflict boundaries,
-  v0.111.88 ready/dispatch-prepare/handoff/query/result boundaries,
-  v0.111.89 allocate/fence/quorum/reconfigure/heal boundaries,
-  v0.111.90 witness-create/borrow-or-consume/predicate/amend boundaries,
-  v0.111.91 resolution-map/compose/compensate/cleanup boundaries,
-  v0.111.92 freeze/fence/classify/amend/activate-lineage boundaries,
-  v0.111.93 observe/authorize/consequence/abandon boundaries,
-  v0.111.94 dedup-retain/compact/rotate/migrate/replay-refuse boundaries and
-  v0.111.95 prepare/authorize-unknown/handoff/result/query boundaries,
-  v0.111.96 envelope-admit/subset/link/identify/tombstone boundaries,
-  v0.111.97 isolate/anchor/disable/destroy/release boundaries,
-  v0.111.98 consequence-prepare/unknown/query/terminal/conflict boundaries,
-  v0.111.99 decode/validate/toposort/reserve/start boundaries and
-  v0.111.100 layer-close/compose/prove/project-no-effect boundaries,
-  v0.111.101 outcome-attest/cover/compose/project-typed boundaries,
-  v0.111.102 slot-CAS/activate/query/close/retry-generation boundaries and
-  v0.111.103 decode/resource/propose/validate/receipt/admit/accept/eligible/start
+  v0.127.0 capsule-anchor/key-set/private-descriptor/cold-start/switch boundaries,
+  v0.128.0 old-read/new-write/semantic-root/manifest/activation/key-retirement
+  boundaries, v0.129.0 segment/batch/cover/profile-health/backup boundaries,
+  v0.130.0 process-clock/debit/refill/reset/queue-reconstruction boundaries,
+  v0.131.0 local-prepare/external-pending/reconcile/local-activate/finalize
+  boundaries, v0.132.0 frontier/pin/stream/catch-up/final-tail/maintenance-CAS
+  boundaries, v0.133.0 slot-reserve/encrypt/commit/bitmap/refresh boundaries,
+  v0.134.0 ticket/grant/result/debt/checkpoint/compaction boundaries,
+  v0.135.0 segment-reserve/materialize/seal/directory-sync/publish boundaries,
+  v0.136.0 work-reserve/charge/checkpoint/restart/age-authority boundaries,
+  v0.137.0 ledger-key/grant-reserve/journal-commit/grant-complete/anchor
+  boundaries, v0.138.0 recovery-set/query/charge/restart/exhaustion boundaries,
+  v0.139.0 certificate/checkpoint/current-leaf/completion/frontier boundaries,
+  v0.140.0 staging-arena/materialize/fsync/publish/cleanup/health boundaries,
+  v0.141.0 recovery-charge/reconcile/restart/reset/activation boundaries,
+  v0.142.0 copy-challenge/diversity/classification/repair boundaries,
+  v0.143.0 accounting-key/provision/bootstrap/checkpoint/rotation boundaries,
+  v0.144.0 ledger-append/checkpoint/proof/current-leaf/compaction boundaries,
+  v0.145.0 frontier-prepare/external-reconcile/pre-lease/ambiguity boundaries,
+  v0.146.0 copy-lock/challenge/retain/recheck/release boundaries,
+  v0.147.0 token-deliver/query/threshold/supersede/loss boundaries,
+  v0.148.0 reconcile/satisfy/checkpoint/lease-CAS boundaries,
+  v0.149.0 availability-prepare/reconcile/prove/activate/finalize boundaries,
+  v0.150.0 discovery-authorize/query/receipt/import boundaries,
+  v0.151.0 grant/handoff/lease/result/debt/cancel boundaries,
+  v0.152.0 assure/challenge/attest/verify/activate boundaries,
+  v0.153.0 pre-auth/coordinate/allocate/reserve/reconcile boundaries,
+  v0.154.0 handoff-resume/query/charge/require/recover boundaries,
+  v0.155.0 proof-prepare/migrate/challenge/activate/retire boundaries,
+  v0.156.0 payload-reserve/write/sync/publish/handoff/cleanup boundaries,
+  v0.157.0 emergency-prepare/fence/activate/quarantine/finalize boundaries,
+  v0.158.0 verify-reserve/challenge/reconcile/activate/reset boundaries,
+  v0.159.0 relay/cover/query/respond/log/health boundaries,
+  v0.160.0 classify/fence/query/bridge/adopt/compensate boundaries,
+  v0.161.0 pending-effect/retain/destroy/reconcile/quota-release boundaries,
+  v0.162.0 stage/pad/cover/schedule/cleanup/profile-health boundaries,
+  v0.163.0 observer-claim/authenticate/account/relay/blind-slot boundaries,
+  v0.164.0 key-reserve/create/verify/descriptor/rotate/retire boundaries,
+  v0.165.0 submit/snapshot/fence/inventory/prove/reconcile boundaries,
+  v0.166.0 classify/refine/bridge/compensate/normalize boundaries,
+  v0.167.0 reserve/retain/renew/decoder/abandon/release boundaries,
+  v0.168.0 finalize/close/archive/anchor/destroy boundaries,
+  v0.169.0 prepare/activate/negotiate/refuse/rollback boundaries,
+  v0.170.0 knowledge/resolve/normalize/reconcile/cleanup boundaries,
+  v0.171.0 accept/attest/witness/receipt/fence/downgrade boundaries,
+  v0.172.0 append/map/project/prove/compact boundaries,
+  v0.173.0 clock/frontier/reserve/renew/anchor/destroy boundaries,
+  v0.174.0 parse/verify/stage/activate/consume-token boundaries,
+  v0.175.0 accept/fence/result-append/status-CAS/compact boundaries,
+  v0.176.0 receipt-prepare/retain/accept/witness/execute/abort boundaries,
+  v0.177.0 witness/authorize/reserve/root-check/compose/consume boundaries,
+  v0.178.0 prepare-axis/publish-head/reopen/late-evidence/cleanup boundaries,
+  v0.179.0 composite-prepare/external-CAS/query-reconcile/local-activate/side-effect
+  boundaries, v0.180.0 evidence-project/refine/conflict/publish boundaries,
+  v0.181.0 affine-move/compose/consume/query-only-reconcile boundaries,
+  v0.182.0 receipt-capacity-reserve/prepare/charge/abort/compact boundaries and
+  v0.183.0 pad/batch/cover/degrade/log-retain privacy boundaries,
+  v0.184.0 conflict-admit/block/refine/resolve boundaries,
+  v0.185.0 non-accept/accept/eligible/non-start/commit boundaries,
+  v0.186.0 active-witness/compose-consequence/consume/reconcile boundaries,
+  v0.187.0 local-reserve/provider-reserve/prepare/query/release boundaries and
+  v0.188.0 observer-select/blind-refuse/cover/degrade boundaries,
+  v0.189.0 eligible/start-reserve/start/effect/no-effect boundaries,
+  v0.190.0 conflict-disable/anchor/destroy/release boundaries,
+  v0.191.0 token-compose/child-budget/consume/reconcile boundaries and
+  v0.192.0 range-slot-consume/query/rotate/replay-refuse boundaries,
+  v0.193.0 started/no-effect/project/policy boundaries,
+  v0.194.0 plan-commit/start-consume/permit-consume/query boundaries,
+  v0.195.0 child-reserve/checkpoint/panic-charge/refund boundaries,
+  v0.196.0 slot-root/checkpoint/finality/restore boundaries,
+  v0.197.0 evidence-key/provision/rotate/archive/retire boundaries,
+  v0.198.0 per-effect-join/project/compensate/conflict boundaries,
+  v0.199.0 ready/dispatch-prepare/handoff/query/result boundaries,
+  v0.200.0 allocate/fence/quorum/reconfigure/heal boundaries,
+  v0.201.0 witness-create/borrow-or-consume/predicate/amend boundaries,
+  v0.202.0 resolution-map/compose/compensate/cleanup boundaries,
+  v0.203.0 freeze/fence/classify/amend/activate-lineage boundaries,
+  v0.204.0 observe/authorize/consequence/abandon boundaries,
+  v0.205.0 dedup-retain/compact/rotate/migrate/replay-refuse boundaries and
+  v0.206.0 prepare/authorize-unknown/handoff/result/query boundaries,
+  v0.207.0 envelope-admit/subset/link/identify/tombstone boundaries,
+  v0.208.0 isolate/anchor/disable/destroy/release boundaries,
+  v0.209.0 consequence-prepare/unknown/query/terminal/conflict boundaries,
+  v0.210.0 decode/validate/toposort/reserve/start boundaries and
+  v0.211.0 layer-close/compose/prove/project-no-effect boundaries,
+  v0.212.0 outcome-attest/cover/compose/project-typed boundaries,
+  v0.213.0 slot-CAS/activate/query/close/retry-generation boundaries and
+  v0.214.0 decode/resource/propose/validate/receipt/admit/accept/eligible/start
   boundaries,
-  v0.111.104 prior-state/join/check-compatible/project/conflict boundaries,
-  v0.111.105 vacant/active/terminal/successor-head/compact boundaries and
-  v0.111.106 intent/sign-witness/build-set/sign-provider/commit-acceptance boundaries,
-  v0.111.107 select-variant/prove-no-dispatch/close-delivery/project-finality
-  boundaries, v0.111.108 prepare-composite/reserve/commit/recover/freeze boundaries
-  and v0.111.109 sign/append/checkpoint/acknowledge/count-receipt boundaries,
-  v0.111.110 permit-state/revoke-or-close/aggregate/refuse boundaries,
-  v0.111.111 local-prepare/provider-reserve/local-commit/provider-activate/local-active
-  boundaries and v0.111.112 statement/sign/journal/checkpoint/acknowledge/receipt
-  boundaries, v0.111.113 unknown-CAS/flush/consume/handoff/query/terminal boundaries,
-  v0.111.114 inventory-append/project/amend/aggregate/compact boundaries and
-  v0.111.115 local-abort-fence/provider-abort/query/local-close boundaries,
-  v0.111.116 activation-layer-close/outcome/join/project/refuse boundaries,
-  v0.111.117 event/maps/checkpoint/composite-CAS/rollback boundaries and
-  v0.111.118 charge/deduplicate/append/summarize/archive/refuse boundaries,
-  v0.111.119 prior-head/checkpoint/new-head/external-publish/local-activate boundaries
-  and v0.111.120 authenticate/saturate/block/recover/refuse boundaries,
-  v0.111.121 witness/acquire/revalidate/linearize/reconcile boundaries,
-  v0.111.122 bind/relevance/non-membership/eligible-or-refuse boundaries and
-  v0.111.123 source-fence/close/admit-or-dispose/resolve-or-abandon boundaries,
-  v0.111.124 grant/slot-or-range/consume/replay/reconcile boundaries,
-  v0.111.125 profile/cover/verify/conflict-or-close boundaries and
-  v0.111.126 reserve/admit/query/reconcile/failover-or-refuse boundaries,
-  v0.111.127 receipt/endpoint-consume/effect/query/result boundaries,
-  v0.111.128 template/inert-reserve/commit/query/abort/reconcile boundaries and
-  v0.111.129 validate-independent/aggregate/reserve/CAS/query boundaries,
-  v0.111.130 template/inert-reserve/seal/authorize/activate/reconcile boundaries,
-  v0.111.131 delivery-prepare/unknown/deliver/confirm/cleanup boundaries,
-  v0.111.132 hardware-consume/path/final-provider/query/result boundaries and
-  v0.111.133 derive-footprint/check-N-way/prove/reserve/CAS boundaries,
-  v0.111.134 bind-recipient/issue/deliver/confirm/rotate-or-refuse boundaries,
-  v0.111.135 authorize-versus-abort/external-verify/activate/reconcile boundaries,
-  v0.111.136 classify-output/terminal-or-provider/query/refuse boundaries and
-  v0.111.137 derive-bounded/project-semantic/verify-provider/admit boundaries,
-  v0.111.138 local-prepare/anchor-admit/provider-activate/reconcile boundaries,
-  v0.111.139 classify-lifecycle/cancel-or-retire/rewrap-or-refuse boundaries,
-  v0.111.140 threshold-decide/certify/reconfigure/conflict boundaries and
-  v0.111.141 release-or-provider-consume/query/migrate boundaries,
-  v0.111.142 authorize/compare-set/replace-or-add/query/consume boundaries,
-  v0.111.143 request/negative-fence/close-routes/bound/revalidate boundaries,
-  v0.111.144 revalidation-fence/prepare-or-abort/cancel/query boundaries and
-  v0.111.145 configure/checkpoint/decide/reconfigure/refuse boundaries,
-  v0.111.146 compare-composite/replace-or-add/consume/result boundaries,
-  v0.111.147 reserve/exhaust/query/close/abort/reconcile boundaries and
-  v0.111.148 decode/check-safety/check-reachability/reconfigure boundaries,
-  v0.111.149 pending/owner-fence/dispatch-unknown/query/terminal boundaries,
-  v0.111.150 active/preflight/closing/release-query/closed boundaries,
-  v0.111.151 safety/reachability/synchrony/retry/progress boundaries,
-  v0.111.152 slice-resolution/partition/preflight/release/closed boundaries,
-  v0.111.153 fault-set-classification/overlap/joint-reachability boundaries,
-  v0.111.154 resource-premise/stabilization/exhaustion/renewal/progress boundaries,
-  v0.111.155 eligible/reservation-unknown/reserve-CAS/active/consume/query/release
-  boundaries, v0.111.156 query-negative/fence/close-routes/close-generation/retry-or-
-  refuse boundaries, v0.111.157 capability-status/request-state/query-only/terminal-
-  accounting boundaries, v0.111.158 reserve-lineage/attempt/exhaust/final-close boundaries,
-  v0.111.159 global-admission/local-eligibility/pause/revalidate/query-only boundaries,
-  v0.111.160 shared-root/pause-or-dispatch/fence/handle/resume boundaries, v0.111.161
-  pause-lineage/charge/exhaust/query/fence/final-close boundaries and v0.111.162
+  v0.215.0 prior-state/join/check-compatible/project/conflict boundaries,
+  v0.216.0 vacant/active/terminal/successor-head/compact boundaries and
+  v0.217.0 intent/sign-witness/build-set/sign-provider/commit-acceptance boundaries,
+  v0.218.0 select-variant/prove-no-dispatch/close-delivery/project-finality
+  boundaries, v0.219.0 prepare-composite/reserve/commit/recover/freeze boundaries
+  and v0.220.0 sign/append/checkpoint/acknowledge/count-receipt boundaries,
+  v0.221.0 permit-state/revoke-or-close/aggregate/refuse boundaries,
+  v0.222.0 local-prepare/provider-reserve/local-commit/provider-activate/local-active
+  boundaries and v0.223.0 statement/sign/journal/checkpoint/acknowledge/receipt
+  boundaries, v0.224.0 unknown-CAS/flush/consume/handoff/query/terminal boundaries,
+  v0.225.0 inventory-append/project/amend/aggregate/compact boundaries and
+  v0.226.0 local-abort-fence/provider-abort/query/local-close boundaries,
+  v0.227.0 activation-layer-close/outcome/join/project/refuse boundaries,
+  v0.228.0 event/maps/checkpoint/composite-CAS/rollback boundaries and
+  v0.229.0 charge/deduplicate/append/summarize/archive/refuse boundaries,
+  v0.230.0 prior-head/checkpoint/new-head/external-publish/local-activate boundaries
+  and v0.231.0 authenticate/saturate/block/recover/refuse boundaries,
+  v0.232.0 witness/acquire/revalidate/linearize/reconcile boundaries,
+  v0.233.0 bind/relevance/non-membership/eligible-or-refuse boundaries and
+  v0.234.0 source-fence/close/admit-or-dispose/resolve-or-abandon boundaries,
+  v0.235.0 grant/slot-or-range/consume/replay/reconcile boundaries,
+  v0.236.0 profile/cover/verify/conflict-or-close boundaries and
+  v0.237.0 reserve/admit/query/reconcile/failover-or-refuse boundaries,
+  v0.238.0 receipt/endpoint-consume/effect/query/result boundaries,
+  v0.239.0 template/inert-reserve/commit/query/abort/reconcile boundaries and
+  v0.240.0 validate-independent/aggregate/reserve/CAS/query boundaries,
+  v0.241.0 template/inert-reserve/seal/authorize/activate/reconcile boundaries,
+  v0.242.0 delivery-prepare/unknown/deliver/confirm/cleanup boundaries,
+  v0.243.0 hardware-consume/path/final-provider/query/result boundaries and
+  v0.244.0 derive-footprint/check-N-way/prove/reserve/CAS boundaries,
+  v0.245.0 bind-recipient/issue/deliver/confirm/rotate-or-refuse boundaries,
+  v0.246.0 authorize-versus-abort/external-verify/activate/reconcile boundaries,
+  v0.247.0 classify-output/terminal-or-provider/query/refuse boundaries and
+  v0.248.0 derive-bounded/project-semantic/verify-provider/admit boundaries,
+  v0.249.0 local-prepare/anchor-admit/provider-activate/reconcile boundaries,
+  v0.250.0 classify-lifecycle/cancel-or-retire/rewrap-or-refuse boundaries,
+  v0.251.0 threshold-decide/certify/reconfigure/conflict boundaries and
+  v0.252.0 release-or-provider-consume/query/migrate boundaries,
+  v0.253.0 authorize/compare-set/replace-or-add/query/consume boundaries,
+  v0.254.0 request/negative-fence/close-routes/bound/revalidate boundaries,
+  v0.255.0 revalidation-fence/prepare-or-abort/cancel/query boundaries and
+  v0.256.0 configure/checkpoint/decide/reconfigure/refuse boundaries,
+  v0.257.0 compare-composite/replace-or-add/consume/result boundaries,
+  v0.258.0 reserve/exhaust/query/close/abort/reconcile boundaries and
+  v0.259.0 decode/check-safety/check-reachability/reconfigure boundaries,
+  v0.260.0 pending/owner-fence/dispatch-unknown/query/terminal boundaries,
+  v0.261.0 active/preflight/closing/release-query/closed boundaries,
+  v0.262.0 safety/reachability/synchrony/retry/progress boundaries,
+  v0.263.0 slice-resolution/partition/preflight/release/closed boundaries,
+  v0.264.0 fault-set-classification/overlap/joint-reachability boundaries,
+  v0.265.0 resource-premise/stabilization/exhaustion/renewal/progress boundaries,
+  v0.266.0 eligible/reservation-unknown/reserve-CAS/active/consume/query/release
+  boundaries, v0.267.0 query-negative/fence/close-routes/close-generation/retry-or-
+  refuse boundaries, v0.268.0 capability-status/request-state/query-only/terminal-
+  accounting boundaries, v0.269.0 reserve-lineage/attempt/exhaust/final-close boundaries,
+  v0.270.0 global-admission/local-eligibility/pause/revalidate/query-only boundaries,
+  v0.271.0 shared-root/pause-or-dispatch/fence/handle/resume boundaries, v0.272.0
+  pause-lineage/charge/exhaust/query/fence/final-close boundaries and v0.273.0
   original-premise/current-premise/vector-compatibility/resume-CAS/refuse boundaries,
-  plus v0.111.163 compatibility/current-policy/revocation/current-head/saturation/
-  dispatch-admission boundaries and v0.111.164 local-anchor-unknown/first-byte/anchor-CAS/
-  admitted-receipt/dispatch-unknown/negative-fence/reconcile boundaries, v0.111.165
-  semantic-stage/freeze/root-bind/anchor/consume/result boundaries and v0.111.166
+  plus v0.274.0 compatibility/current-policy/revocation/current-head/saturation/
+  dispatch-admission boundaries and v0.275.0 local-anchor-unknown/first-byte/anchor-CAS/
+  admitted-receipt/dispatch-unknown/negative-fence/reconcile boundaries, v0.276.0
+  semantic-stage/freeze/root-bind/anchor/consume/result boundaries and v0.277.0
   checkpoint/compact/archive/migrate/restore/retain/abandon/late-evidence boundaries,
-  v0.111.167 intent/root/receipt/envelope/endpoint-verify boundaries and v0.111.168
+  v0.278.0 intent/root/receipt/envelope/endpoint-verify boundaries and v0.279.0
   assurance-select/fence-propagate/consume-or-fence/conflict/reconcile boundaries, plus
-  v0.111.169 leaf-plan/freeze-inventory/consume-or-fence/project-partial/reconcile boundaries,
+  v0.280.0 leaf-plan/freeze-inventory/consume-or-fence/project-partial/reconcile boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -21397,7 +21404,7 @@ Exit criteria:
 - Incomplete remote or controlled-copy work remains resumable without weakening
   local erasure.
 
-### v0.131.0 - Partition And Adversarial Network Tests
+### v0.300.0 - Partition And Adversarial Network Tests
 
 Goal: validate convergence and refusal behavior under hostile distributed
 ordering.
@@ -21818,7 +21825,7 @@ Exit criteria:
   peers, and arrival order affects backpressure only.
 - Hostile peers cannot force unbounded recursive expansion or partial trust.
 
-### v0.132.0 - Differential Vectors And Performance Budgets
+### v0.301.0 - Differential Vectors And Performance Budgets
 
 Goal: prove interoperability and set measurable scale expectations before 1.0.
 
@@ -22323,7 +22330,7 @@ Deliverables:
 - explicit locator-index maximum read, write, proof, node, path-copy, split,
   normalization, rebalance, and concurrent-union amplification thresholds at
   small, million-entry, and adversarial distributions;
-- regression comparison against the v0.92.1, v0.99.2, and v0.121.1 admission
+- regression comparison against the v0.92.1, v0.99.2, and v0.290.1 admission
   threshold artifacts, with any changed fixture, metric, environment, or
   accepted regression explicitly reviewed rather than silently rebased;
 - CI regression thresholds where stable.
@@ -22354,7 +22361,7 @@ Exit criteria:
   reproducible assurance artifacts with explicit residual risks rather than
   unqualified whole-system guarantees.
 
-### v0.133.0 - Cross-Platform Build Gate
+### v0.302.0 - Cross-Platform Build Gate
 
 Goal: complete the comprehensive 1.0 portability audit after continuous
 per-version portability checks.
@@ -22380,7 +22387,7 @@ Exit criteria:
 - Canonical vectors, policy evaluation, and portable source-state results match
   the continuous platform gates inherited by earlier milestones.
 
-### v0.134.0 - Rootless Podman Gate
+### v0.303.0 - Rootless Podman Gate
 
 Goal: make `saga` usable from a rootless container.
 
@@ -22407,7 +22414,7 @@ Exit criteria:
 - OCI manifests and indexes are stable release artifacts ready for signing and
   provenance binding.
 
-### v0.135.0 - Release Evidence
+### v0.304.0 - Release Evidence
 
 Goal: make release outputs auditable.
 
@@ -22444,7 +22451,7 @@ Exit criteria:
   checksums, OCI manifests and indexes, SBOMs, and provenance tied to the exact
   admitted source and gate result.
 
-### v0.136.0 - 1.0 Release Candidate Gate
+### v0.305.0 - 1.0 Release Candidate Gate
 
 Goal: freeze the 1.0 feature set and reject incomplete production behavior.
 
@@ -22454,7 +22461,7 @@ Deliverables:
 - all required commands covered by tests;
 - documentation consistency validator passes;
 - no supporting architecture document weakens the normative roadmap;
-- v0.92.1, v0.99.2, and v0.121.1 admission artifacts, independent vectors,
+- v0.92.1, v0.99.2, and v0.290.1 admission artifacts, independent vectors,
   disclosure reviews, and model results are complete and match implementation;
 - no admission prototype or experimental magic is reachable from production
   feature graphs, release binaries, durable decoders, migration paths, or
@@ -22501,7 +22508,7 @@ Deliverables:
 - every parser/format has corpus-backed fuzz smoke from first admission, every
   applicable concurrent state machine has schedule exploration, and every
   durability/distributed model has reproducible release-profile evidence;
-- v0.115.1 sealed-private distributed invariant model artifact passes with no
+- v0.284.1 sealed-private distributed invariant model artifact passes with no
   unresolved counterexample, records complete bounds/assumptions/reductions/
   coverage/resources/completion metadata, and is reproduced by the release
   gate;
@@ -22562,344 +22569,344 @@ Deliverables:
   recovery; untrusted/bounded-quarantine/admitted-evidence state separation,
   aggregate preflight quotas, sender-held refusal, atomic restart cleanup, and
   non-authoritative `ResourceLimit` behavior pass signed/Sybil/resubmit floods;
-- v0.111.1 reservation leases bind exact counters and transfer scope, debit work
+- v0.112.0 reservation leases bind exact counters and transfer scope, debit work
   before execution, retain original idle/absolute lifetime and remaining budget
   across reconnect/resume/session replacement, provide bounded fair peer/store
   capacity, convert atomically into durable candidate quota, and recover every
   crash state as one charged candidate or complete cleanup; slowloris, trickle-
   progress, deadline-reset, parallel-starvation, expiry/publication-race, clock-
   rollback, and orphan-recovery suites pass;
-- v0.111.2 lease records use random process `ClockEpoch` binding and admitted
+- v0.113.0 lease records use random process `ClockEpoch` binding and admitted
   per-platform clock/suspend semantics; restart retains complete charged
   candidates, cleans every incomplete lease without wall-clock reconstruction,
   and does not resume pre-candidate work across epochs; encrypted-realm and pre-
   realm operational metadata, opaque names, profile bucketing/padding,
   privileged inspection, telemetry retention, and inherent blind-network
   leakage pass privacy-at-rest and local-observer suites;
-- v0.111.3 daemon operational-metadata root and independent per-store keys pass
+- v0.114.0 daemon operational-metadata root and independent per-store keys pass
   provisioning-profile, provider/purpose/store binding, one-writer key-agent
   ownership, transactional rotation/mixed-epoch recovery, old-key retention,
   compromise/loss, store move/rewrap, opaque partial cleanup, and durable-
   candidate reprotection suites; exact encrypted counters remain authoritative,
   physical padding/copies are charged, and profile/coarse-output changes cannot
   refund or reinterpret capacity;
-- v0.111.4 daemon-domain authority journal passes durable identity/reservation,
+- v0.115.0 daemon-domain authority journal passes durable identity/reservation,
   provider idempotency/query, ambiguous response reconciliation, orphan/conflict
   handling, atomic handle/evidence/epoch/descriptor activation, wrapped-software
   publication, concurrent-start exclusion, rollback/clone, and post-activation
   loss/replacement fixtures without becoming a second store authority source;
-- v0.111.5 purpose-separated store quarantine metadata key passes pre-candidate
+- v0.116.0 purpose-separated store quarantine metadata key passes pre-candidate
   provisioning, provider/wrap/recovery policy, candidate conversion, rotation/
   reachability, unavailable-key conservative quota hold, expiry/cleanup refusal,
   daemon/store movement, realm-key adoption, compromise, and cross-purpose
   substitution suites;
-- v0.111.6 first authenticated daemon-journal cutover commits the complete exact
+- v0.117.0 first authenticated daemon-journal cutover commits the complete exact
   plaintext prefix sequence/count/length/root, daemon identity/incarnation,
   provisioning/provider result, active descriptor and format/suite; prefix/
   cutover/successor mutation, truncation, extension, substitution, rollback,
   archival and every publication-crash fixture pass with honest pre-anchor
   confidentiality/tamper limitations;
-- v0.111.7 all six store/daemon/provider provisioning stages bind one operation
+- v0.118.0 all six store/daemon/provider provisioning stages bind one operation
   and request digest; provider-orphan, ambiguity/conflict, every lost response,
   store-commit/pending-finalize recovery, non-rebinding, two-daemon recovery,
   store rollback/clone, and separately authorized destruction fixtures pass;
-- v0.111.8 daemon journals use only descriptor-selected HMAC-SHA3-256 with a
+- v0.119.0 daemon journals use only descriptor-selected HMAC-SHA3-256 with a
   256-bit purpose-separated independently random provider-held/wrapped key and
   32-byte tag over the exact transcript; authenticate-before-decode, unknown/
   retired-suite refusal, non-exportable-provider behavior, independent known-
   answer/cross-provider vectors, and old/new-root-preserving rotation pass;
-- v0.111.9 provider handle/slot capacity is durably reserved before execution
+- v0.120.0 provider handle/slot capacity is durably reserved before execution
   and remains charged through pending/ambiguous/completed-unpublished/orphan/
   conflict/abandoned-destruction states; churn, unknown inventory, fair sharing,
   pre-destruction abandonment and confirmation-loss suites pass, and release
   occurs only after confirmed destruction plus complete journal reconciliation;
-- v0.111.10 suite rotation uses an acyclic `NewChainGenesisDescriptor`, old-
+- v0.121.0 suite rotation uses an acyclic `NewChainGenesisDescriptor`, old-
   authenticated transition and first-new-record bridge; dependency-cycle,
   fixed-point, wrong-transition/descriptor, concurrent rotation and every
   non-authoritative bridge-construction crash-state fixture pass;
-- v0.111.11 authenticated provider capability profiles distinguish holding
+- v0.122.0 authenticated provider capability profiles distinguish holding
   reservation tokens, atomic quota-checked execution, dedicated static slots and
   unverifiable capacity; token/execute races, zero-artifact quota refusal,
   capability spoof/degradation, shared-client contention, static-slot binding,
   advisory labeling and protected refusal suites pass;
-- v0.111.12 rotation authorization is independently authenticated from the
+- v0.123.0 rotation authorization is independently authenticated from the
   retiring MAC key and binds exact old/new frontiers, descriptors, provider
   evidence, daemon incarnation, operation, reason and compromise status;
   forged old-key-valid transitions, stale/replayed authorization, concurrent
   descriptor compare-and-swap and daemon-root compromise fixtures pass;
-- v0.111.13 rotation fully reconciles the new key, stages and reverifies exact
+- v0.124.0 rotation fully reconciles the new key, stages and reverifies exact
   old-transition/new-genesis bytes and descriptor under a durable prepared
   manifest, then atomically publishes all three; every provider ambiguity,
   corruption, crash and old-write/descriptor race exposes the complete unchanged
   old state or complete new state and recovery performs no new provider MAC;
-- v0.111.14 protected daemon journals and rotation manifests use one admitted
+- v0.125.0 protected daemon journals and rotation manifests use one admitted
   AEAD construction with independent encryption/HMAC keys and epochs, exact
   ciphertext HMAC, nonce-safe retry, fixed outer/encrypted inner kinds, opaque
   names, padded lengths and no locked-key/plaintext fallback; weaker bootstrap/
   plaintext leakage stays named;
-- v0.111.15 rotation attempts pass capability/policy preflight and durable
+- v0.126.0 rotation attempts pass capability/policy preflight and durable
   aggregate budgets, reconcile new keys before the fair writer queue, and obey an
   independent critical deadline/cumulative hold limit; unauthorized, slow,
   cancelled and repeated attempts cannot starve queued ordinary writes or erase
   ambiguous provider charges;
-- v0.111.16 cold start verifies one independently anchored minimal capsule,
+- v0.127.0 cold start verifies one independently anchored minimal capsule,
   resolves an opaque provider key set, authenticates/decrypts the committed
   private descriptor, then verifies ciphertext HMAC/AEAD and inner identity in
   exact order; capsule rollback/substitution and partial descriptor switch refuse;
-- v0.111.17 re-encryption produces a copy-on-write representation with new
+- v0.128.0 re-encryption produces a copy-on-write representation with new
   ciphertext/HMAC/physical root and an authorized manifest binding the old root,
   ordered concealed semantic commitments and new root; no in-place overwrite or
   old-key retirement occurs before verification and declared managed backup/
   retention completion, and unmanaged copies receive no recoverability promise;
-- v0.111.18 journal traffic instantiates measurable baseline, padded and high-
+- v0.129.0 journal traffic instantiates measurable baseline, padded and high-
   security v0.95.0 profiles covering count/timing/churn/timestamp/backup leakage,
   segment/batch/cover behavior, overhead and fail-closed profile health;
-- v0.111.19 individual lease time is process-`ClockEpoch` scoped while durable
+- v0.130.0 individual lease time is process-`ClockEpoch` scoped while durable
   hold/failure/provider charges survive restart in authenticated accounting epochs;
   refill requires admitted time/frontier/admin evidence and queued-writer priority
   survives process churn;
-- v0.111.20 external-anchor capability profiles distinguish authentication-only,
+- v0.131.0 external-anchor capability profiles distinguish authentication-only,
   monotonic, CAS and witnessed guarantees; exact bytes are durable before one
   idempotent external advance, response loss reconciles, local activation follows,
   and external-only commit with missing bytes enters explicit recovery;
-- v0.111.21 online re-encryption streams pinned immutable prefix/suffix frontiers
+- v0.132.0 online re-encryption streams pinned immutable prefix/suffix frontiers
   under budgets while appends continue, then uses one bounded fair final-tail
   lease/maintenance CAS; catch-up rounds/work/time and competing maintenance
   operations have deterministic limits and outcomes;
-- v0.111.22 scheduled slots are durable one-write real/cover/ambiguous states with
+- v0.133.0 scheduled slots are durable one-write real/cover/ambiguous states with
   fresh generation/nonce domains, declared eager/sparse behavior and migration-
   linked segment refresh; committed cover and ambiguous nonce domains never reuse;
-- v0.111.23 independent encrypted writer-admission ledger uses short CAS tickets,
+- v0.134.0 independent encrypted writer-admission ledger uses short CAS tickets,
   bounded FIFO/weighted fairness, crash/disconnect reconciliation and finite
   priority debt; spam/phantom state cannot permanently deny rotation or writers;
-- v0.111.24 scheduled batches remain in opaque staging until every one-write slot,
+- v0.135.0 scheduled batches remain in opaque staging until every one-write slot,
   completion bitmap, HMAC chain and manifest are sealed/reread, then publish as
   one directory-durable authority generation with no active empty slots;
-- v0.111.25 migration work/round/provider counters and conservative in-flight
+- v0.136.0 migration work/round/provider counters and conservative in-flight
   charges survive restart, while duration stays within one `ClockEpoch` and total
   age uses admitted authority/frontier evidence rather than reconstructed time;
-- v0.111.26 admission-ledger keys are independently provisioned/rotated/recovered,
+- v0.137.0 admission-ledger keys are independently provisioned/rotated/recovered,
   ticket grants reconcile one exact bound journal transaction, and anchored roots
   or caller receipts expose rollback without circular scheduler dependence;
-- v0.111.27 externally anchored recovery commits a finite exact copy set and
+- v0.138.0 externally anchored recovery commits a finite exact copy set and
   deterministic bounded query/work schedule; exhaustion remains stable across
   restart and undeclared directories, backups or providers are never searched;
-- v0.111.28 immutable grant certificates survive unrelated ledger advancement,
+- v0.139.0 immutable grant certificates survive unrelated ledger advancement,
   execute only with checkpoint-consistency/current-leaf proofs, complete through a
   leaf-version CAS and require an anchored ordinary-ticket frontier before maintenance;
-- v0.111.29 every staging/allocation/write/fsync/publication/cleanup observation is
+- v0.140.0 every staging/allocation/write/fsync/publication/cleanup observation is
   part of the selected traffic profile; high-security fixed-cadence staging covers
   real, empty and failed batches and preserves historical degraded intervals;
-- v0.111.30 external recovery uses purpose-specific persistent accounting, keys,
+- v0.141.0 external recovery uses purpose-specific persistent accounting, keys,
   reset authority and replay namespace that migration artifacts cannot satisfy;
-- v0.111.31 anchor transitions classify zero-copy, common-domain, redundant and
+- v0.142.0 anchor transitions classify zero-copy, common-domain, redundant and
   protected-diverse availability only after bounded restore challenges and
   verified provider/credential/region/device/key dependency analysis;
-- v0.111.32 accounting keys are provisioned and committed in descriptor-independent
+- v0.143.0 accounting keys are provisioned and committed in descriptor-independent
   bootstrap authority before external advancement; protected accounting roots are
   externally checkpointed, while weaker profiles precharge the complete budget;
-- v0.111.33 grant certificates bind canonical log/map checkpoints and execute only
+- v0.144.0 grant certificates bind canonical log/map checkpoints and execute only
   after bounded append-only consistency, current-leaf and no-terminal-conflict
   proofs whose witness material survives compaction;
-- v0.111.34 maintenance frontiers reconcile through their own monotonic/CAS/
+- v0.145.0 maintenance frontiers reconcile through their own monotonic/CAS/
   witnessed provider namespace before writer exclusion; ambiguity blocks
   maintenance while admitted ordinary writes and other anchor domains remain live;
-- v0.111.35 protected recovery copies bind immutable retention capabilities and
+- v0.146.0 protected recovery copies bind immutable retention capabilities and
   fresh challenge/continuous-retention evidence required by later activation and
   the declared horizon; delete/replacement/expiry races lower or refuse the claim;
-- v0.111.36 recipient-held unguessable bootstrap tokens bind finite authenticated
+- v0.147.0 recipient-held unguessable bootstrap tokens bind finite authenticated
   endpoints/query semantics, daemon-scope/recovery fingerprints, thresholds and
   hard work limits; cold recovery never enumerates providers or local paths;
-- v0.111.37 reconciled maintenance frontiers are consistency-checked against the
+- v0.148.0 reconciled maintenance frontiers are consistency-checked against the
   current ledger, account for every pre-cutoff ordinary ticket/debt, append one
   satisfaction record and bind it into the exact writer-lease CAS;
-- v0.111.38 availability preparation asserts only pending recoverability; a second
+- v0.149.0 availability preparation asserts only pending recoverability; a second
   expected-state external transition activates the final class after enforceable
   continuous-retention and diversity evidence is freshly verified;
-- v0.111.39 token-bound bootstrap discovery uses provider-side idempotent attempt
+- v0.150.0 token-bound bootstrap discovery uses provider-side idempotent attempt
   tracking and recipient receipts before recovery accounting opens, then atomically
   imports exact consumed work without restart or response-loss budget reset;
-- v0.111.40 an ordinary `GrantReserved` is unsatisfied until its transaction is
+- v0.151.0 an ordinary `GrantReserved` is unsatisfied until its transaction is
   terminal, it owns a non-overtakeable durable next-writer handoff, it becomes
   finite priority debt or has independent terminal cancellation authority;
-- v0.111.41 protected retention identifies exact enforced, independently attested
+- v0.152.0 protected retention identifies exact enforced, independently attested
   or reviewed probabilistic mechanisms and honest bounds; provider audit/self-
   assertions can corroborate but never independently satisfy `ProtectedDiverse`;
-- v0.111.42 discovery budgets use one externally consistent coordinator or
+- v0.153.0 discovery budgets use one externally consistent coordinator or
   immutable disjoint endpoint slices; recipient authority is verified before valid
   reservation and invalid traffic consumes only a separate public abuse budget;
-- v0.111.43 handoff recovery persists attempt/query/byte/work/provider charges across
+- v0.154.0 handoff recovery persists attempt/query/byte/work/provider charges across
   restart and enters `WriterHandoffRecoveryRequired` when payload/result and
   independent conversion authority are unavailable, blocking all later writers;
-- v0.111.44 retrievability tags, manifests and verifier keys privately bind exact
+- v0.155.0 retrievability tags, manifests and verifier keys privately bind exact
   ciphertext copy/version/placement and migrate copy-on-write; old proof authority
   remains until complete new restore and availability activation succeeds;
-- v0.111.45 handoff payload/reconstruction material is fully encrypted, charged,
+- v0.156.0 handoff payload/reconstruction material is fully encrypted, charged,
   reread and file/parent-directory durable before handoff CAS; non-resumable tickets
   can queue/cancel/become debt but never own next-writer priority;
-- v0.111.46 operator-confirmed independent threshold authority fences blocked old
+- v0.157.0 operator-confirmed independent threshold authority fences blocked old
   writer/journal/ledger incarnations, quarantines every late result and activates a
   linked new incarnation without identifier, lease, operation or nonce reuse;
-- v0.111.47 periodic/activation assurance has independent keys, counters, reset
+- v0.158.0 periodic/activation assurance has independent keys, counters, reset
   authority and restart/ambiguity charges; actual cold restoration remains under
   anchor-recovery accounting and cannot substitute across domains;
-- v0.111.48 discovery profiles inventory timing/source/selection/threshold/retry/
+- v0.159.0 discovery profiles inventory timing/source/selection/threshold/retry/
   token-linkage leakage, shape responses/logs and require measured relay/cover
   health before claiming protected traffic privacy;
-- v0.111.49 every fenced old operation enters append-only effect classification;
+- v0.160.0 every fenced old operation enters append-only effect classification;
   unknown effects block dependent/conflicting authority until an evidence-bound
-  bridge transition permitted by v0.111.55 commits;
-- v0.111.50 emergency fencing retains staged bytes, decoder, keys and quota while
+  bridge transition permitted by v0.166.0 commits;
+- v0.161.0 emergency fencing retains staged bytes, decoder, keys and quota while
   effect status is unknown, then permits authenticated destruction/release only
   after terminal bridge and journal/ledger/provider reconciliation;
-- v0.111.51 handoff staging/retention/cleanup consumes explicit baseline, padded or
+- v0.162.0 handoff staging/retention/cleanup consumes explicit baseline, padded or
   high-security observer profiles; protected commitments are keyed/domain-separated
   and degraded trace intervals remain permanent;
-- v0.111.52 every discovery cover claim names its observers; coordinators that see
+- v0.163.0 every discovery cover claim names its observers; coordinators that see
   real authentication/budget access remain outside occurrence privacy unless a
   reviewed blind protocol hides their complete view;
-- v0.111.53 retention-accounting keys are capacity-reserved, provider-reconciled,
+- v0.164.0 retention-accounting keys are capacity-reserved, provider-reconciled,
   verified and descriptor-bound before activation, then rotate copy-on-write while
   pending challenge/accounting evidence retains old epochs;
-- v0.111.54 one atomic provider transition fences the old namespace and commits the
+- v0.165.0 one atomic provider transition fences the old namespace and commits the
   final accepted-operation high-watermark and dual roots with complete bounded
   proofs; unverifiable completeness freezes the affected provider/authority scope;
-- v0.111.55 classification is append-only, ordinary compensation requires a proven
+- v0.166.0 classification is append-only, ordinary compensation requires a proven
   committed effect, and unknown effects normalize only through an atomic operation
   proven safe in both possible worlds; irreducible uncertainty remains blocked;
-- v0.111.56 unresolved material is bounded by realm/global shares and reserve,
+- v0.167.0 unresolved material is bounded by realm/global shares and reserve,
   renews before key/immutable-decoder retirement, or enters permanent fail-closed
   abandonment that releases physical custody without restoring authority;
-- v0.111.57 a signed externally anchored final epoch closure proves exact counters,
+- v0.168.0 a signed externally anchored final epoch closure proves exact counters,
   roots and empty pending work before operational accounting-key destruction;
   readable detail moves completely to purpose-separated audit-only protection;
-- v0.111.58 machine-readable activation states keep authority paths inactive until
+- v0.169.0 machine-readable activation states keep authority paths inactive until
   every format/model/provider/profile/closure dependency is admitted, and mixed or
   rolled-back binaries remain read-only;
-- v0.111.59 execution knowledge and authority resolution are independent; normalized
+- v0.170.0 execution knowledge and authority resolution are independent; normalized
   unknown execution terminates custody only after exact root reconciliation, reopens
   current-state dependencies only and preserves history-sensitive blocking;
-- v0.111.60 completeness claims identify provider-asserted, hardware-monotonic,
+- v0.171.0 completeness claims identify provider-asserted, hardware-monotonic,
   witnessed or receipt evidence; protected recovery refuses provider assertion when
   provider equivocation is in scope and never claims collusion detection without an
   independent observer;
-- v0.111.61 fence receipts bind consistent ordered append-log and authenticated
-  operation-ID map roots with uniqueness/projection proofs, while v0.111.64 adds
+- v0.172.0 fence receipts bind consistent ordered append-log and authenticated
+  operation-ID map roots with uniqueness/projection proofs, while v0.175.0 adds
   domain-separated idempotency identity and immutable fence-time result state;
-- v0.111.62 custody age survives restart under `ClockEpoch` plus authoritative
+- v0.173.0 custody age survives restart under `ClockEpoch` plus authoritative
   frontier/time evidence, renewal reserves before its safety margin, and unresolved
   abandonment is externally reconciled before destruction;
-- v0.111.63 normative state permissions are enforced by sealed non-forgeable Rust
-  witnesses, while v0.111.66 keeps exact operation authorization/budget/root separate;
-- v0.111.64 final acceptance roots contain immutable acceptance/fence-time facts only;
+- v0.174.0 normative state permissions are enforced by sealed non-forgeable Rust
+  witnesses, while v0.177.0 keeps exact operation authorization/budget/root separate;
+- v0.175.0 final acceptance roots contain immutable acceptance/fence-time facts only;
   late outcomes append to separately chained result log/status roots, and both
   operation/idempotency identities support logarithmic proofs;
-- v0.111.65 receipt-backed execution requires independent receipt durability before
+- v0.176.0 receipt-backed execution requires independent receipt durability before
   acceptance, and witnessed execution requires threshold co-commit as part of
   acceptance; unavailable evidence leaves work non-executable;
-- v0.111.66 feature state is a non-authorizing store/realm/revision/matrix/incarnation
-  witness; v0.111.70 moves one exact v0.23.4 operation capability, durable budget
+- v0.177.0 feature state is a non-authorizing store/realm/revision/matrix/incarnation
+  witness; v0.181.0 moves one exact v0.23.4 operation capability, durable budget
   lease and expected authority root into an affine operation token before any effect;
-- v0.111.67 prepared axis leaves remain inert while v0.111.69 projects exact result
-  evidence into knowledge; v0.111.68 externally reconciles and locally activates the
+- v0.178.0 prepared axis leaves remain inert while v0.180.0 projects exact result
+  evidence into knowledge; v0.179.0 externally reconciles and locally activates the
   composed emergency checkpoint before side effects; late knowledge cannot resurrect
   custody/repeat cleanup, and history-sensitive dependencies need a new governed
   resolution;
-- v0.111.71 bounds and charges prepared receipts before external preparation, and
-  v0.111.72 enforces declared receipt/witness observer profiles and degradation;
-- v0.111.73-v0.111.74 preserve conflict and detailed acceptance/execution knowledge,
-  v0.111.75 requires per-consequence affine authority, v0.111.76 requires enforceable
-  external receipt capacity, and v0.111.77 limits selected-witness privacy claims;
-- v0.111.78 enforces provider start-before-effect, v0.111.79 bounds irreducible-
-  conflict custody through anchored abandonment, v0.111.80 closes consequence token/
-  budget/root ownership, and v0.111.81 makes static receipt slots clone-safe;
-- v0.111.82 preserves started-no-effect knowledge, v0.111.83 makes start/effect plans
-  affine and bounded, v0.111.84 makes panic accounting conservative, v0.111.85 requires
-  rollback-resistant static-slot authority, and v0.111.86 separates conflict-evidence
+- v0.182.0 bounds and charges prepared receipts before external preparation, and
+  v0.183.0 enforces declared receipt/witness observer profiles and degradation;
+- v0.184.0-v0.185.0 preserve conflict and detailed acceptance/execution knowledge,
+  v0.186.0 requires per-consequence affine authority, v0.187.0 requires enforceable
+  external receipt capacity, and v0.188.0 limits selected-witness privacy claims;
+- v0.189.0 enforces provider start-before-effect, v0.190.0 bounds irreducible-
+  conflict custody through anchored abandonment, v0.191.0 closes consequence token/
+  budget/root ownership, and v0.192.0 makes static receipt slots clone-safe;
+- v0.193.0 preserves started-no-effect knowledge, v0.194.0 makes start/effect plans
+  affine and bounded, v0.195.0 makes panic accounting conservative, v0.196.0 requires
+  rollback-resistant static-slot authority, and v0.197.0 separates conflict-evidence
   keys and retention;
-- v0.111.87 preserves mixed per-effect knowledge, v0.111.88 makes permit dispatch
-  durable and delivery claims explicit, v0.111.89 requires non-equivocating fenced
-  static-slot allocation, and v0.111.90 types every dependency outcome witness;
-- v0.111.91 makes emergency resolution per permit, v0.111.92 fences plan amendments
-  under one lineage, v0.111.93 separates conflict observation from outcome authority,
-  v0.111.94 binds delivery claims to replay-fenced deduplication horizons, and
-  v0.111.95 persists conservative uncertainty before external handoff;
-- v0.111.96 prevents amendment widening and stabilizes permit identity, v0.111.97
-  separates permit-scoped conflict abandonment, v0.111.98 records consequence
-  ambiguity, v0.111.99 admits only bounded dependency DAGs, and v0.111.100 requires
+- v0.198.0 preserves mixed per-effect knowledge, v0.199.0 makes permit dispatch
+  durable and delivery claims explicit, v0.200.0 requires non-equivocating fenced
+  static-slot allocation, and v0.201.0 types every dependency outcome witness;
+- v0.202.0 makes emergency resolution per permit, v0.203.0 fences plan amendments
+  under one lineage, v0.204.0 separates conflict observation from outcome authority,
+  v0.205.0 binds delivery claims to replay-fenced deduplication horizons, and
+  v0.206.0 persists conservative uncertainty before external handoff;
+- v0.207.0 prevents amendment widening and stabilizes permit identity, v0.208.0
+  separates permit-scoped conflict abandonment, v0.209.0 records consequence
+  ambiguity, v0.210.0 admits only bounded dependency DAGs, and v0.211.0 requires
   complete delivery closure without claiming historical no-effect;
-- v0.111.101 composes historical outcome, delivery closure and boundary coverage,
-  v0.111.102 enforces one active consequence slot per permit/kind/generation, and
-  v0.111.103 makes envelope admission non-circular with pre-receipt lineage identity;
-- v0.111.104 enforces prior-state-compatible historical finality, v0.111.105 makes
-  consequence generations write-once with one successor, and v0.111.106 defines
+- v0.212.0 composes historical outcome, delivery closure and boundary coverage,
+  v0.213.0 enforces one active consequence slot per permit/kind/generation, and
+  v0.214.0 makes envelope admission non-circular with pre-receipt lineage identity;
+- v0.215.0 enforces prior-state-compatible historical finality, v0.216.0 makes
+  consequence generations write-once with one successor, and v0.217.0 defines
   signature-free acceptance intent/witness/provider frontiers;
-- v0.111.107 gives each historical-finality state only its legal proof obligations,
-  v0.111.108 atomically publishes every local consequence-authority component, and
-  v0.111.109 counts only durably admitted witness receipts toward acceptance;
-- v0.111.110 selects closure versus final no-dispatch proof for every permit,
-  v0.111.111 reconciles local consequence authority with inert external provider
-  activation, and v0.111.112 removes witness checkpoint/receipt self-reference;
-- v0.111.113 persists unknown before provider activation, v0.111.114 makes aggregate
-  finality cover the append-only lineage permit inventory, and v0.111.115 fences local
+- v0.218.0 gives each historical-finality state only its legal proof obligations,
+  v0.219.0 atomically publishes every local consequence-authority component, and
+  v0.220.0 counts only durably admitted witness receipts toward acceptance;
+- v0.221.0 selects closure versus final no-dispatch proof for every permit,
+  v0.222.0 reconciles local consequence authority with inert external provider
+  activation, and v0.223.0 removes witness checkpoint/receipt self-reference;
+- v0.224.0 persists unknown before provider activation, v0.225.0 makes aggregate
+  finality cover the append-only lineage permit inventory, and v0.226.0 fences local
   commit/activation authority before pre-commit provider abort;
-- v0.111.116 requires complete activation-delivery closure for non-activation finality,
-  v0.111.117 binds inventory and all current permit maps in the active checkpoint, and
-  v0.111.118 bounds permit history, conflict retention and finality work;
-- v0.111.119 makes checkpoint/resulting-composite publication acyclic, and v0.111.120
+- v0.227.0 requires complete activation-delivery closure for non-activation finality,
+  v0.228.0 binds inventory and all current permit maps in the active checkpoint, and
+  v0.229.0 bounds permit history, conflict retention and finality work;
+- v0.230.0 makes checkpoint/resulting-composite publication acyclic, and v0.231.0
   preallocates a fail-closed saturation fence for authenticated unadmittable evidence;
-- v0.111.121 requires fresh externally anchored current-head authority at protected
-  effect boundaries, v0.111.122 prevents unrelated evidence from saturating a permit,
-  and v0.111.123 requires complete fenced source closure before saturation resolution;
-- v0.111.124 makes optional offline consequence grants clone-safe per exact effect,
-  v0.111.125 qualifies source closure with independent completeness assurance, and
-  v0.111.126 bounds anchor admission under clone/Sybil aggregation with reserved
+- v0.232.0 requires fresh externally anchored current-head authority at protected
+  effect boundaries, v0.233.0 prevents unrelated evidence from saturating a permit,
+  and v0.234.0 requires complete fenced source closure before saturation resolution;
+- v0.235.0 makes optional offline consequence grants clone-safe per exact effect,
+  v0.236.0 qualifies source closure with independent completeness assurance, and
+  v0.237.0 bounds anchor admission under clone/Sybil aggregation with reserved
   recovery capacity;
-- v0.111.127 makes admission-receipt execution clone-safe at every effect endpoint,
-  v0.111.128 makes offline-grant issuance failure-atomic, and v0.111.129 admits only
+- v0.238.0 makes admission-receipt execution clone-safe at every effect endpoint,
+  v0.239.0 makes offline-grant issuance failure-atomic, and v0.240.0 admits only
   semantically independent all-or-none anchor batches;
-- v0.111.130 keeps grant material/reservations inert until one activation, v0.111.131
-  makes delivery/possession crash-safe, v0.111.132 closes hardware output through the
-  terminal effect and v0.111.133 proves whole-lifecycle N-way batch independence;
-- v0.111.134 binds recipient authority before activation, v0.111.135 requires durable
-  local issue/authorization roots and an exclusive abort fence, v0.111.136 classifies
-  exportable hardware output as its own terminal effect, and v0.111.137 bounds dynamic
+- v0.241.0 keeps grant material/reservations inert until one activation, v0.242.0
+  makes delivery/possession crash-safe, v0.243.0 closes hardware output through the
+  terminal effect and v0.244.0 proves whole-lifecycle N-way batch independence;
+- v0.245.0 binds recipient authority before activation, v0.246.0 requires durable
+  local issue/authorization roots and an exclusive abort fence, v0.247.0 classifies
+  exportable hardware output as its own terminal effect, and v0.248.0 bounds dynamic
   footprints and compares canonical semantic projections without rewriting audit roots;
-- v0.111.138 orders activation at the current-head anchor CAS, v0.111.139 prevents
-  recipient migration from duplicating non-revocable authority, v0.111.140 requires
-  intersecting threshold decision quorums, and v0.111.141 admits scoped authorization
+- v0.249.0 orders activation at the current-head anchor CAS, v0.250.0 prevents
+  recipient migration from duplicating non-revocable authority, v0.251.0 requires
+  intersecting threshold decision quorums, and v0.252.0 admits scoped authorization
   only through one named replay-fenced final provider;
-- v0.111.142 makes recipient-set changes terminal-consumer authority transitions,
-  v0.111.143 permanently closes and bounds anchor revalidation, v0.111.144 adds the
-  mutually exclusive post-non-admission abort branch, and v0.111.145 fixes exact
+- v0.253.0 makes recipient-set changes terminal-consumer authority transitions,
+  v0.254.0 permanently closes and bounds anchor revalidation, v0.255.0 adds the
+  mutually exclusive post-non-admission abort branch, and v0.256.0 fixes exact
   rollback-resistant symmetric/asymmetric threshold profiles;
-- v0.111.146 atomically validates recipients while consuming the effect, v0.111.147
+- v0.257.0 atomically validates recipients while consuming the effect, v0.258.0
   reserves clone-aggregated closure/abort capacity beyond normal exhaustion, and
-  v0.111.148 separates threshold safety/reachability with checked quorum arithmetic;
-- v0.111.149 gives every pending effect one atomic transaction or fenced executor,
-  v0.111.150 closes/refunds recovery reserve exactly once, and v0.111.151 separates
+  v0.259.0 separates threshold safety/reachability with checked quorum arithmetic;
+- v0.260.0 gives every pending effect one atomic transaction or fenced executor,
+  v0.261.0 closes/refunds recovery reserve exactly once, and v0.262.0 separates
   threshold safety, reachability and eventual progress;
-- v0.111.152 requires a complete terminal reserve-slice partition before refund,
-  v0.111.153 counts Byzantine withholding inside `u_total`, and v0.111.154 admits
+- v0.263.0 requires a complete terminal reserve-slice partition before refund,
+  v0.264.0 counts Byzantine withholding inside `u_total`, and v0.265.0 admits
   temporal progress only while the capacity-at-stabilization premise holds;
-- v0.111.155 grants that progress class only through an affine per-request worst-case
+- v0.266.0 grants that progress class only through an affine per-request worst-case
   round reservation whose aggregate CAS prevents concurrent oversubscription;
-- v0.111.156 permanently fences/closes every negatively resolved reservation route before
-  retry, and v0.111.157 separates aggregate capability health from request terminality;
-- v0.111.158 bounds cumulative retry history and protects final closure capacity, while
-  v0.111.159 lets healthy reservations continue under admission-only aggregate exhaustion
+- v0.267.0 permanently fences/closes every negatively resolved reservation route before
+  retry, and v0.268.0 separates aggregate capability health from request terminality;
+- v0.269.0 bounds cumulative retry history and protects final closure capacity, while
+  v0.270.0 lets healthy reservations continue under admission-only aggregate exhaustion
   and separates resumable pre-dispatch pause from monotonic post-handoff query-only state;
-- v0.111.160 makes pause, dispatch and resume consume one request-authority predecessor,
-  v0.111.161 bounds pause churn while preserving final query/fence/closure capacity, and
-  v0.111.162 makes resume prove complete non-widening premise compatibility without
-  treating connectivity recovery as stabilization evidence; v0.111.163 keeps that proof
+- v0.271.0 makes pause, dispatch and resume consume one request-authority predecessor,
+  v0.272.0 bounds pause churn while preserving final query/fence/closure capacity, and
+  v0.273.0 makes resume prove complete non-widening premise compatibility without
+  treating connectivity recovery as stabilization evidence; v0.274.0 keeps that proof
   non-authorizing and requires fresh current policy and consequence admission at dispatch,
-  while v0.111.164 durably records/reconciles external anchor admission ambiguity before
-  any protected dispatch can proceed; v0.111.165 freezes one semantic dispatch root before
-  admission, and v0.111.166 preserves every persistent anchor state or permanently disables
-  its affected scope without inferring non-admission or refund; v0.111.167 removes receipt
-  cycles with an inner intent/root and outer authorized envelope, while v0.111.168 gives
-  abandonment explicit endpoint-enforced versus local-only semantics; v0.111.169 scopes
+  while v0.275.0 durably records/reconciles external anchor admission ambiguity before
+  any protected dispatch can proceed; v0.276.0 freezes one semantic dispatch root before
+  admission, and v0.277.0 preserves every persistent anchor state or permanently disables
+  its affected scope without inferring non-admission or refund; v0.278.0 removes receipt
+  cycles with an inner intent/root and outer authorized envelope, while v0.279.0 gives
+  abandonment explicit endpoint-enforced versus local-only semantics; v0.280.0 scopes
   each intent to one terminal leaf/domain and preserves mixed composite outcomes;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
@@ -22932,474 +22939,474 @@ Deliverables:
   signature/page/work ceilings, pre-quarantine `ResourceLimit`, bounded abuse
   receipts, sender-held evidence, partial cleanup, and arrival-order-independent
   authority selection pass bundle, clone, sync, and reconnect fixtures;
-- v0.111.1 pre-candidate reservation leases pass exact-scope/counter vectors,
+- v0.112.0 pre-candidate reservation leases pass exact-scope/counter vectors,
   monotonic idle and hard-lifetime expiry, charged-progress renewal, reconnect/
   resume inheritance, fair scheduling, work-before-use debit, atomic conversion,
   expiry/publication races, and deterministic startup reconciliation fixtures;
-- v0.111.2 process/reboot/suspend clock-epoch, complete-versus-partial restart,
+- v0.113.0 process/reboot/suspend clock-epoch, complete-versus-partial restart,
   clock failure/wrap, encrypted metadata replay, key-unavailable refusal, opaque
   path/log/metric, bucketing/padding, cleanup-retention, and blind-observer
   leakage fixtures pass on every admitted platform/privacy profile;
-- v0.111.3 first-provisioning/provider-unavailable, wrong daemon/store/purpose
+- v0.114.0 first-provisioning/provider-unavailable, wrong daemon/store/purpose
   key, simultaneous-daemon, rotation-crash, mixed-epoch, early-retirement,
   compromise, key-loss, migration, candidate-conversion/reprotection, opaque-
   cleanup, exact-versus-bucket, profile-change, and padded-budget fixtures pass;
-- v0.111.4 provider completion/response-loss, descriptor/journal loss, duplicate
+- v0.115.0 provider completion/response-loss, descriptor/journal loss, duplicate
   startup, orphan handle, wrapped-root partial publication, conflicting provider
   result, rollback/clone, and ambiguous retry fixtures pass;
-- v0.111.5 first-candidate-without-key refusal, provider ambiguity, wrong binding,
+- v0.116.0 first-candidate-without-key refusal, provider ambiguity, wrong binding,
   mixed-epoch rotation, early retirement, unavailable/lost key quota hold,
   expiry refusal, move/partial rewrap, backup recovery, candidate conversion,
   realm adoption, compromise, and purpose-separation fixtures pass;
-- v0.111.6 prefix truncation/extension/replacement/reorder, alternate-prefix,
+- v0.117.0 prefix truncation/extension/replacement/reorder, alternate-prefix,
   wrong count/length/root, cutover omission/rollback/substitution, wrong daemon/
   provider result, authenticated-successor substitution, and cutover/descriptor
   crash fixtures pass;
-- v0.111.7 stage-by-stage crash/lost-response, store-commit/daemon-finalize loss,
+- v0.118.0 stage-by-stage crash/lost-response, store-commit/daemon-finalize loss,
   provider-success/store-failure orphan, request mismatch, conflict, abandonment/
   destruction separation, and concurrent daemon recovery fixtures pass;
-- v0.111.8 fixed-suite/tag/key transcript, provider key creation/wrapping,
+- v0.119.0 fixed-suite/tag/key transcript, provider key creation/wrapping,
   constant-time verify-before-decode, field/root/tag mutation, unknown/retired
   suite, downgrade, key-epoch and suite-transition fixtures pass;
-- v0.111.9 reserve-before-execution, every charged state, failed-incarnation/
+- v0.120.0 reserve-before-execution, every charged state, failed-incarnation/
   orphan flood, ambiguous/unknown inventory, daemon-state loss, migration/clone,
   fair-share, abandonment-no-refund and destruction-confirmation-loss fixtures
   pass against constrained provider profiles;
-- v0.111.10 construction-order/cycle detection, exact bridge attachment,
+- v0.121.0 construction-order/cycle detection, exact bridge attachment,
   descriptor/tag/root substitution, no-multiple-fixed-point, concurrent rotation
   and partial non-authoritative bridge-construction fixtures pass;
-- v0.111.11 authenticated capability discovery, reservation-token binding/replay/
+- v0.122.0 authenticated capability discovery, reservation-token binding/replay/
   expiry/cancel race, atomic-quota refusal/lost response, static-slot CAS/rebind,
   unverifiable/advisory refusal, provider degradation and mode-migration fixtures
   pass;
-- v0.111.12 compromised-retiring-key forgery, authority purpose/scope, expected-
+- v0.123.0 compromised-retiring-key forgery, authority purpose/scope, expected-
   descriptor CAS, stale/cross-incarnation replay, conflicting authorized rotation,
   descriptor-update loss and root-compromise recovery-ceremony fixtures pass;
-- v0.111.13 rotation-lease, key/MAC response ambiguity, bound usability check,
+- v0.124.0 rotation-lease, key/MAC response ambiguity, bound usability check,
   staged-byte/tag corruption, prepared-manifest durability, atomic old-close/new-
   genesis/descriptor switch and every preparation/publication crash fixture pass;
-- v0.111.14 exact outer-frame/AEAD-AD/ciphertext-HMAC vectors, nonce/retry/clone,
+- v0.125.0 exact outer-frame/AEAD-AD/ciphertext-HMAC vectors, nonce/retry/clone,
   opaque-name/index and padded-length leakage, independent epoch rotation,
   locked/unavailable key, ordinary downgrade refusal, explicit declassification,
   earlier plaintext-store migration and plaintext-remnant fixtures pass;
-- v0.111.15 unauthorized preflight, attempt/provider/byte budget persistence,
+- v0.126.0 unauthorized preflight, attempt/provider/byte budget persistence,
   key-before-lease ordering, slow/revoked authorization, unavailable HSM,
   timeout/reacquire, queued-writer fairness, cumulative hold/failure exhaustion,
   cancellation cleanup and ambiguous-provider retention fixtures pass;
-- v0.111.16 capsule bound/parser, independent anchor, opaque locator, descriptor
+- v0.127.0 capsule bound/parser, independent anchor, opaque locator, descriptor
   commitment/AEAD, exact recovery order, identity-after-open, rollback, copied-
   daemon and every capsule/descriptor publication-crash fixture pass;
-- v0.111.17 old/new physical-root, semantic-commitment, migration-manifest,
+- v0.128.0 old/new physical-root, semantic-commitment, migration-manifest,
   copy-on-write activation, concurrent append, rollback, key-retention and mixed-
   backup restore fixtures pass;
-- v0.111.18 filesystem/backup observer, fixed segment/slot, batching, cover,
+- v0.129.0 filesystem/backup observer, fixed segment/slot, batching, cover,
   schedule, timestamp, compaction, leakage threshold, overhead and profile-health
   degradation/recovery fixtures pass on the admitted platform matrix;
-- v0.111.19 lease/accounting `ClockEpoch`, process-kill conservative debit,
+- v0.130.0 lease/accounting `ClockEpoch`, process-kill conservative debit,
   restart/clone/rollback churn, unavailable/conflicting refill authority, reset
   replay, no-refill exhaustion and queued-writer reconstruction fixtures pass;
-- v0.111.20 anchor-profile/transition vectors, local prepare/external response-
+- v0.131.0 anchor-profile/transition vectors, local prepare/external response-
   loss reconciliation/local activation, dual-slot tear, counter/CAS/witness
   conflict, disk rollback and missing-staged-byte recovery fixtures pass;
-- v0.111.21 immutable-frontier pin, streamed checkpoint/resume, sustained append,
+- v0.132.0 immutable-frontier pin, streamed checkpoint/resume, sustained append,
   catch-up limit/starvation, final-tail deadline and migration/rotation/capsule/
   refresh/compaction ordering fixtures pass;
-- v0.111.22 real/cover one-write, nonce/generation ambiguity, crash/clone, sparse/
+- v0.133.0 real/cover one-write, nonce/generation ambiguity, crash/clone, sparse/
   extent, bitmap consistency, stable-AD relocation and refresh-migration fixtures
   pass on every admitted filesystem profile;
-- v0.111.23 ticket admission/FIFO/weighted grant, result ambiguity, cancellation/
+- v0.134.0 ticket admission/FIFO/weighted grant, result ambiguity, cancellation/
   disconnect, phantom-to-debt, spam ceiling, restart reconstruction, key loss and
   ledger compaction fixtures pass;
-- v0.111.24 segment reservation/materialization/sealing, HMAC/root/bitmap mismatch,
+- v0.135.0 segment reservation/materialization/sealing, HMAC/root/bitmap mismatch,
   sparse/zero slot refusal, publication CAS, file/directory sync and every crash
   boundary fixture pass on the admitted platform/filesystem matrix;
-- v0.111.25 migration work reservation, conservative crash charge, persistent
+- v0.136.0 migration work reservation, conservative crash charge, persistent
   counter/round exhaustion, clock-epoch replacement, authority-derived age,
   restart/clone/rollback churn and no-refill fixtures pass;
-- v0.111.26 ledger-key lifecycle, grant-reserve/journal-commit/grant-complete,
+- v0.137.0 ledger-key lifecycle, grant-reserve/journal-commit/grant-complete,
   ambiguous result query, root anchor/receipt, rollback/truncation, backup,
   compaction and outstanding-grant retirement fixtures pass;
-- v0.111.27 committed recovery-set, deterministic bounded parallel query, wrong/
+- v0.138.0 committed recovery-set, deterministic bounded parallel query, wrong/
   malicious/unavailable copy, cumulative budget exhaustion, restart/clone,
   undeclared-copy refusal and exact activation fixtures pass;
-- v0.111.28 certificate encoding/inclusion, unrelated append, current-leaf
+- v0.139.0 certificate encoding/inclusion, unrelated append, current-leaf
   mutation, completion path-copy CAS, disconnected-ticket frontier, caller-receipt
   limitation, maintenance race, compaction and restore fixtures pass;
-- v0.111.29 filesystem/block/snapshot/backup trace comparisons, fixed-cadence arena,
+- v0.140.0 filesystem/block/snapshot/backup trace comparisons, fixed-cadence arena,
   real/empty/failed/ambiguous batches, missed window, cleanup and non-retroactive
   profile-health fixtures pass on every admitted storage profile;
-- v0.111.30 anchor-recovery accounting vectors differ from migration vectors, and
+- v0.141.0 anchor-recovery accounting vectors differ from migration vectors, and
   cross-purpose key/token/reset/checkpoint replay, restart/clone, ambiguity,
   authority loss, overflow and exhaustion fixtures pass;
-- v0.111.31 zero-copy refusal/label, same-provider/credential/key/region common-
+- v0.142.0 zero-copy refusal/label, same-provider/credential/key/region common-
   mode detection, read-after-write/restore challenge, copy loss/replacement,
   provider equivocation and protected-diverse restore fixtures pass;
-- v0.111.32 missing-descriptor cold key lookup, provider ambiguity, initial root/
+- v0.143.0 missing-descriptor cold key lookup, provider ambiguity, initial root/
   budget binding, key rotation/retirement, old valid accounting-root rollback,
   external checkpoint, up-front reservation and backup/restore fixtures pass;
-- v0.111.33 canonical append-only consistency, current state-map leaf, terminal-
+- v0.144.0 canonical append-only consistency, current state-map leaf, terminal-
   conflict absence, log/map mismatch, proof bounds, checkpoint fork, completion
   CAS and compacted witness/archive fixtures pass;
-- v0.111.34 frontier-anchor capability/namespace, cross-domain substitution,
+- v0.145.0 frontier-anchor capability/namespace, cross-domain substitution,
   prepare/reconcile-before-lease, CAS/witness conflict, provider capacity/rate,
   ambiguity and ordinary-writer progress fixtures pass;
-- v0.111.35 immutable version/retention lease, delete-after-challenge, replacement,
+- v0.146.0 immutable version/retention lease, delete-after-challenge, replacement,
   expiry, cached response, credential revocation, post-reconcile verification,
   later degradation and retained multi-provider restore fixtures pass;
-- v0.111.36 token format/delivery/possession, absent-local-state query, endpoint/
+- v0.147.0 token format/delivery/possession, absent-local-state query, endpoint/
   redirect/transport substitution, namespace enumeration refusal, threshold/split-
   view, supersession/loss and cumulative work-limit fixtures pass;
-- v0.111.37 anchored-prefix/current-checkpoint consistency, cutoff terminal/grant/
+- v0.148.0 anchored-prefix/current-checkpoint consistency, cutoff terminal/grant/
   debt accounting, maintenance-leaf revalidation, competing epoch, satisfaction-
   to-lease race, crash and sustained ordinary-writer fixtures pass;
-- v0.111.38 prepare/activate dual-CAS and response-loss reconciliation, pending-
+- v0.149.0 prepare/activate dual-CAS and response-loss reconciliation, pending-
   state proof, continuous-retention mechanism, metadata-only refusal, deletion/
   expiry, conflicting activation, abandonment/lower-class and success fixtures pass;
-- v0.111.39 bootstrap budget/attempt/receipt formats, provider idempotency/use
+- v0.150.0 bootstrap budget/attempt/receipt formats, provider idempotency/use
   counter, pre-accounting crash/response loss/restart/clone, one-attempt weaker
   profile, complete import, replay and exhaustion fixtures pass;
-- v0.111.40 grant-before-handoff/lease, ordinary/maintenance CAS, disconnected
+- v0.151.0 grant-before-handoff/lease, ordinary/maintenance CAS, disconnected
   payload, journal-result response loss, handoff-to-debt, cancellation authority,
   restart and maintenance-overtake fixtures pass;
-- v0.111.41 enforced-lock, independent attestation and PoR/PoDP vectors plus forged
+- v0.152.0 enforced-lock, independent attestation and PoR/PoDP vectors plus forged
   audit, deleted bytes, self-attestation, stale/revoked evidence, predictable/
   replayed challenge, insufficient sampling and downgrade fixtures pass;
-- v0.111.42 coordinator CAS/consensus, disjoint endpoint range, parallel recipient/
+- v0.153.0 coordinator CAS/consensus, disjoint endpoint range, parallel recipient/
   threshold, allocation overlap, unused transfer, stolen token, invalid-auth flood,
   public-budget exhaustion and receipt-import fixtures pass;
-- v0.111.43 recovery-epoch limit, result-query idempotency, process/clock restart,
+- v0.154.0 recovery-epoch limit, result-query idempotency, process/clock restart,
   missing payload, unavailable conversion authority, required-state writer blocking,
   later-ticket refusal and ordered recovery fixtures pass;
-- v0.111.44 ciphertext/tag/version/copy binding, privacy/correlation, re-encryption-
+- v0.155.0 ciphertext/tag/version/copy binding, privacy/correlation, re-encryption-
   during-challenge, partial/mixed tag migration, relocation context, verifier-key
   rotation, crash, backup and activation/retirement fixtures pass;
-- v0.111.45 canonical payload/reconstruction, quota/key/retention, exclusive staging,
+- v0.156.0 canonical payload/reconstruction, quota/key/retention, exclusive staging,
   short write, file/parent sync, path substitution, caller loss, non-resumable
   refusal, result reconciliation and cleanup fixtures pass;
-- v0.111.46 threshold/operator authority, blocked-root binding, provider ambiguity,
+- v0.157.0 threshold/operator authority, blocked-root binding, provider ambiguity,
   fence/new-genesis crash, forged/concurrent recovery, late committed result,
   old-process rollback, identifier reuse and compromise-rotation fixtures pass;
-- v0.111.47 challenge/response/tag/attestation/provider budget, restart/ambiguity,
+- v0.158.0 challenge/response/tag/attestation/provider budget, restart/ambiguity,
   reset/key rotation, stale activation root, cross-accounting substitution and
   verification-versus-restoration routing fixtures pass;
-- v0.111.48 valid/invalid/absence/refusal/conflict size/timing traces, source and
+- v0.159.0 valid/invalid/absence/refusal/conflict size/timing traces, source and
   token linkage, threshold retry, relay/cover failure, coordinator/endpoint
   collusion, public-abuse isolation, log retention and historical health pass;
-- v0.111.49 pre-fence commit, provider query/fence, false non-execution, late/split
+- v0.160.0 pre-fence commit, provider query/fence, false non-execution, late/split
   result, append-only unknown-effect dependency blocking, adoption/non-execution
   bridge and retry-refusal fixtures pass;
-- v0.111.50 pending-effect retention, each terminal resolution, wrapper/key/backup
+- v0.161.0 pending-effect retention, each terminal resolution, wrapper/key/backup
   destruction, ambiguous cleanup, restart and quota-release-order fixtures pass;
-- v0.111.51 baseline/padded/high-security staging size/timing/timestamp/backup traces,
+- v0.162.0 baseline/padded/high-security staging size/timing/timestamp/backup traces,
   raw-digest refusal, cover scheduling, emergency retention/cleanup and historical
   degradation fixtures pass;
-- v0.111.52 observer matrices, coordinator-visible authentication/accounting,
+- v0.163.0 observer matrices, coordinator-visible authentication/accounting,
   separate cover capacity, blind-slot transcript, relay/endpoint/coordinator
   collusion and false-privacy-claim fixtures pass;
-- v0.111.53 first key provisioning, capacity reservation, provider ambiguity,
+- v0.164.0 first key provisioning, capacity reservation, provider ambiguity,
   descriptor activation, challenge-during-rotation, old-key retirement, loss,
   rollback and cross-purpose substitution fixtures pass;
-- v0.111.54 concurrent hidden submit, suppressed local record, atomic fence/snapshot,
+- v0.165.0 concurrent hidden submit, suppressed local record, atomic fence/snapshot,
   accumulator/page/range/non-inclusion proof, split-view, retention-expiry and weak-
   provider refusal fixtures pass;
-- v0.111.55 append-only classification, original-effect absent/present, unsafe inverse,
+- v0.166.0 append-only classification, original-effect absent/present, unsafe inverse,
   two-world conditional normalization, atomic provider-state race, stale bridge,
   conflicting evidence and irreducible-unknown fixtures pass;
-- v0.111.56 realm/global quota, emergency reserve, fanout, renewal/loss, immutable
+- v0.167.0 realm/global quota, emergency reserve, fanout, renewal/loss, immutable
   decoder binding, key/schema retirement, abandonment/destruction, late result and
   permanent scope-disable fixtures pass;
-- v0.111.57 final counters/root, empty-pending proof, signed closure, wrong successor,
+- v0.168.0 final counters/root, empty-pending proof, signed closure, wrong successor,
   partial audit rewrap, archive loss, destruction ambiguity and restored-old-key
   fixtures pass;
-- v0.111.58 parse/verify/model/write/active states, missing dependency, forged
+- v0.169.0 parse/verify/model/write/active states, missing dependency, forged
   activation, mixed versions, matrix stripping, provider/profile downgrade,
   repository rollback and atomic activation-crash fixtures pass;
-- v0.111.59 valid/invalid axis pairs, normalized terminal cleanup, current-state
+- v0.170.0 valid/invalid axis pairs, normalized terminal cleanup, current-state
   reopen, history-sensitive refusal, late knowledge refinement, rollback and
   composed-checkpoint fixtures pass;
-- v0.111.60 provider/writer collusion, attested counter rollback/clone, witness
+- v0.171.0 provider/writer collusion, attested counter rollback/clone, witness
   threshold/equivocation, retained-receipt omission, assurance downgrade and
   assumption-reporting fixtures pass;
-- v0.111.61 append/map root, operation/idempotency uniqueness, projection/count,
+- v0.172.0 append/map root, operation/idempotency uniqueness, projection/count,
   logarithmic inclusion/non-inclusion, page amplification, interrupted build and
   compaction fixtures pass;
-- v0.111.62 process/reboot/clock rollback, stale authoritative frontier, age reset,
+- v0.173.0 process/reboot/clock rollback, stale authoritative frontier, age reset,
   renewal safety-margin capacity, abandonment anchor response loss/split view and
   destroy-before-anchor fixtures pass;
-- v0.111.63 compile-fail permission, private constructor, token consume/replay/
+- v0.174.0 compile-fail permission, private constructor, token consume/replay/
   duplication, stale/cross-feature root, serialization forgery, panic/restart and
   public authority-API audit fixtures pass;
-- v0.111.64 immutable fence-time result, late result append/status CAS, acceptance-
+- v0.175.0 immutable fence-time result, late result append/status CAS, acceptance-
   root stability, result splice/conflict, dual-identity omission/collision,
   idempotency non-inclusion and compaction fixtures pass;
-- v0.111.65 receipt preparation/durability, acceptance/eligibility ordering, execute-
+- v0.176.0 receipt preparation/durability, acceptance/eligibility ordering, execute-
   before-receipt, prepared abort/uncertainty, witness threshold/delay/equivocation,
   response suppression and downgrade fixtures pass;
-- v0.111.66 feature-witness-only refusal, exact operation capability, budget/root/
+- v0.177.0 feature-witness-only refusal, exact operation capability, budget/root/
   context mismatch, widening/conversion, WritePrepared admission and compile-fail/
   public/FFI API inventory fixtures pass;
-- v0.111.67 prepared-axis replay, composed-head CAS crash, mixed roots, normalized
+- v0.178.0 prepared-axis replay, composed-head CAS crash, mixed roots, normalized
   late committed/non-execution evidence, governed history resolution, duplicate
   cleanup/reopen, abandonment and conflict-head fixtures pass;
-- v0.111.68 durable composite preparation, exact external predecessor/root binding,
+- v0.179.0 durable composite preparation, exact external predecessor/root binding,
   response-loss query reconciliation, external-only forward recovery, local-only
   refusal, local activation and no-side-effect-before-activation fixtures pass;
-- v0.111.69 complete effect-evidence projection matrix, stale/pending refinement,
+- v0.180.0 complete effect-evidence projection matrix, stale/pending refinement,
   conflict preservation, source-order independence and composite checkpoint/
   projection substitution fixtures pass;
-- v0.111.70 compile-fail affine capability/budget/root ownership, double-compose/
+- v0.181.0 compile-fail affine capability/budget/root ownership, double-compose/
   double-execute races, cancellation and query-only ambiguity-token fixtures pass;
-- v0.111.71 pre-prepare count/byte/work/concurrency reservation, aggregate Sybil/
+- v0.182.0 pre-prepare count/byte/work/concurrency reservation, aggregate Sybil/
   reconnect limits, authoritative expiry, ambiguity charging, terminal abort/
   compaction and reserved fence/recovery-capacity fixtures pass;
-- v0.111.72 receipt/witness observer matrix, opaque identifier, baseline/padded/high-
+- v0.183.0 receipt/witness observer matrix, opaque identifier, baseline/padded/high-
   security trace, retry/cover/collusion, log-retention and permanent degradation
   fixtures pass;
-- v0.111.73 conflict evidence/root, blocked-only pairing, order independence,
+- v0.184.0 conflict evidence/root, blocked-only pairing, order independence,
   conflict-to-unknown refusal and governed refinement fixtures pass;
-- v0.111.74 proven-not-accepted, accepted-unknown, accepted-never-started, committed,
+- v0.185.0 proven-not-accepted, accepted-unknown, accepted-never-started, committed,
   prepared ambiguity and retained no-effect-kind fixtures pass;
-- v0.111.75 compile-fail active-head-witness-only, per-consequence affine token,
+- v0.186.0 compile-fail active-head-witness-only, per-consequence affine token,
   root-race, cross-kind reuse and query-only ambiguity fixtures pass;
-- v0.111.76 provider capacity-mode admission, local/external dual charge, cloned-host/
+- v0.187.0 provider capacity-mode admission, local/external dual charge, cloned-host/
   identity-reset, holding-token/range/counter and recovery-reserve fixtures pass;
-- v0.111.77 selected-witness occurrence disclosure, observer-specific cover,
+- v0.188.0 selected-witness occurrence disclosure, observer-specific cover,
   unsupported blind-profile refusal, collusion and permanent degradation fixtures pass;
-- v0.111.78 start-before-effect lifecycle, alternate/downstream effect path, post-start
+- v0.189.0 start-before-effect lifecycle, alternate/downstream effect path, post-start
   crash, forged no-effect and incapable-provider downgrade fixtures pass;
-- v0.111.79 conflict-abandonment anchor, permanent disablement, shared-custody refusal,
+- v0.190.0 conflict-abandonment anchor, permanent disablement, shared-custody refusal,
   physical quota release, late evidence and restore/clone fixtures pass;
-- v0.111.80 compile-fail single-owned budget/root, derived child reservation,
+- v0.191.0 compile-fail single-owned budget/root, derived child reservation,
   double-charge, root mismatch, race and panic-accounting fixtures pass;
-- v0.111.81 atomic static-slot consumption, cloned-client race, exact/different retry,
+- v0.192.0 atomic static-slot consumption, cloned-client race, exact/different retry,
   response loss, holder rotation, provider rollback and advisory-mode fixtures pass;
-- v0.111.82 no-effect-kind projection/policy, started/never-started substitution, late
+- v0.193.0 no-effect-kind projection/policy, started/never-started substitution, late
   effect conflict, mixed-version and compaction fixtures pass;
-- v0.111.83 compile-fail affine start/executor/indexed permit, bounded effect-plan,
+- v0.194.0 compile-fail affine start/executor/indexed permit, bounded effect-plan,
   downstream ambiguity/query and parallel dependency fixtures pass;
-- v0.111.84 panic-before-debit/checkpoint/refund, maximum conservative charge,
+- v0.195.0 panic-before-debit/checkpoint/refund, maximum conservative charge,
   authority/nonce-child drop and authenticated parent-refund fixtures pass;
-- v0.111.85 consensus/hardware/witness/threshold static-slot checkpoint, stale restore,
+- v0.196.0 consensus/hardware/witness/threshold static-slot checkpoint, stale restore,
   root splice, split-view and single-node advisory fixtures pass;
-- v0.111.86 emergency conflict-evidence key/namespace, cross-purpose substitution,
+- v0.197.0 emergency conflict-evidence key/namespace, cross-purpose substitution,
   independent archive/closure, key loss/rotation and premature retirement fixtures pass;
-- v0.111.87 mixed committed/no-effect/ambiguous/conflicting knowledge-map, monotonic
+- v0.198.0 mixed committed/no-effect/ambiguous/conflicting knowledge-map, monotonic
   join, scoped compensation, aggregate-summary and compaction fixtures pass;
-- v0.111.88 durable dispatch CAS/flush, every network-handoff crash point, duplicate
+- v0.199.0 durable dispatch CAS/flush, every network-handoff crash point, duplicate
   delivery, exact query recovery and provider-claim downgrade fixtures pass;
-- v0.111.89 disconnected double allocation, stale-writer fencing, witness/quorum
+- v0.200.0 disconnected double allocation, stale-writer fencing, witness/quorum
   equivocation, reconfiguration, partition-healing and advisory downgrade fixtures pass;
-- v0.111.90 typed dependency witness, predicate/derivation substitution, bounded target,
+- v0.201.0 typed dependency witness, predicate/derivation substitution, bounded target,
   ambiguity blocking and governed plan-amendment fixtures pass;
-- v0.111.91 knowledge/resolution map-domain, partial compensation, exact cleanup,
+- v0.202.0 knowledge/resolution map-domain, partial compensation, exact cleanup,
   stale-root, shared-custody and scalar-summary misuse fixtures pass;
-- v0.111.92 old-permit classification, executor fence, stale generation, concurrent
+- v0.203.0 old-permit classification, executor fence, stale generation, concurrent
   amendment, process-clone, lineage publication and crash recovery fixtures pass;
-- v0.111.93 conflict/dependency refusal, observation-witness separation, bounded
+- v0.204.0 conflict/dependency refusal, observation-witness separation, bounded
   consequence, duplicate evidence and abandonment-composition fixtures pass;
-- v0.111.94 deduplication horizon, delayed queue, offline clone, replay-fence
+- v0.205.0 deduplication horizon, delayed queue, offline clone, replay-fence
   compaction, key/provider migration, backup rollback and downgrade fixtures pass;
-- v0.111.95 prepared/unknown durability ordering, no-byte crash, partial handoff,
+- v0.206.0 prepared/unknown durability ordering, no-byte crash, partial handoff,
   terminal-evidence loss and exact query-only recovery fixtures pass;
-- v0.111.96 envelope-subset, attempted authority widening, fresh linked-operation,
+- v0.207.0 envelope-subset, attempted authority widening, fresh linked-operation,
   inherited-start refusal, stable permit-ID and tombstone-reuse fixtures pass;
-- v0.111.97 narrow conflict anchor/disablement, dependency closure, shared custody,
+- v0.208.0 narrow conflict anchor/disablement, dependency closure, shared custody,
   unrelated completion, fallback and restore/clone fixtures pass;
-- v0.111.98 consequence prepared/unknown/terminal/conflicting, duplicate compensation,
+- v0.209.0 consequence prepared/unknown/terminal/conflicting, duplicate compensation,
   query-only recovery, cleanup/reopen/release race and late-evidence fixtures pass;
-- v0.111.99 self/duplicate/cyclic edge, canonical topological order, depth/work bound,
+- v0.210.0 self/duplicate/cyclic edge, canonical topological order, depth/work bound,
   amendment-created cycle and pre-reservation refusal fixtures pass;
-- v0.111.100 delayed queue/proxy/retry/dead-letter, partition healing, epoch rotation,
+- v0.211.0 delayed queue/proxy/retry/dead-letter, partition healing, epoch rotation,
   replay-fence loss, omitted layer and closure-only no-effect refusal fixtures pass;
-- v0.111.101 all typed provider outcomes, successful-commit tombstone, boundary-
+- v0.212.0 all typed provider outcomes, successful-commit tombstone, boundary-
   coverage omission, root/epoch splice and exact no-effect-finality fixtures pass;
-- v0.111.102 distinct-ID replica race, slot/history projection, response loss, retry-
+- v0.213.0 distinct-ID replica race, slot/history projection, response loss, retry-
   generation, occurrence bound/sequence, compaction and stale-restore fixtures pass;
-- v0.111.103 typed admission-stage order, pre-receipt lineage stability, receipt/
+- v0.214.0 typed admission-stage order, pre-receipt lineage stability, receipt/
   signature/acceptance substitution, cycle, stage skip and crash recovery fixtures pass;
-- v0.111.104 every prior-state/outcome pair, incompatible conflict, kind preservation,
+- v0.215.0 every prior-state/outcome pair, incompatible conflict, kind preservation,
   late evidence and no-effect constructor-refusal fixtures pass;
-- v0.111.105 terminal-slot immutability, generation skip/wrap, duplicate successor,
+- v0.216.0 terminal-slot immutability, generation skip/wrap, duplicate successor,
   compaction, migration, stale restore and retry-policy fixtures pass;
-- v0.111.106 canonical signer order, missing/duplicate signer, threshold/diversity/
+- v0.217.0 canonical signer order, missing/duplicate signer, threshold/diversity/
   suite/set substitution, predecessor race and self-reference fixtures pass;
-- v0.111.107 typed historical-finality variant, illegal-field, final no-dispatch
+- v0.218.0 typed historical-finality variant, illegal-field, final no-dispatch
   fence, delayed-dispatch, race and local-absence-refusal fixtures pass;
-- v0.111.108 composite consequence transaction, every crash boundary, partial-root,
+- v0.219.0 composite consequence transaction, every crash boundary, partial-root,
   reservation ambiguity, competing successor and generation-tag fixtures pass;
-- v0.111.109 witness pre-journal/pre-acknowledgement crash, rollback, checkpoint fork,
+- v0.220.0 witness pre-journal/pre-acknowledgement crash, rollback, checkpoint fork,
   compaction, rotation, expiry and threshold-loss fixtures pass;
-- v0.111.110 ready/prepared/authorized/terminal permit, revocation, complete mixed-plan
+- v0.221.0 ready/prepared/authorized/terminal permit, revocation, complete mixed-plan
   vector, delayed authorization and executor-generation fixtures pass;
-- v0.111.111 independent local/provider crash, inert reservation, exact commit receipt,
+- v0.222.0 independent local/provider crash, inert reservation, exact commit receipt,
   activation ambiguity, replacement refusal, abort proof and provider-rotation
   fixtures pass;
-- v0.111.112 statement-checkpoint, durability acknowledgement, direct/indirect cycle,
+- v0.223.0 statement-checkpoint, durability acknowledgement, direct/indirect cycle,
   mismatched inclusion, later receipt checkpoint, compaction and rollback fixtures pass;
-- v0.111.113 unknown-state CAS/flush, first activation byte, affine authority consume,
+- v0.224.0 unknown-state CAS/flush, first activation byte, affine authority consume,
   response loss, query-only recovery and terminal-evidence separation fixtures pass;
-- v0.111.114 amendment-removed/replaced unknown permit, complete inventory projection,
+- v0.225.0 amendment-removed/replaced unknown permit, complete inventory projection,
   current-plan omission, compaction, partial clone and late old-outcome fixtures pass;
-- v0.111.115 local fence/provider abort ordering, commit race, delayed activation,
+- v0.226.0 local fence/provider abort ordering, commit race, delayed activation,
   response loss, stale restore, rotation and committed-abort refusal fixtures pass;
-- v0.111.116 delayed activation, negative query, layer restoration, typed provider/
+- v0.227.0 delayed activation, negative query, layer restoration, typed provider/
   effect outcome, replay-fence rotation/loss and closure substitution fixtures pass;
-- v0.111.117 inventory/map/event-count/composite-head splice, omitted suffix, every
+- v0.228.0 inventory/map/event-count/composite-head splice, omitted suffix, every
   crash boundary, predecessor fork, rollback and mixed-version fixtures pass;
-- v0.111.118 duplicate/equivalent evidence flood, exact transition/byte/work limits,
+- v0.229.0 duplicate/equivalent evidence flood, exact transition/byte/work limits,
   conflict archive, summary depth, restart budget and partial-result refusal fixtures
   pass;
-- v0.111.119 checkpoint/resulting-head cycle, wrong prior head, map-tuple mismatch,
+- v0.230.0 checkpoint/resulting-head cycle, wrong prior head, map-tuple mismatch,
   external publication response loss, activation crash and circular-summary fixtures
   pass;
-- v0.111.120 archive-full authenticated conflict, untrusted overflow, independent
+- v0.231.0 archive-full authenticated conflict, untrusted overflow, independent
   emergency budget, unavailable marker slot, stale proof, restart/offline peer and
   delayed saturation-recovery fixtures pass;
-- v0.111.121 stale offline head/token, every protected consequence, wrong class/scope/
+- v0.232.0 stale offline head/token, every protected consequence, wrong class/scope/
   epoch, witness replay, saturation/admission race, executor-receipt substitution,
   unavailable anchor and explicit non-revocable offline-authority fixtures pass;
-- v0.111.122 cross-operation/lineage/permit/request/effect/provider/epoch/class,
+- v0.233.0 cross-operation/lineage/permit/request/effect/provider/epoch/class,
   duplicate non-membership, illegal transition, proof-budget and deferred-semantics
   fixtures pass;
-- v0.111.123 hidden suffix, sequence gap/reset, source rotation/partition, final-fence,
+- v0.234.0 hidden suffix, sequence gap/reset, source rotation/partition, final-fence,
   result-log/archive/quarantine-root splice, bounded complete recovery and governed-
   abandonment fixtures pass;
-- v0.111.124 restored-clone double consumption, exact effect/idempotency binding,
+- v0.235.0 restored-clone double consumption, exact effect/idempotency binding,
   static-range overlap, hardware rollback, deduplication expiry, threshold double-spend,
   pure-local double release and reconnect-reconciliation fixtures pass;
-- v0.111.125 provider-consistent omission, split view, hardware interval, witness/
+- v0.236.0 provider-consistent omission, split view, hardware interval, witness/
   receipt coverage, source rotation, mixed assurance, downgrade and conflict fixtures
   pass;
-- v0.111.126 clone/Sybil quota, every capacity dimension, ambiguous charge, reserved
+- v0.237.0 clone/Sybil quota, every capacity dimension, ambiguous charge, reserved
   recovery lane, saturation under exhaustion, failover/split brain, stale replica,
   batch ordering, idempotency and privacy fixtures pass;
-- v0.111.127 post-admission clone race, provider replay, hardware rollback, immutable-
+- v0.238.0 post-admission clone race, provider replay, hardware rollback, immutable-
   resource substitution, local/shared destruction boundary, exact-result replay and
   changed-effect conflict fixtures pass;
-- v0.111.128 every issuance crash boundary, reservation/commit response loss,
+- v0.239.0 every issuance crash boundary, reservation/commit response loss,
   replacement grant/ID, ambiguous cancel, external charge retention, provider rotation,
   reconnect-consumption and abort-proof fixtures pass;
-- v0.111.129 duplicate permit/slot, overlap compatibility, result dependency, epoch/
+- v0.240.0 duplicate permit/slot, overlap compatibility, result dependency, epoch/
   aggregate-budget mismatch, deterministic ordering, partial reply, competing head,
   all-or-none publication and per-member execution fixtures pass;
-- v0.111.130 template/reservation/sealed-material inertness, every activation boundary,
+- v0.241.0 template/reservation/sealed-material inertness, every activation boundary,
   threshold-share assembly, hardware-token export, clone, cancel/activate race, response-
   loss query and pre-activation consumption fixtures pass;
-- v0.111.131 unknown-before-first-byte, partial output, provider response loss, recipient/
+- v0.242.0 unknown-before-first-byte, partial output, provider response loss, recipient/
   descriptor substitution, non-queryable retransmission refusal, possession challenge
   and pending-storage recovery/cleanup fixtures pass;
-- v0.111.132 terminal hardware transaction, cloneable authorization output, complete
+- v0.243.0 terminal hardware transaction, cloneable authorization output, complete
   proxy/queue/retry/failover/downstream path, mixed epoch, changed commitment, terminal-
   evidence and replay-fence-loss fixtures pass;
-- v0.111.133 evaluator/table binding, caller-scope refusal, higher-order quota/quorum/
+- v0.244.0 evaluator/table binding, caller-scope refusal, higher-order quota/quorum/
   policy/dependency conflicts, lifecycle footprint completeness, bounded work and every
   execution/failure-order permutation-equivalence fixture pass;
-- v0.111.134 committed-recipient/key-epoch equality, bearer/advisory refusal, recipient
+- v0.245.0 committed-recipient/key-epoch equality, bearer/advisory refusal, recipient
   substitution, private-key/decryption possession, key rotation and successor-grant
   fixtures pass;
-- v0.111.135 missing/mismatched issue or authorization receipt, authorize/abort race,
+- v0.246.0 missing/mismatched issue or authorization receipt, authorize/abort race,
   stale-clone-after-abort, current-head advancement, threshold durable-successor,
   provider migration and response-loss fixtures pass;
-- v0.111.136 opaque token, non-exportable handle, scoped authorization, raw secret
+- v0.247.0 opaque token, non-exportable handle, scoped authorization, raw secret
   release, copied unwrap/signature, audience/endpoint substitution, output relabeling and
   high-assurance export-refusal fixtures pass;
-- v0.111.137 exact/superset/unbounded dynamic footprint, escaped resource, undercharge,
+- v0.248.0 exact/superset/unbounded dynamic footprint, escaped resource, undercharge,
   physical-root diversity, semantic-projection equivalence, evaluator rerun, sound-proof
   verification and stale/forged attestation fixtures pass;
-- v0.111.138 every local/anchor/provider head-advance interval, anchor response loss,
+- v0.249.0 every local/anchor/provider head-advance interval, anchor response loss,
   saturation race, omitted in-flight successor, provider migration and stale-clone
   activation fixture passes;
-- v0.111.139 every grant lifecycle state, cancellation/retirement ambiguity, unknown
+- v0.250.0 every grant lifecycle state, cancellation/retirement ambiguity, unknown
   delivery, same-slot recipient handoff, attempted fresh slot/quota/effect allocation,
   non-revocable hardware and authoritative-expiry fixture passes;
-- v0.111.140 disjoint/barely intersecting Byzantine quorums, activation/abort conflict,
+- v0.251.0 disjoint/barely intersecting Byzantine quorums, activation/abort conflict,
   durable participant decision, old/new configuration, joint consensus, stale restore
   and permanent conflict-freeze fixtures pass;
-- v0.111.141 copied scoped signatures, every bound-field/endpoint/API substitution,
+- v0.252.0 copied scoped signatures, every bound-field/endpoint/API substitution,
   provider replay/result query, expiry, compaction, failover, generic-signature relabeling
   and closed activation-matrix fixtures pass;
-- v0.111.142 envelope-only handoff, replace/add recipient-set CAS, concurrent recipient
+- v0.253.0 envelope-only handoff, replace/add recipient-set CAS, concurrent recipient
   use, unsupported consumer, transition/fanout bound, privacy, compaction and migration
   fixtures pass;
-- v0.111.143 delayed old route, permanent negative fence, complete delivery closure,
+- v0.254.0 delayed old route, permanent negative fence, complete delivery closure,
   response loss, head churn, generation/byte/work/receipt bound, counter-reset, compaction
   and anchor/provider migration fixtures pass;
-- v0.111.144 abort-versus-next-generation CAS, abort-before-fence, cancellation response
+- v0.255.0 abort-versus-next-generation CAS, abort-before-fence, cancellation response
   loss, late admission/activation, stale clone, threshold/provider migration and capacity-
   release refusal fixtures pass;
-- v0.111.145 symmetric/asymmetric equation boundaries, weighted/custom refusal,
+- v0.256.0 symmetric/asymmetric equation boundaries, weighted/custom refusal,
   participant rollback, duplicate identity, old/new joint consensus, fenced transfer,
   Byzantine partition and provider-verification fixtures pass;
-- v0.111.146 check-before-transition/effect-after-transition, queued stale request,
+- v0.257.0 check-before-transition/effect-after-transition, queued stale request,
   consume-versus-replace CAS, concurrent add/use, restored clone, response loss and
   split-transaction hardware/threshold refusal fixtures pass;
-- v0.111.147 every ordinary dimension exhausted before exact query, negative-fence,
+- v0.258.0 every ordinary dimension exhausted before exact query, negative-fence,
   route-closure, conflict-retention, abort-fence, cancellation/query and clone/failover
   reserve-isolation fixtures pass;
-- v0.111.148 maximum-width checked arithmetic, overflow/underflow, `N = 3f`, `N > 3f`,
+- v0.259.0 maximum-width checked arithmetic, overflow/underflow, `N = 3f`, `N > 3f`,
   safe-only, symmetric/asymmetric reachability, withholding, joint-consensus reachability
   and policy-refusal fixtures pass;
-- v0.111.149 duplicate executor, process death at every pending/dispatch boundary, stale
+- v0.260.0 duplicate executor, process death at every pending/dispatch boundary, stale
   generation, queue/dead-letter redelivery, exact query, downstream replay fence,
   hardware path and provider migration fixtures pass;
-- v0.111.150 premature close, close-response loss, clone/process double refund, changed
+- v0.261.0 premature close, close-response loss, clone/process double refund, changed
   slices, pending conflict/query/migration, provider cutover, snapshot restore, compaction
   and terminal no-reopen fixtures pass;
-- v0.111.151 `b != u_total`/`b = u_total`, arbitrary pre-stabilization scheduling, fair
+- v0.262.0 `b != u_total`/`b = u_total`, arbitrary pre-stabilization scheduling, fair
   eventual delivery, Byzantine coordinator replacement, bounded retry/resources,
   unstable/joint reconfiguration, permanent partition and no-asynchronous-time-bound
   fixtures pass;
-- v0.111.152 delayed ambiguous/conflict/provider resolution, complete partition,
+- v0.263.0 delayed ambiguous/conflict/provider resolution, complete partition,
   permanent-retention proof, premature close, migration and old-snapshot replay fixtures pass;
-- v0.111.153 no/partial/full Byzantine-withholding overlap, `b <= u_total` claim,
+- v0.264.0 no/partial/full Byzantine-withholding overlap, `b <= u_total` claim,
   old/new joint-set accounting and exceeded-reachability-premise fixtures pass;
-- v0.111.154 stabilization immediately before/at/after capacity exhaustion, temporal
+- v0.265.0 stabilization immediately before/at/after capacity exhaustion, temporal
   fairness, restart-stable charging, admitted renewal, joint-round capacity and explicit
   unavailable-state fixtures pass;
-- v0.111.155 many-request observation/reservation races, aggregate capacity CAS, restored
+- v0.266.0 many-request observation/reservation races, aggregate capacity CAS, restored
   clone admission, Byzantine coordinator replacement, joint old/new reservation,
   response-loss query and exactly-once release/refund fixtures pass;
-- v0.111.156 negative-query insufficiency, delayed proxy/queue/failover request, permanent
+- v0.267.0 negative-query insufficiency, delayed proxy/queue/failover request, permanent
   replay fence, complete delivery closure, successor generation, migration, compaction and
   successful-terminal identity replay fixtures pass;
-- v0.111.157 exhaustion during provider/coordinator/joint-message/result-query ambiguity,
+- v0.268.0 exhaustion during provider/coordinator/joint-message/result-query ambiguity,
   capability/request enum separation, `ActiveQueryOnly` retention, capability recovery,
   terminal accounting response loss, clone and migration fixtures pass;
-- v0.111.158 every attempt-lineage bound, closure-reserve isolation, exhaustion final
+- v0.269.0 every attempt-lineage bound, closure-reserve isolation, exhaustion final
   query/fence/route/conflict/generation closure, clone/restart/reset, migration, compaction
   and exactly-once reserve-disposition fixtures pass;
-- v0.111.159 global capacity-full with healthy existing progress, provider-local failure,
+- v0.270.0 global capacity-full with healthy existing progress, provider-local failure,
   pre-dispatch `ReservedPaused`/CAS recovery, handoff race, post-handoff monotonic query-
   only, capability recovery, migration and cross-request substitution fixtures pass;
-- v0.111.160 pause/dispatch/resume shared-root races, every pre/post-CAS crash, stale
+- v0.271.0 pause/dispatch/resume shared-root races, every pre/post-CAS crash, stale
   executor, hidden/prepared handoff, handle-before-durability, first-byte and migration
   fixtures pass;
-- v0.111.161 every pause-lineage bound, affine revalidation charge, protected final query/
+- v0.272.0 every pause-lineage bound, affine revalidation charge, protected final query/
   fence/conflict/closure, exhausted no-resume, restart/clone/reset, global recovery,
   migration, compaction and dispatch-race fixtures pass;
-- v0.111.162 complete premise recomputation, remaining-vector comparison, old/new root
+- v0.273.0 complete premise recomputation, remaining-vector comparison, old/new root
   binding, policy/configuration drift, quorum/participant/retry/evidence/route/result-
   domain widening, top-up refusal, charged incompatible pause and connectivity-without-
   stabilization fixtures pass;
-- v0.111.163 compatible-resume non-bearer API, allow-to-deny policy, principal/key
+- v0.274.0 compatible-resume non-bearer API, allow-to-deny policy, principal/key
   revocation, head advancement, saturation, current-witness/anchor admission, stale-
   authority no-refresh and compatibility-versus-dispatch race fixtures pass;
-- v0.111.164 pre-anchor durable unknown, every first-byte/anchor-commit/response-loss/local-
+- v0.275.0 pre-anchor durable unknown, every first-byte/anchor-commit/response-loss/local-
   receipt/dispatch crash boundary, exact idempotent query, pause/resume/replacement refusal,
   final non-admission replay fence, clone/migration and admitted-forward-only fixtures pass;
-- v0.111.165 canonical semantic-dispatch vectors, staged durability/loss, input/worktree/
+- v0.276.0 canonical semantic-dispatch vectors, staged durability/loss, input/worktree/
   configuration mutation, request re-encoding, codec/decoder/schema/result/endpoint/
   idempotency substitution and receipt/state/consumption root-equivalence fixtures pass;
-- v0.111.166 unknown/admitted/abandoned checkpoint, compaction, archive, restore, format-
+- v0.277.0 unknown/admitted/abandoned checkpoint, compaction, archive, restore, format-
   migration, mixed-version, retention, privacy, query-exhaustion, anchor-retirement,
   governed-abandonment response-loss and late-receipt fixtures pass;
-- v0.111.167 independent inner-intent/root and outer-envelope vectors, placeholder/self-
+- v0.278.0 independent inner-intent/root and outer-envelope vectors, placeholder/self-
   reference, cross-receipt/endpoint, semantic-header injection, unknown/duplicate field,
   alternate-encoding, channel replay and layer-preserving migration fixtures pass;
-- v0.111.168 endpoint consume-versus-fence races, stale clone, failover, offline endpoint,
+- v0.279.0 endpoint consume-versus-fence races, stale clone, failover, offline endpoint,
   partial propagation, delayed receipt, route migration/recovery, equivocation and enforced-
   versus-local-only release/refusal fixtures pass;
-- v0.111.169 one-leaf/one-domain admission, bounded composite plan, frozen endpoint-route
+- v0.280.0 one-leaf/one-domain admission, bounded composite plan, frozen endpoint-route
   inventory, split fence/consume winners, all four aggregate outcomes, route-add/migration/
   coordinator/offline-recovery races, partial compensation/dependency/shared-custody/
   refund and unsupported all-or-none fixtures pass;
@@ -23914,7 +23921,7 @@ Deliverables:
   the deferred outcome, while unauthenticated, unrelated or duplicate overflow cannot
   create that marker; saturation resolves only after every admitted evidence source
   proves a complete fenced sequence/result-log frontier and all relevant candidates are
-  accounted and admitted; every closure segment binds its v0.111.60 completeness-
+  accounted and admitted; every closure segment binds its v0.171.0 completeness-
   assurance profile and supporting hardware/witness/independent-receipt roots,
   `ProviderAssertedComplete` is rejected when equivocation is in scope, and split view,
   omitted suffix or unavailable completeness preserves saturation/conflict or ends in
@@ -24289,7 +24296,7 @@ Deliverables:
   tombstone;
 - receipt supersession and refusal to use redacted bodies for availability
   repair;
-- implementation of the v0.126.0 mixed-content archive replacement contract,
+- implementation of the v0.295.0 mixed-content archive replacement contract,
   including replacement upload, receipt acquisition, atomic lineage update,
   and old-pack deletion only after surviving archive availability is proven;
 - receipt-only downstream mode;
