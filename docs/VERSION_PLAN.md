@@ -12129,7 +12129,7 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.159 are complete and their provider/fence/effect/
+  v0.111.50 and v0.111.54-v0.111.161 are complete and their provider/fence/effect/
   custody/anchor/evidence/admission/privacy capabilities are admitted; earlier
   binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
@@ -15692,12 +15692,13 @@ Deliverables:
   revalidation, permit safe post-non-admission abort and fix exact threshold assumptions;
   v0.111.146-v0.111.148 atomically order recipient validation with effect consumption,
   reserve revalidation recovery capacity and separate threshold safety from availability;
-  v0.111.149-v0.111.159 fence pending-effect executors, close/refund recovery reserves,
+  v0.111.149-v0.111.161 fence pending-effect executors, close/refund recovery reserves,
   require complete reserve-slice disposition, define total-nonresponsive fault sets and
   make eventual progress conditional on explicit temporal/resource assumptions plus one
   affine worst-case capacity reservation per admitted request, permanent negative
   reservation closure, separate capability/request state axes, bounded retry closure
-  reserves and request-local pause/execution eligibility;
+  reserves, request-local pause/execution eligibility, atomic pause/dispatch authority and
+  bounded pause-lineage closure capacity;
 - tests cover two restored clones consuming one grant, disjoint/overlapping ranges,
   hardware-counter rollback, provider deduplication expiry, permanent replay fencing,
   threshold double-spend, process/device identity churn, double local quota release,
@@ -17809,10 +17810,12 @@ Deliverables:
 - before any dispatch/handoff authorization or output, temporary request-local provider,
   path, connectivity, synchrony or configuration uncertainty moves `Reserved ->
   ReservedPaused`; the complete reservation remains charged and no output is permitted;
+  v0.111.160 makes pause contend atomically with dispatch on one request-authority root;
 - `ReservedPaused -> Reserved` requires one exact authenticated expected-root CAS that
   revalidates the unchanged reservation, provider/path, current configuration/policy,
   remaining request-owned slices and absence of any dispatch/handoff-unknown successor;
-  it does not require free aggregate capacity for another admission;
+  it does not require free aggregate capacity for another admission; v0.111.161 bounds
+  cumulative pause/revalidation churn and preserves final query/closure capacity;
 - once any downstream handoff is authorized/unknown, request-local failure moves the
   request to monotonic `ActiveQueryOnly`; it can advance only by exact query/reconciliation
   to `Terminal`/`ClosedUnavailable` and can never return to `Active`, `ReservedPaused` or
@@ -17850,6 +17853,123 @@ Exit criteria:
 - Pre-dispatch uncertainty pauses and revalidates without releasing capacity.
 - Post-handoff query-only state is monotonic and can never dispatch again.
 
+### v0.111.160 - Atomic Progress Pause, Dispatch And Resume Authority
+
+Goal: ensure pause, dispatch authorization and paused-request recovery have one shared
+linearization point and cannot expose a hidden dispatch-capable path.
+
+Deliverables:
+
+- canonical `ProgressRequestAuthorityState` binds operation/request/reservation identity,
+  `ProgressRequestState`, eligibility root, configuration/policy/provider/path epochs,
+  executor generation/fence, affine dispatch authority, handle-materialization state,
+  dispatch/handoff identity, remaining typed slices, query route and predecessor root;
+- `Reserved -> ReservedPaused`, `Reserved -> DispatchAuthorizedUnknown`/`Active` and
+  `ReservedPaused -> Reserved` each compare and replace the exact same authenticated
+  `ProgressRequestAuthorityState` root through one expected-state CAS; separate tables,
+  caches, local locks or eventually consistent roots cannot authorize these transitions;
+- pause consumes/revokes the current executor generation and dispatch authority in the
+  winning successor before publishing `ReservedPaused`; every stale worker/process/clone
+  fails the root/generation/fence comparison before obtaining any dispatch-capable handle;
+- dispatch consumes the same reserved predecessor, publishes and durably flushes
+  `DispatchAuthorizedUnknown` before any provider/client/queue/device handle, downstream
+  byte, queue visibility or semantic output exists; once dispatch wins, pause/resume is
+  illegal and later failure can produce only monotonic `ActiveQueryOnly`/terminal query;
+- a dispatch-capable handle is an affine, generation-bound result of the successful
+  dispatch transition and is materialized only after required state and directory/
+  provider durability; no prepared, cached, speculative or hidden handle is reachable
+  from `Reserved` or `ReservedPaused` code paths;
+- resume CAS revalidates the unchanged reservation and current eligibility/configuration/
+  provider/path roots, proves the paused executor is fenced and verifies that no dispatch,
+  handle-materialization or handoff successor exists before minting a fresh bounded
+  executor generation/dispatch authority;
+- revalidation queries run without a dispatch-capable handle and return evidence only;
+  a prepared provider request, queue entry, client future, callback or restored worker is
+  treated as handoff ambiguity and blocks resume in favor of `ActiveQueryOnly`;
+- provider migration/reconfiguration transfers the complete request-authority root,
+  paused/dispatch state, executor fences, handle inventory, reservation and query route
+  before pause, resume or dispatch; stale provider epochs cannot materialize handles;
+- tests use barriers and crash injection immediately before/after pause CAS, dispatch CAS,
+  durable dispatch unknown, handle acquisition and first output byte; they race pause/
+  dispatch/resume across workers, clones, restored processes and provider migration.
+
+Verification:
+
+- `cargo test -p sagnir-object`
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- reserved/pause-or-dispatch/fence/handle/resume/query-only authority-state model;
+- barrier, crash, stale-worker, clone, hidden-handoff and migration integration suite.
+
+Exit criteria:
+
+- Pause, dispatch and resume consume one authoritative request-state predecessor.
+- Pause winners expose no dispatch-capable handle; dispatch winners cannot later pause.
+- Revalidation cannot race a prepared, hidden or already-authorized handoff.
+
+### v0.111.161 - Bounded Progress Pause Lineage And Protected Final Closure
+
+Goal: bound repeated pause/revalidation churn while retaining enough non-borrowable
+capacity to determine and close the request after exhaustion.
+
+Deliverables:
+
+- canonical `ProgressPauseLineage` binds operation/request/reservation, pause generation,
+  maximum pause generations/revalidation attempts, cumulative provider/path/configuration/
+  policy queries, request/receipt bytes, verification/cryptographic work, retained
+  evidence/conflicts, epoch transitions, remaining typed reservation slices, exact
+  predecessor/current eligibility roots and terminal lineage disposition;
+- protocol maxima and stricter policy/provider bounds apply to every dimension with
+  widened checked arithmetic; partial counter updates, overflow, omitted evidence and
+  generation skips/forks are refused before query, CAS or external output;
+- before the first pause-capable dispatch lifecycle begins, admission allocates a typed,
+  clone-aggregated, non-borrowable `ProgressPauseClosureReserve` from the original maximum
+  charge for final exact provider/path/configuration query, executor/dispatch fencing,
+  conflict retention, route/handle closure and terminal `ClosedUnavailable` reconciliation;
+- every pause and revalidation attempt charges its affine request-owned slice and advances
+  the authenticated lineage before external query/work; response loss remains charged and
+  exact replay/query uses the same attempt identity without allocating another slice;
+- ordinary execution, retries, diagnostics, coordinator work, new requests and unrelated
+  recovery cannot borrow/refill closure reserve or pause/revalidation capacity; global
+  capability recovery, wall time and provider reconnect create no new generations;
+- when any pause/revalidation bound is exhausted, no `ReservedPaused -> Reserved` successor
+  or ordinary revalidation query is authorized; the request remains charged
+  `ReservedPaused` while the protected reserve permits only its precommitted final exact
+  query, conflict retention, fence/closure and reconciled transition toward
+  `ClosedUnavailable`;
+- if dispatch/handoff became unknown before exhaustion was observed, v0.111.160 wins and
+  the request is monotonic `ActiveQueryOnly`; pause-lineage exhaustion cannot revoke,
+  redispatch or classify that handoff and its protected query/closure path remains intact;
+- restart, clone, process/device identity change, global recovery, provider migration/
+  failover, compaction and archive/restore preserve counters, evidence, remaining reserve,
+  executor fences and eligibility roots; missing continuity freezes resume and retains charge;
+- terminal pause-lineage accounting inherits v0.111.150/v0.111.152 exactly-once slice
+  disposition, keeping consumed/unused/permanently-retained proof and replay-fence roots;
+- privacy profiles reveal only admitted pause/revalidation buckets while encrypted exact
+  counters and accounting remain authoritative;
+- tests exhaust each pause/revalidation/query/byte/work/evidence/epoch dimension, then
+  prove final query/fence/conflict/closure remains available; restart, clone, migration,
+  global recovery, compaction, response loss, counter reset and pause-vs-dispatch races
+  remain bounded and fail closed.
+
+Verification:
+
+- `cargo test -p sagnir-codec`
+- `cargo test -p sagnir-crypto`
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-policy`
+- `cargo test -p sagnir-sync`
+- pause-lineage/charge/query/revalidate/exhaust/fence/final-close accounting model;
+- churn-exhaustion, protected-closure, restart, clone, migration and dispatch-race suite.
+
+Exit criteria:
+
+- Every request has cumulative bounded pause/revalidation history and retained evidence.
+- Pause-budget exhaustion disables resume but preserves final query/fence/closure capacity.
+- Restart, recovery, migration and clones cannot reset pause counters or rearm dispatch.
+
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
 Goal: ensure untrusted remote data cannot influence trusted state before full
@@ -17879,7 +17999,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.159 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.161 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -17938,8 +18058,8 @@ Deliverables:
   effect execution, reserve closure/refund, complete slice disposition, total-
   nonresponsive fault semantics, resource-sound temporal progress and affine per-request
   progress capacity, permanent reservation non-admission fencing and split capability/
-  request states, bounded retry closure reserves and request-local eligibility through
-  v0.111.159,
+  request states, bounded retry closure reserves, request-local eligibility, atomic pause/
+  dispatch authority and bounded pause-lineage closure capacity through v0.111.161,
   admitted authentication suite/provider-capacity mode,
   and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
@@ -17954,7 +18074,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.159 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.161 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -18756,7 +18876,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.159 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.161 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -18791,7 +18911,8 @@ Deliverables:
   pending-effect execution, complete reserve closure/refund, total-nonresponsive fault
   semantics, resource-sound temporal progress, affine progress reservations, permanent
   reservation non-admission closure, split capability/request states, bounded attempt-
-  closure reserves and request-local pause/eligibility through v0.111.159, and the
+  closure reserves, request-local pause/eligibility, atomic pause/dispatch authority and
+  bounded pause closure through v0.111.161, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -19759,8 +19880,8 @@ Deliverables:
   fenced pending-effect execution, recovery-reserve closure/refund, complete reserve-
   slice disposition, total-nonresponsive fault semantics, resource-sound temporal
   progress, affine per-request progress reservation, permanent reservation non-admission
-  closure, capability/request dual-state, bounded attempt/closure reserve and request-
-  local pause/eligibility corpus;
+  closure, capability/request dual-state, bounded attempt/closure reserve, request-local
+  pause/eligibility, atomic pause/dispatch authority and bounded pause-lineage corpus;
 - deterministic fact rule/query-plan, snapshot cursor, immutable-index offset,
   exact cryptographic suite/hybrid transcript, opaque bundle outer/inner
   manifest, and blind-claim corpus;
@@ -19902,7 +20023,9 @@ Deliverables:
   threshold-fault-set-overlap/threshold-eventual-progress/temporal-progress-resources/
   progress-round-reservation/progress-reservation-release/progress-negative-fence/
   progress-delivery-closure/progress-capability-request-state/progress-attempt-lineage/
-  progress-closure-reserve/progress-reserved-pause/progress-local-eligibility/debt target set;
+  progress-closure-reserve/progress-reserved-pause/progress-local-eligibility/progress-
+  pause-dispatch-CAS/progress-handle-materialization/progress-pause-lineage/progress-pause-
+  closure-reserve/debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -20273,8 +20396,11 @@ Deliverables:
   no successor reservation from current non-inclusion without permanent replay fencing
   and complete route closure, no retry lineage/counter reset or ordinary consumption of
   protected closure capacity, no capability status used as terminal request evidence, no
-  aggregate admission exhaustion revoking a healthy existing reservation, and no post-
-  handoff query-only request returning to dispatch-capable state,
+  aggregate admission exhaustion revoking a healthy existing reservation, no pause/resume/
+  dispatch transition from different authority roots, no dispatch-capable handle before
+  dispatch CAS/durability, no unbounded/resettable pause lineage or ordinary consumption
+  of its final closure reserve, and no post-handoff query-only request returning to
+  dispatch-capable state,
   unanchored conflict abandonment, conflict evidence erasure/cross-purpose key use,
   unbounded/uncharged prepared receipts, local-only provider capacity, static-slot
   clone replay, rollbackable provider checkpoint, partitioned double allocation,
@@ -20509,8 +20635,10 @@ Deliverables:
   v0.111.155 eligible/reservation-unknown/reserve-CAS/active/consume/query/release
   boundaries, v0.111.156 query-negative/fence/close-routes/close-generation/retry-or-
   refuse boundaries, v0.111.157 capability-status/request-state/query-only/terminal-
-  accounting boundaries, v0.111.158 reserve-lineage/attempt/exhaust/final-close boundaries
-  and v0.111.159 global-admission/local-eligibility/pause/revalidate/query-only boundaries,
+  accounting boundaries, v0.111.158 reserve-lineage/attempt/exhaust/final-close boundaries,
+  v0.111.159 global-admission/local-eligibility/pause/revalidate/query-only boundaries,
+  v0.111.160 shared-root/pause-or-dispatch/fence/handle/resume boundaries and v0.111.161
+  pause-lineage/charge/exhaust/query/fence/final-close boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -20744,6 +20872,12 @@ Deliverables:
   healthy existing reservations continue, request-local provider/path failure pauses only
   pre-dispatch requests, exact revalidation resumes them, and handoff-unknown requests
   enter monotonic `ActiveQueryOnly` despite later global/provider recovery;
+- barriers race pause CAS, dispatch CAS and paused-resume CAS on the same predecessor;
+  only one wins, stale workers obtain no dispatch-capable handle, dispatch durability
+  precedes handle/first-byte access and any prepared hidden handoff blocks resume;
+- pause/revalidation churn exhausts generation/query/byte/work/evidence/epoch bounds under
+  provider instability, clones, restart and migration; protected slices still query,
+  fence, retain conflict and close the final request while no resume or counter reset occurs;
 - three-plus-member batches exercise pairwise-compatible but N-way-invalid quota,
   threshold, policy, dependency and authority sets across every success/ambiguity/abort/
   compensation/cleanup/reconciliation permutation and reject caller footprint lies;
@@ -21144,6 +21278,12 @@ Deliverables:
 - request-local eligibility vectors and benchmarks measure capacity-full admission status,
   existing-request execution, provider/path-scoped eligibility, `ReservedPaused` CAS
   revalidation and monotonic post-handoff query-only transitions at maximum concurrency;
+- pause-dispatch vectors and benchmarks measure shared request-root CAS contention,
+  executor fencing, durable dispatch unknown, handle materialization and first-byte latency
+  under maximum workers/clones/provider paths;
+- pause-lineage vectors and benchmarks measure checked pause/revalidation/query/byte/work/
+  evidence/epoch counters, request-slice charging, protected final closure and compacted-
+  lineage verification at maximum bounds;
 - independent `sagnir-authority-sha3-256-v1` frame, transaction, logical-state,
   and physical-checkpoint vectors, including genesis/checkpoint anchoring,
   non-circular signing frontiers, physical-compaction logical-root preservation,
@@ -22046,6 +22186,8 @@ Deliverables:
 - v0.111.158 bounds cumulative retry history and protects final closure capacity, while
   v0.111.159 lets healthy reservations continue under admission-only aggregate exhaustion
   and separates resumable pre-dispatch pause from monotonic post-handoff query-only state;
+- v0.111.160 makes pause, dispatch and resume consume one request-authority predecessor,
+  and v0.111.161 bounds pause churn while preserving final query/fence/closure capacity;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -22516,6 +22658,12 @@ Deliverables:
 - v0.111.159 global capacity-full with healthy existing progress, provider-local failure,
   pre-dispatch `ReservedPaused`/CAS recovery, handoff race, post-handoff monotonic query-
   only, capability recovery, migration and cross-request substitution fixtures pass;
+- v0.111.160 pause/dispatch/resume shared-root races, every pre/post-CAS crash, stale
+  executor, hidden/prepared handoff, handle-before-durability, first-byte and migration
+  fixtures pass;
+- v0.111.161 every pause-lineage bound, affine revalidation charge, protected final query/
+  fence/conflict/closure, exhausted no-resume, restart/clone/reset, global recovery,
+  migration, compaction and dispatch-race fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -23098,7 +23246,10 @@ Deliverables:
   checked cumulative bounds and a preallocated non-borrowable final-closure reserve, while
   aggregate capacity exhaustion blocks new admission without revoking healthy existing
   reservations; pre-dispatch uncertainty uses revalidated `ReservedPaused`, and any
-  handoff-unknown `ActiveQueryOnly` state can never dispatch again;
+  handoff-unknown `ActiveQueryOnly` state can never dispatch again; pause, dispatch and
+  resume contend on one authenticated request-authority predecessor, dispatch handles are
+  materialized only after durable dispatch victory, and each pause lineage has cumulative
+  checked bounds plus protected final query/fence/closure capacity;
   final anchor non-admission is permanently replay-fenced and every old request route is
   closed before a bounded successor generation or mutually exclusive abort may proceed;
   non-borrowable clone-aggregated recovery capacity remains reserved for exact query,
