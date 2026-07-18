@@ -12129,7 +12129,7 @@ Deliverables:
   required format/schema/decoder/model/vector/pentest milestones, dependency feature
   states, profile/provider capabilities, policy root and activation evidence root;
 - emergency writer recovery remains non-authoritative until v0.111.46, v0.111.49,
-  v0.111.50 and v0.111.54-v0.111.77 are complete and their provider/fence/effect/
+  v0.111.50 and v0.111.54-v0.111.81 are complete and their provider/fence/effect/
   custody/anchor/evidence/admission/privacy capabilities are admitted; earlier
   binaries may parse/verify evidence only;
 - protected handoff staging remains inactive until v0.111.45 and v0.111.51 traffic-
@@ -12185,13 +12185,15 @@ Deliverables:
   by v0.111.73-v0.111.74: `Unknown`, `ProvenNotAccepted`,
   `AcceptedExecutionUnknown`, `AcceptedProvenNotExecuted`,
   `Committed(effect_commitment)` and `Conflicting(evidence_root)`, plus
-  `AuthorityResolution` values `Blocked`, `Adopted`, `Compensated`, `Normalized`
-  and `Abandoned`; `ProvenNotExecuted` is a derived classification that retains its
-  non-acceptance or accepted-non-execution evidence kind;
+  `AuthorityResolution` values `Blocked`, `Adopted`, `Compensated`, `Normalized`,
+  `Abandoned` and v0.111.79 `ConflictAbandoned`; `ProvenNotExecuted` is a derived
+  classification that retains its non-acceptance or accepted-non-execution evidence
+  kind;
 - valid-pair rules are explicit: `Adopted` requires `Committed`, ordinary
   `Compensated` requires `Committed`, `Normalized` may retain unresolved knowledge,
-  `Conflicting` permits only `Blocked`, and `Abandoned` preserves non-conflicting
-  current execution knowledge without asserting an effect;
+  `Conflicting` permits only `Blocked` or fail-closed `ConflictAbandoned`, and ordinary
+  `Abandoned` preserves non-conflicting current execution knowledge without asserting
+  an effect;
 - append-only execution-knowledge transitions and authority-resolution transitions
   produce separate immutable prepared roots/leaves; v0.111.67 makes only one locally
   committed expected-head-CAS candidate across both axes, provider/result roots,
@@ -12959,9 +12961,10 @@ Deliverables:
 - duplicate, differently ordered or redundant statements produce the same conflict
   classification and canonical evidence-set commitment; input order, source priority,
   local trust preference and newest-cache selection cannot choose one side;
-- `Conflicting` may pair only with `AuthorityResolution::Blocked`; it cannot pair with
-  adopted, compensated, normalized or abandoned resolution, authorize cleanup,
-  reopen dependencies, release custody, export authoritative state or satisfy policy;
+- `Conflicting` normally pairs only with `AuthorityResolution::Blocked`; v0.111.79
+  admits the separate terminal `ConflictAbandoned` pair after externally anchored
+  disablement, but it cannot pair with adopted, compensated, normalized or ordinary
+  abandoned resolution, choose evidence, reopen dependencies or satisfy policy;
 - the v0.111.69 projection emits `Conflicting` only from positive admitted
   contradiction evidence and emits `Unknown` only for missing, pending, stale or
   otherwise insufficient evidence; neither state may be converted into the other;
@@ -12972,7 +12975,7 @@ Deliverables:
   evidence without exposing private effects beyond their active disclosure profile;
 - tests cover every invalid resolution pair, reordered/duplicated evidence, conflict
   root substitution, committed/non-executed contradiction, two-effect conflict,
-  attempted normalization/cleanup and governed conflict refinement.
+  attempted normalization/unanchored cleanup and governed conflict refinement.
 
 Verification:
 
@@ -12984,7 +12987,8 @@ Verification:
 Exit criteria:
 
 - Positive contradictory evidence can never be represented as mere uncertainty.
-- A conflicting operation remains blocked until an explicit governed resolution.
+- A conflicting operation remains blocked from authority; v0.111.79 may terminate
+  custody without resolving or selecting the conflict.
 - Conflict classification is independent of evidence arrival and storage order.
 
 ### v0.111.74 - Acceptance And Execution Outcome Taxonomy
@@ -13008,7 +13012,8 @@ Deliverables:
   non-observation cannot strengthen or weaken it;
 - `AcceptedProvenNotExecuted` requires immutable acceptance plus authenticated final
   provider execution-slot, monotonic counter or equivalent admitted evidence proving
-  execution never began; ordinary result absence or caller assertion is insufficient;
+  execution never began under the v0.111.78 start-before-effect state machine;
+  ordinary result absence or caller assertion is insufficient;
 - `Committed` requires immutable acceptance and authenticated execution/result
   evidence for the exact effect commitment; an effect without acceptance linkage is
   conflicting evidence rather than a committed outcome;
@@ -13050,10 +13055,11 @@ Deliverables:
   root/generation, external receipt, policy/provider epochs and local incarnation;
 - the witness contains no cleanup, reopening, compensation, normalization, export,
   sync, retention-release, signing, key-destruction or provider-mutation permission;
-- each consequence requires `&CompositeHeadActiveWitness` plus a distinct exact
-  v0.111.70 affine operation token, operation-specific budget/reservation lease and
-  expected active composite-root guard; all contexts must match before secret access,
-  durable writes, network activity or provider mutation;
+- each consequence requires `&CompositeHeadActiveWitness` plus one exact v0.111.70
+  `AffineOperationToken<ConsequenceKind>` that already owns its one-operation
+  capability, budget/reservation lease and expected active composite-root guard; all
+  contexts must match before secret access, durable writes, network activity or
+  provider mutation under v0.111.80;
 - composition produces a sealed one-use `PermittedConsequence<Kind>` whose type and
   scope name exactly one consequence; no generic side-effect token, widening
   conversion, multi-action enum or reusable ambient authority exists;
@@ -13109,8 +13115,9 @@ Deliverables:
   locally and externally until idempotent query proves terminal abort, acceptance or
   supersession; timeout, process loss or a missing local token cannot refund either;
 - holding tokens are non-forgeable, purpose-scoped, finite and consumed atomically;
-  static ranges never overlap or reissue before governed epoch closure; coordinated
-  counters preserve partition/conflict states rather than selecting by arrival order;
+  static ranges never overlap or reissue before governed epoch closure and every slot
+  uses the v0.111.81 provider-side atomic consumption protocol; coordinated counters
+  preserve partition/conflict states rather than selecting by arrival order;
 - provider fence/reconciliation operations have independently reserved external
   capacity so ordinary preparation saturation cannot prevent terminal classification;
 - provider refusal remains resource evidence only and cannot prove non-acceptance or
@@ -13182,6 +13189,191 @@ Exit criteria:
 - Cover improves only the observer classes its measured traces actually protect.
 - Selected-witness occurrence privacy requires an admitted blind/oblivious protocol.
 
+### v0.111.78 - Provider Start-Before-Effect Enforcement
+
+Goal: make accepted-never-started evidence sound by ensuring every admitted provider
+durably records execution start before crossing any effect boundary.
+
+Deliverables:
+
+- canonical provider operation lifecycle is `ExecutionEligible -> StartReserved ->
+  Started -> (EffectCommitted | FailedNoEffect)`, with operation/idempotency,
+  acceptance/eligibility roots, provider namespace/incarnation, execution slot,
+  expected predecessor and result commitment bound at every transition;
+- `StartReserved` allocates one provider execution slot but remains non-effectful;
+  `Started` is durably and atomically linearized before the provider invokes any code,
+  service, device, transaction or downstream system capable of producing an effect;
+- each provider capability profile names the exact execution linearization point and
+  enumerates every in-process and downstream effect boundary covered by the claim;
+  an unlisted, bypassable or post-effect start marker invalidates the profile;
+- the API boundary makes effectful provider entry require a non-cloneable
+  `StartedExecution` witness produced only by the durable start transition; direct,
+  alternate, recovery, administrative and retry paths cannot invoke effects without it;
+- `FailedNoEffect` requires provider-verifiable terminal evidence that no declared
+  effect boundary was crossed after start reservation; local error, cancellation,
+  absent result, rollback request or caller assertion is insufficient;
+- crash, timeout, cancellation or lost response after `Started` but before a final
+  result projects to v0.111.74 `AcceptedExecutionUnknown`, never
+  `AcceptedProvenNotExecuted` or `FailedNoEffect`;
+- providers unable to enforce or attest the complete start-before-effect boundary may
+  produce accepted/eligible evidence but cannot advertise accepted-never-started
+  assurance; unresolved execution remains blocking unknown;
+- recovery queries the exact operation/slot and reconciles start/result state without
+  retrying execution, reallocating the slot or selecting a local pre-crash marker;
+- tests cover effect-before-start attempts, alternate effect paths, nested downstream
+  effects, crash at every transition, lost start/result responses, forged no-effect
+  evidence, provider downgrade and clone/restart slot reuse.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- provider execution-start/result state-machine model;
+- instrumented effect-boundary and response-loss integration suite;
+- canonical lifecycle and capability-profile vectors.
+
+Exit criteria:
+
+- No admitted effect can occur before durable `Started` evidence for that operation.
+- A crash after start is always execution-unknown until final evidence arrives.
+- Providers without complete start-before-effect enforcement cannot prove accepted
+  non-execution.
+
+### v0.111.79 - Irreducible Conflict Abandonment
+
+Goal: end physical custody for permanently contradictory execution evidence without
+choosing a statement or claiming that the conflict was resolved.
+
+Deliverables:
+
+- canonical `AuthorityResolution::ConflictAbandoned` pairs only with
+  `ExecutionKnowledge::Conflicting { evidence_root }`; the contradiction root and
+  every retained evidence commitment remain unchanged and permanently unresolved;
+- conflict abandonment is a distinct governed operation from ordinary abandonment,
+  conflict resolution, compensation and normalization, with its own exact affine
+  authority, policy threshold, custody budget and expected composite-root guard;
+- before any destruction or quota release, an external monotonic anchor commits the
+  conflict root, final provider/fence/result roots, disabled realm/provider/operation
+  scope, dependency closure, custody inventory, policy epoch and abandonment ID;
+- anchored disablement permanently prevents retry, adoption, compensation,
+  normalization, evidence selection, authority reopening, dependency satisfaction,
+  decoder/key reactivation and import of the abandoned operation as current truth;
+- authenticated cleanup may destroy only inventoried payloads, wrappers, keys,
+  decoders and staged bytes whose physical custody is proven exclusive to the
+  abandoned conflict; shared or uncertain resources remain charged and retained;
+- quota release covers only proven destroyed physical custody; bounded permanent
+  conflict, fence, anchor, destruction and residual-uncertainty evidence remains under
+  the v0.111.57 closure and audit-retention contracts;
+- response loss or external-only anchor advancement uses query-only reconciliation
+  and forward recovery under v0.111.68; local-only abandonment remains inert;
+- late evidence appends to permanent conflict history but cannot reverse
+  `ConflictAbandoned`, recreate custody or re-enable authority; a new operation must
+  use a new identity and explicit governance if work is attempted elsewhere;
+- tests cover irreducible conflict, anchor ambiguity/split view, local-only cleanup,
+  shared custody, partial destruction, quota over-release, late evidence, restore/
+  clone rollback, retry and every forbidden resolution conversion.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- conflict-abandonment/custody/anchor state-machine model;
+- external-anchor, destruction and restore integration suite;
+- canonical abandonment and retained-evidence vectors.
+
+Exit criteria:
+
+- Permanent conflict cannot pin provably releasable physical custody forever.
+- Abandonment never chooses evidence or changes the unresolved conflict classification.
+- No cleanup occurs before exact externally anchored permanent disablement.
+
+### v0.111.80 - Consequence Token Ownership Closure
+
+Goal: give each consequence one affine ownership path for capability, budget and
+expected-root authority without accepting duplicate leases or guards.
+
+Deliverables:
+
+- canonical composition is `&CompositeHeadActiveWitness +
+  AffineOperationToken<ConsequenceKind> -> PermittedConsequence<ConsequenceKind>`;
+  the active-head witness is borrowed and the affine operation token moves by value;
+- `AffineOperationToken<ConsequenceKind>` already owns the exact one-operation
+  capability, operation ID, budget/reservation lease and expected active composite-
+  root guard established by v0.111.70; composition accepts no second authority input;
+- composition validates witness/token store, realm, head root/generation, policy/
+  provider epochs, consequence kind and incarnation, then transfers the complete token
+  into one sealed non-`Clone`, non-serializable `PermittedConsequence<Kind>`;
+- if execution needs subordinate work capacity, it derives typed non-cloneable child
+  reservations from the token's owned budget with checked aggregate debit and return;
+  an unrelated lease, fresh top-level budget or independent root guard is rejected;
+- consequence completion, refusal, cancellation, panic and ambiguity consume the one
+  ownership path; ambiguity returns only a query token carrying the same operation and
+  remaining reconciliation budget, never a second executable budget/root authority;
+- APIs expose no overload that accepts both an affine operation token and separate
+  budget/root inputs, and no compatibility adapter may silently double-charge or
+  select between two expected roots;
+- compile-fail tests reject duplicate budget leases, two root guards, child-to-parent
+  widening, borrowed/copied tokens and cross-kind composition;
+- accounting/concurrency tests prove one top-level charge, bounded child totals,
+  deterministic unused-child return and one expected-root CAS under races and panic.
+
+Verification:
+
+- `cargo test -p sagnir-core`
+- `cargo test -p sagnir-store`
+- compile-fail token/budget/root ownership suite;
+- budget-tree and consequence-composition state-machine model.
+
+Exit criteria:
+
+- Every consequence has exactly one top-level capability, budget and root guard.
+- Additional work capacity derives only from the token's already owned budget.
+- No API can double-charge or choose between independent roots for one consequence.
+
+### v0.111.81 - Clone-Safe Static Receipt Slot Consumption
+
+Goal: make statically partitioned receipt capacity authoritative only when the
+external provider atomically prevents every slot from being consumed twice.
+
+Deliverables:
+
+- each static range is bound to provider namespace, realm/principal, range generation,
+  holder authorization, inclusive slot interval, capacity dimensions, policy epoch
+  and governed predecessor; overlap, rollback or unanchored reissue is invalid;
+- every slot has a provider-authoritative `Unused -> Consumed` transition that
+  atomically binds range generation, slot, operation ID, idempotency key, receipt
+  commitment, exact charge and provider sequence before acknowledging preparation;
+- the provider compares operation and idempotency on repeated requests: an exact retry
+  returns the original outcome, while any different operation, commitment or holder
+  receives permanent replay/conflict refusal;
+- timeout or response loss returns a query-only capability for the exact range/slot/
+  operation; the client cannot advance to another slot, retry with changed bytes or
+  infer unused state from a missing local receipt;
+- consumed state and replay refusal survive client clone, restart, disk rollback,
+  range-holder/key rotation, provider failover, compaction and provider backup restore;
+- holder rotation may transfer only a provider-proven unused suffix through a governed
+  generation transition; unknown or consumed slots remain burned and cannot be
+  returned to capacity;
+- a provider that cannot maintain atomic durable slot-consumption state advertises
+  static ranges as advisory only; v0.111.76 refuses that mode for protected receipt-
+  backed acceptance or execution;
+- external and local accounting reconcile one consumed slot and one charge; ambiguity
+  keeps both charged, and provider refusal is never non-acceptance/non-execution proof;
+- tests race cloned clients on one slot, exact/different retries, response loss,
+  holder rotation, provider failover/rollback, range overlap/reissue, compaction,
+  advisory-mode downgrade and consumed-slot recovery.
+
+Verification:
+
+- `cargo test -p sagnir-store`
+- `cargo test -p sagnir-sync`
+- static-range/slot-consumption state-machine model;
+- cloned-client and provider-failover integration suite.
+
+Exit criteria:
+
+- At most one operation can consume a static receipt slot across all client clones.
+- Ambiguous consumption is queryable and permanently charged until reconciled.
+- Client-side promises alone never qualify static ranges for protected execution.
+
 ### v0.112.0 - Quarantine Namespace And Trust Isolation
 
 Goal: ensure untrusted remote data cannot influence trusted state before full
@@ -13211,7 +13403,7 @@ Deliverables:
   bundle fanout cannot multiply quarantine capacity;
 - quarantine capture atomically consumes the exact live v0.111.1 reservation
   lease under the v0.111.2 clock/privacy and v0.111.3 key/accounting contracts,
-  requires the v0.111.4-v0.111.77 daemon cutover, non-circular suite bridge,
+  requires the v0.111.4-v0.111.81 daemon cutover, non-circular suite bridge,
   independent rotation authorization, fully staged atomic publication,
   protected journal confidentiality, anchored cold-start descriptor recovery,
   copy-on-write re-encryption, measured traffic privacy, starvation-resistant
@@ -13237,7 +13429,9 @@ Deliverables:
   ownership, bounded prepared-receipt admission, receipt/witness traffic privacy,
   canonical conflict knowledge, acceptance/execution outcome separation,
   operation-specific composite consequences, externally enforced receipt capacity
-  and honest selected-witness occurrence privacy,
+  and honest selected-witness occurrence privacy, provider start-before-effect
+  enforcement, irreducible conflict abandonment, single-owned consequence budget/root
+  authority and clone-safe static receipt-slot consumption,
   admitted authentication suite/provider-capacity mode,
   and one reconciled active store quarantine key,
   re-protects candidate metadata under that store/
@@ -13252,7 +13446,7 @@ Deliverables:
   bytes/signature/transcript;
 - deterministic expiry and deletion policy;
 - crash-safe quarantine transaction and cleanup journal; recovery resolves every
-  lease under v0.111.1-v0.111.77 and cannot move a partially staged bundle into
+  lease under v0.111.1-v0.111.81 and cannot move a partially staged bundle into
   trusted storage, infer a completed trust stage, retain an orphan reservation,
   compare a prior process epoch's monotonic deadline, or treat unavailable
   encrypted metadata as absent;
@@ -13556,7 +13750,10 @@ Deliverables:
   two-world-safe compensation, bounded
   authoritative-time custody/anchored abandonment and non-authorizing feature
   witnesses composed with affine operation capabilities/budgets/expected roots and
-  non-authorizing active composite-head witnesses plus per-consequence authority;
+  non-authorizing active composite-head witnesses plus per-consequence authority with
+  one owned budget/root path; provider execution states enforce start-before-effect,
+  conflict abandonment anchors permanent disablement, and static receipt ranges use
+  provider-atomic single-slot consumption;
   retrievability states bind private tags/keys to exact ciphertext generations
   across copy-on-write migration, relocation and rotation under purpose-separated
   retention-verification accounting with explicit key provisioning/rotation and
@@ -13618,13 +13815,15 @@ Deliverables:
   external reconciliation/local activation, local-only emergency side effects,
   result-evidence/knowledge projection mismatch, late evidence resurrecting custody
   or repeating cleanup, conflict weakened to unknown, non-acceptance used as
-  accepted-non-execution evidence, unknown-effect
+  accepted-non-execution evidence, effect before durable provider start,
+  post-start crash classified as non-execution, unknown-effect
   compensation unsafe in either possible world, mutable fence root from late result,
   result-log/status-map splice, provider-collusion completeness claimed without
   independent observation, execution before retained receipt/witness co-commit,
   uncharged/unbounded prepared receipts, ambiguity refund, Sybil capacity reset,
   local-only receipt capacity, external quota reset through clone/identity change,
-  unsafe prepared-evidence deletion or selected-witness occurrence overclaim,
+  static receipt slot reused by clones, unsafe prepared-evidence deletion or
+  selected-witness occurrence overclaim,
   append-root-only operation/idempotency non-inclusion, dual-identity map/log
   projection mismatch,
   premature emergency material cleanup, unresolved-custody realm/global quota escape,
@@ -13632,7 +13831,9 @@ Deliverables:
   dynamic decoder substitution, accounting-key retirement before signed final
   closure, feature-state witness used as operation authority, borrowed/duplicated
   affine operation capability/budget/expected root, active composite-head witness used
-  as authority, cross-consequence token reuse, executable ambiguity token,
+  as authority, cross-consequence token reuse, duplicate consequence budget/root
+  inputs, executable ambiguity token, conflict cleanup without externally anchored
+  permanent disablement,
   incomplete or untyped activation, coordinator-
   cover overclaim, retention-accounting key ambiguity, cross-log
   duplicate grant,
@@ -13757,16 +13958,18 @@ Deliverables:
   incarnation fencing, dual-axis emergency resolution under one authoritative
   externally anchored composite head with exact result-evidence projection,
   canonical conflict blocking and acceptance/execution outcome separation, immutable
-  acceptance/current-result evidence separation, atomic
+  acceptance/current-result evidence separation, provider start-before-effect and
+  fail-closed post-start recovery, externally anchored conflict abandonment, atomic
   provider operation-set fences with assurance profiles, consistent dual-identity
   append/map roots, locally and externally bounded pre-execution receipt/witness
   admission and honest selected/non-selected receipt/witness observer profiles,
+  provider-atomic single consumption for every protected static receipt slot,
   append-only effect
   classification, two-world-safe compensation, post-fence effect bridges, bounded
   authoritative-time emergency custody/anchored abandonment, normalized/terminal
   material retirement, and feature witnesses composed with affine exact operation
   authority inputs, non-authorizing active-head witnesses, per-consequence authority
-  and query-only ambiguous reconciliation,
+  with one owned budget/root path and query-only ambiguous reconciliation,
   cross-log reconciliation, limited caller receipts, durable FIFO/debt fairness and
   spam bounds under partitions, crashes, sustained appends and restart;
 - model invariants for no lost encryption instance, no semantic/index
@@ -13925,7 +14128,7 @@ Deliverables:
   profile-approved opaque or coarse fields while exact encrypted counters remain
   the sole quota source;
 - protected transfer admission requires the active v0.111.4 daemon-root
-  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.77 suite,
+  descriptor with v0.111.6 prefix cutover and v0.111.8-v0.111.81 suite,
   capacity, independent-authorization, atomic-cutover, confidentiality, capsule/
   descriptor recovery, representation migration, traffic-profile, rotation-
   scheduling, restart-accounting, external-anchor, online-catch-up, slot/nonce and
@@ -13947,7 +14150,7 @@ Deliverables:
   custody/abandonment, immutable acceptance/current-result evidence,
   pre-execution receipt/witness admission, exact feature-witness/operation authority
   composition and externally anchored composite emergency-head publication through
-  v0.111.77, and the
+  v0.111.81, and the
   v0.111.7 reconciled active store key;
   ambiguous/
   lost/conflicting provisioning, unavailable HMAC/encryption/ledger keys, capsule/
@@ -13970,14 +14173,16 @@ Deliverables:
   collection, local-only/external-resettable receipt capacity, selected-witness
   occurrence overclaim, receipt/witness privacy degradation, emergency axis/composite-
   head external-anchor, conflict-state or detailed result-projection ambiguity,
-  unsafe unknown-effect
+  effect before durable start, post-start non-execution claim, unanchored conflict
+  abandonment, unsafe unknown-effect
   compensation, normalized cleanup/late-evidence/dependency conflict, pending/over-
   quota emergency custody,
   decoder/authoritative-renewal/anchored-abandonment conflict, retention-accounting
   key/epoch-closure conflict, required handoff/discovery-privacy degradation,
   unsupported coordinator privacy, feature-witness/affine operation-capability/root/
   budget mismatch, active-head witness authority, cross-consequence token reuse or
-  executable ambiguity token, inactive/unknown critical feature,
+  duplicate budget/root input, executable ambiguity token, replayable static receipt
+  slot or advisory range mode, inactive/unknown critical feature,
   exhausted/unverifiable capacity or
   rotation/writer-accounting state refuse transfer,
   preserve existing candidate presence/
@@ -14987,7 +15192,8 @@ Deliverables:
   matrix/feature-witness/affine-operation-token/query-reconciliation/prepared-receipt-
   quota/receipt-witness-privacy-profile/conflict-evidence/detailed-execution-outcome/
   active-head-witness/per-consequence-token/external-receipt-capacity/selected-witness-
-  occurrence-profile/debt target set;
+  occurrence-profile/provider-start-state/conflict-abandonment/consequence-budget-tree/
+  static-receipt-slot-consumption/debt target set;
 - fact rule stratifier, fixpoint/query-plan, pagination cursor, and immutable
   index offset target set;
 - exact cryptographic suite and hybrid transcript target set;
@@ -15060,14 +15266,16 @@ Deliverables:
   chained result log/status roots, dual-identity uniqueness, independent execution-
   knowledge/resolution prepared axes under deterministic effect-evidence projection
   with first-class conflict and detailed acceptance/execution outcomes, and one
-  externally anchored composite-head activation lifecycle,
+  externally anchored composite-head activation lifecycle plus provider
+  start-before-effect and anchored irreducible-conflict abandonment,
   append-only classification, two-world-safe compensation/normalization, bounded
   authoritative-time emergency custody/anchored abandonment, governed bridge
   blocking, normalized/terminal staged-material retirement, and non-authorizing
   feature witnesses composed with affine operation capability/budget/expected-root
   ownership, non-authorizing active-head witnesses, per-consequence authority,
-  query-only ambiguity reconciliation, dual local/external prepared-receipt capacity
-  and selected-witness occurrence privacy boundaries,
+  one-owned-budget/root consequence composition, query-only ambiguity reconciliation,
+  dual local/external prepared-receipt capacity, provider-atomic static-slot
+  consumption and selected-witness occurrence privacy boundaries,
   cross-log result reconciliation and atomic cleanup;
 - composition of the history-independent map algorithm/pages with authority
   active/covered-fence/exception/archive roots, a permanent low-sequence
@@ -15263,10 +15471,13 @@ Deliverables:
   possible world, unresolved custody exceeding realm/global shares, custody-age reset
   or unanchored abandonment, mutable decoder substitution, premature emergency
   material/key/quota retirement, conflict-to-unknown downgrade, non-inclusion used as
-  accepted non-execution, unbounded/uncharged prepared receipts, local-only provider
-  capacity, selected-witness occurrence/privacy overclaim, feature or active-head
+  accepted non-execution, effect before durable start, post-start false no-effect,
+  unanchored conflict abandonment or conflict evidence erasure, unbounded/uncharged
+  prepared receipts, local-only provider capacity, static-slot clone replay,
+  selected-witness occurrence/privacy overclaim, feature or active-head
   witness used as sole/widened authorization, cross-consequence authority reuse,
-  duplicated affine capability/budget/root input or executable ambiguity token,
+  duplicated affine capability/budget/root input, unrelated child budget or executable
+  ambiguity token,
   duplicate cross-log result, rollback
   priority loss or unbounded ticket/debt/spam denial, no
   unmanaged-backup recoverability
@@ -15412,6 +15623,10 @@ Deliverables:
   v0.111.75 active-witness/compose-consequence/consume/reconcile boundaries,
   v0.111.76 local-reserve/provider-reserve/prepare/query/release boundaries and
   v0.111.77 observer-select/blind-refuse/cover/degrade boundaries,
+  v0.111.78 eligible/start-reserve/start/effect/no-effect boundaries,
+  v0.111.79 conflict-disable/anchor/destroy/release boundaries,
+  v0.111.80 token-compose/child-budget/consume/reconcile boundaries and
+  v0.111.81 range-slot-consume/query/rotate/replay-refuse boundaries,
   `ResourceLimit`, abuse-receipt rotation, cleanup, re-admission, and final
   authority publication prove all-or-nothing durable quarantine and no resource-
   refusal authority evidence;
@@ -15602,12 +15817,15 @@ Deliverables:
   loss/split view, result-evidence/knowledge mismatch, late-evidence custody
   resurrection/duplicate cleanup,
   conflict-to-unknown rewrite, invalid conflict resolution, non-acceptance/non-
-  execution substitution, provider/writer collusion under each completeness profile,
+  execution substitution, effect-before-start, post-start false no-effect, unanchored
+  conflict abandonment/cleanup, provider/writer collusion under each completeness
+  profile,
   hardware rollback, receipt/witness after execution, receipt-store loss, unreserved
   receipt floods, Sybil/reconnect/clone/provider-quota reset, ambiguous dual-charge
   refund, unsafe receipt GC, selected-witness occurrence overclaim, receipt/witness
   traffic correlation and cover failure, active-head-only side effect, cross-
-  consequence token reuse, eligibility forgery,
+  consequence token reuse, duplicate budget/root ownership, child-budget widening,
+  static-slot clone/restart/holder-rotation replay, eligibility forgery,
   assurance downgrade, mutable fence result, result-log/status-map splice,
   one-identity-only map, append/map root mismatch, duplicate operation/idempotency key,
   stale map non-inclusion, projection splice, cross-realm unresolved-custody exhaustion,
@@ -15993,6 +16211,10 @@ Deliverables:
   provider-capacity mode, threshold fanout, ambiguity recovery and terminal compaction
   overhead plus baseline/padded/high-security selected/non-selected/network timing,
   volume, retry, cover and collusion-observer traces;
+- provider execution benchmarks measure start-reservation/start durability, effect
+  entry and result overhead; conflict-abandonment benchmarks measure anchor, retained
+  evidence and verified custody release; static-range benchmarks race cloned clients
+  and measure provider slot-consumption/query throughput;
 - benchmarks for cold/warm status and one-file changes in million-file realms;
 - encrypted random-read and proof-cache reuse benchmarks;
 - plaintext-to-encrypted authority-log cutover model/vectors and crash benchmarks
@@ -16553,6 +16775,9 @@ Deliverables:
 - v0.111.73-v0.111.74 preserve conflict and detailed acceptance/execution knowledge,
   v0.111.75 requires per-consequence affine authority, v0.111.76 requires enforceable
   external receipt capacity, and v0.111.77 limits selected-witness privacy claims;
+- v0.111.78 enforces provider start-before-effect, v0.111.79 bounds irreducible-
+  conflict custody through anchored abandonment, v0.111.80 closes consequence token/
+  budget/root ownership, and v0.111.81 makes static receipt slots clone-safe;
 - v0.101.1 plaintext-to-encrypted authority-log cutover model, signed frontier
   anchor, terminal tail seal, encrypted predecessor, bounded page/manifest carry
   preserving the logical root, single-writer activation, locked recovery, prior-
@@ -16817,6 +17042,14 @@ Deliverables:
   identity-reset, holding-token/range/counter and recovery-reserve fixtures pass;
 - v0.111.77 selected-witness occurrence disclosure, observer-specific cover,
   unsupported blind-profile refusal, collusion and permanent degradation fixtures pass;
+- v0.111.78 start-before-effect lifecycle, alternate/downstream effect path, post-start
+  crash, forged no-effect and incapable-provider downgrade fixtures pass;
+- v0.111.79 conflict-abandonment anchor, permanent disablement, shared-custody refusal,
+  physical quota release, late evidence and restore/clone fixtures pass;
+- v0.111.80 compile-fail single-owned budget/root, derived child reservation,
+  double-charge, root mismatch, race and panic-accounting fixtures pass;
+- v0.111.81 atomic static-slot consumption, cloned-client race, exact/different retry,
+  response loss, holder rotation, provider rollback and advisory-mode fixtures pass;
 - documented p50/p95/p99 resource budgets meet release thresholds;
 - privacy-profile leakage traces, malicious local storage-provider simulations,
   padding/batching/cover-traffic overhead bounds, and profile downgrade/refusal
@@ -17227,7 +17460,9 @@ Deliverables:
   enforceable provider capacity mode, retains ambiguous or possibly eligible evidence
   charged on both sides, and exposes only its declared observer profile; baseline and
   padding disclose real occurrence to selected evidence-producing witnesses, while a
-  stronger claim requires an admitted blind/oblivious protocol;
+  stronger claim requires an admitted blind/oblivious protocol; static receipt ranges
+  are protected only when each provider slot has an atomic durable, queryable and
+  clone-safe single-consumption transition;
   protected recovery requires independent evidence when provider equivocation is in
   scope, while unverifiable completeness freezes the whole affected provider/
   authority scope;
@@ -17235,13 +17470,18 @@ Deliverables:
   deterministic effect-evidence projection validates exact acceptance, abort,
   eligibility, execution-slot, fence and result evidence; conflict remains a distinct
   blocked knowledge state, while proven-not-accepted and accepted-never-started paths
-  remain distinguishable; one externally anchored prepare/reconcile/local-activate
-  lifecycle publishes the composed head with current result/dependency/custody roots;
+  remain distinguishable; accepted-never-started evidence requires a provider that
+  durably records `Started` before every declared effect boundary, and a crash after
+  start remains accepted-execution-unknown; one externally anchored prepare/reconcile/
+  local-activate lifecycle publishes the composed head with current result/dependency/
+  custody roots;
   activation yields a borrowable non-authorizing head witness, and each cleanup,
   reopen, compensation, normalization, sync/export or retention release consumes its
-  own exact affine consequence token, budget and expected active root; normalization
-  may terminate custody and reopen only proven current-state dependencies while
-  preserving unknown execution/history-sensitive blocking;
+  own exact affine consequence token that already owns its budget and expected active
+  root; extra work uses typed child reservations from that budget, never independent
+  duplicate leases or guards; normalization may terminate custody and reopen only
+  proven current-state dependencies while preserving unknown execution/history-
+  sensitive blocking;
   late evidence may advance knowledge but cannot resurrect custody, repeat cleanup or
   reopen history-sensitive dependencies without a new governed composed resolution;
   ordinary compensation requires proven commit, while unknown effects normalize only
@@ -17251,7 +17491,10 @@ Deliverables:
   global custody shares; renewal binds one process `ClockEpoch` and persistent
   authoritative time/frontier evidence without restart age reset; governed
   abandonment anchors externally before destruction, permanently preserves unknown
-  execution and disables the scope; authenticated normalized/terminal cleanup
+  execution and disables the scope; irreducible conflicting execution uses a separate
+  externally anchored `ConflictAbandoned` transition that preserves the complete
+  contradiction, permanently disables authority and releases only proven exclusive
+  physical custody without choosing evidence; authenticated normalized/terminal cleanup
   preserves permanent commitment/resolution evidence; feature-state and policy
   witnesses remain non-authorizing while each operation token takes affine ownership
   of its exact capability, budget lease and expected-root guard, and ambiguity returns
