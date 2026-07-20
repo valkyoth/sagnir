@@ -164,7 +164,7 @@ checkout_release_json="$(
 )"
 checkout_latest_tag="$(
     printf '%s\n' "$checkout_release_json" |
-        sed -n 's/.*"tag_name": "\(v[^"]*\)".*/\1/p' |
+        sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\(v[^"]*\)".*/\1/p' |
         sed -n '1p'
 )"
 
@@ -188,7 +188,7 @@ checkout_ref_json="$(
 )"
 checkout_latest_sha="$(
     printf '%s\n' "$checkout_ref_json" |
-        sed -n 's/.*"sha": "\([0-9a-f]\{40\}\)".*/\1/p' |
+        sed -n 's/.*"sha"[[:space:]]*:[[:space:]]*"\([0-9a-f]\{40\}\)".*/\1/p' |
         sed -n '1p'
 )"
 

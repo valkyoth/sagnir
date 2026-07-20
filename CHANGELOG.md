@@ -4,6 +4,10 @@ All notable Sagnir changes are recorded here.
 
 ## Unreleased
 
+- Updated `sanitization` to 1.2.5, root transitive `bitflags` to 2.13.1, and
+  fuzz build dependency `cc` to 1.3.0. Rust, security-tool, and GitHub Actions
+  pins were already current at the maintenance check. The freshness gate now
+  accepts compact GitHub API JSON while retaining exact tag and SHA checks.
 - Updated the workspace and current documentation to Rust stable 1.97.1.
 - Made terminal-fence activation explicitly dormant until causal stability,
   authenticated map proofs output-sensitive with subtree summaries, separated
