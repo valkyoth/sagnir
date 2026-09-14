@@ -189,9 +189,9 @@ dependencies = [
 
 [[package]]
 name = "sanitization"
-version = "1.2.5"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c92c75202f3f884d540d83c61b14a9e3787542ced35cd5d7842d075c7475c0b1"
+checksum = "0c395c5164295d69016c014a3c2dd69d28a84b7e89ba971c1e81b17acc41e411"
 
 [[package]]
 name = "subtle"
