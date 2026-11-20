@@ -358,7 +358,7 @@ Goal: initialize the serious Rust workspace and policy baseline.
 
 Deliverables:
 
-- Rust stable `1.97.1` pinned.
+- Pin the stable Rust version in `rust-toolchain.toml`.
 - Focused workspace crates.
 - `saga` CLI scaffold.
 - `scripts/checks.sh`.

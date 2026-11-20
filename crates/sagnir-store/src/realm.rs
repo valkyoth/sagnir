@@ -74,7 +74,7 @@ pub fn parse_realm_id(value: &str) -> Result<RealmId, StoreMetadataError> {
     }
 
     let mut bytes = [0_u8; ID_BYTES];
-    for (index, pair) in hex.as_bytes().chunks_exact(2).enumerate() {
+    for (index, pair) in hex.as_bytes().as_chunks::<2>().0.iter().enumerate() {
         let high = hex_value(pair[0]).ok_or(StoreMetadataError::InvalidRealmId)?;
         let low = hex_value(pair[1]).ok_or(StoreMetadataError::InvalidRealmId)?;
         bytes[index] = (high << 4) | low;

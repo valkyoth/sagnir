@@ -298,7 +298,7 @@ fn parse_digest_hex(input: &str, algorithm: HashAlgorithm) -> Result<[u8; ID_BYT
     }
 
     let mut digest = [0_u8; ID_BYTES];
-    for (index, pair) in input.as_bytes().chunks_exact(2).enumerate() {
+    for (index, pair) in input.as_bytes().as_chunks::<2>().0.iter().enumerate() {
         let high = decode_lower_hex(pair[0])?;
         let low = decode_lower_hex(pair[1])?;
         digest[index] = (high << 4) | low;

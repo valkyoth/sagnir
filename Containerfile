@@ -1,6 +1,6 @@
-ARG RUST_VERSION=1.97.1
-ARG SAGNIR_RUST_VERSION=1.97.1
-FROM docker.io/library/rust:1.97.0-bookworm@sha256:7d0723df719e7f213b69dc7c8c595985c3f4b060cfbee4f7bc0e347a86fe3b6a AS build
+ARG RUST_VERSION=1.100.0
+ARG SAGNIR_RUST_VERSION=1.100.0
+FROM docker.io/library/rust:1.100.0-bookworm@sha256:ade39a710ef85f3506cffcfec3e8a24ba090badef1dff2fb798f71d878833fea AS build
 ARG SAGNIR_RUST_VERSION
 
 RUN rustup toolchain install "${SAGNIR_RUST_VERSION}" --profile minimal \
@@ -13,7 +13,7 @@ WORKDIR /src/sagnir
 COPY . .
 RUN cargo build --locked --release -p sagnir-cli --bin saga
 
-FROM docker.io/library/debian:stable-slim@sha256:34363c20bd149e41365fc77b086da067ed13ab2dff4cd0612788e12e6d52c44c
+FROM docker.io/library/debian:stable-slim@sha256:fbfb4059d2127120aa05b6e6064523d2102552f0cf0026ddf0701c12f1f8f3e0
 LABEL org.opencontainers.image.title="Sagnir"
 LABEL org.opencontainers.image.licenses="EUPL-1.2"
 

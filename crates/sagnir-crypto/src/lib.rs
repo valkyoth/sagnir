@@ -3,7 +3,7 @@
 #![deny(unused_must_use)]
 
 use sagnir_core::{SagnirError, constant_time_bytes_choice};
-use sanitization::{SecureSanitize, sanitize_bytes};
+use sanitization::{SecureSanitize, wipe};
 
 pub const ED25519_SIGNATURE_BYTES: usize = 64;
 pub const ML_DSA_44_SIGNATURE_BYTES: usize = 2_420;
@@ -250,7 +250,7 @@ impl OwnedSignature {
 
 impl SecureSanitize for OwnedSignature {
     fn secure_sanitize(&mut self) {
-        sanitize_bytes(&mut self.bytes);
+        wipe::array(&mut self.bytes);
         self.algorithm = SignatureAlgorithm::Ed25519;
         self.len = 0;
     }

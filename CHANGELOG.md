@@ -4,6 +4,11 @@ All notable Sagnir changes are recorded here.
 
 ## Unreleased
 
+- Updated Rust to 1.100.0, including both container builders. Refreshed both
+  Cargo lockfiles and migrated signature clearing to the `sanitization` 2.2.0
+  fixed-array wipe API. CI now pins checkout v7.0.1, cargo-deny 0.22.0, and
+  cargo-audit 0.23.0.
+
 - Updated `sanitization` to 1.2.5, root transitive `bitflags` to 2.13.1, and
   fuzz build dependency `cc` to 1.3.0. Rust, security-tool, and GitHub Actions
   pins were already current at the maintenance check. The freshness gate now
