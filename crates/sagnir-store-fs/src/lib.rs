@@ -23,16 +23,15 @@ pub enum StoreInitStatus {
 
 /// Initializes or validates the store. The returned path is for display only.
 pub fn initialize(cwd: &Path) -> io::Result<(StoreInitStatus, PathBuf)> {
-    let root = validated_root(cwd)?;
-    let status = create_store_layout(&root)?;
-    Ok((status, root))
+    let store = SecureStore::open(cwd)?;
+    let status = create_store_layout(&store)?;
+    Ok((status, store.into_root_path()))
 }
 
-fn create_store_layout(cwd: &Path) -> io::Result<StoreInitStatus> {
-    let store = SecureStore::open(cwd)?;
-    let _lock = InitLock::acquire(&store)?;
+fn create_store_layout(store: &SecureStore) -> io::Result<StoreInitStatus> {
+    let _lock = InitLock::acquire(store)?;
 
-    let already_initialized = existing_format_is_valid(&store)?;
+    let already_initialized = existing_format_is_valid(store)?;
 
     for dir in INIT_DIRECTORIES {
         if dir != STORE_DIR {
@@ -43,9 +42,9 @@ fn create_store_layout(cwd: &Path) -> io::Result<StoreInitStatus> {
     store.remove_file_if_exists(FORMAT_TEMP_FILE)?;
 
     if !already_initialized {
-        write_format_file(&store)?;
+        write_format_file(store)?;
     }
-    metadata::ensure_store_metadata(&store)?;
+    metadata::ensure_store_metadata(store)?;
     store.finish_initialization()?;
     Ok(if already_initialized {
         StoreInitStatus::AlreadyInitialized
@@ -131,21 +130,14 @@ impl InitLock {
     }
 }
 
-fn validated_root(cwd: &Path) -> io::Result<PathBuf> {
+fn check_root_path(cwd: &Path) -> io::Result<()> {
     if is_restricted_init_root(cwd) {
         return Err(io::Error::new(
             io::ErrorKind::PermissionDenied,
             "refusing to initialize a system directory",
         ));
     }
-    let canonical = cwd.canonicalize()?;
-    if is_restricted_init_root(&canonical) {
-        return Err(io::Error::new(
-            io::ErrorKind::PermissionDenied,
-            "refusing to initialize a system directory",
-        ));
-    }
-    Ok(canonical)
+    Ok(())
 }
 
 fn is_restricted_init_root(cwd: &Path) -> bool {

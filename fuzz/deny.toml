@@ -37,7 +37,7 @@ wildcards = "deny"
 highlight = "all"
 
 [advisories]
-db-path = "../.cargo-deny-advisory-dbs"
+db-path = ".cargo-deny-advisory-dbs"
 yanked = "deny"
 unmaintained = "all"
 unsound = "all"

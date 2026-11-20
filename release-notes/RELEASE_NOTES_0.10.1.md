@@ -17,6 +17,12 @@ through both frontends. The final gate requires the maintainer's PASS report.
 
 ## Security Notes
 
+The first pentest prompted three corrections. Unix initialization now checks
+the project root's ownership and canonical attachment. Fuzz dependency checks
+use the repository-local advisory cache. Both executables handle failed output
+writes and closed stdout pipes through their exit status. Regression tests
+cover these paths.
+
 Run pentest for this exact commit. Cover directory attachment, lock contention
 between frontends, bounded metadata reads, stale temporary files, retry after
 parent sync failure, and refusal before writing on unsupported platforms.

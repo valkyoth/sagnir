@@ -1,12 +1,18 @@
 use std::fs;
 use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-pub(crate) struct SecureStore;
+pub(crate) struct SecureStore(PathBuf);
 
 impl SecureStore {
-    pub(crate) fn open(_: &Path) -> io::Result<Self> {
+    pub(crate) fn open(path: &Path) -> io::Result<Self> {
+        crate::check_root_path(path)?;
+        crate::check_root_path(&path.canonicalize()?)?;
         Err(unsupported())
+    }
+
+    pub(crate) fn into_root_path(self) -> PathBuf {
+        self.0
     }
 
     pub(crate) fn ensure_directory(&self, _: &str) -> io::Result<()> {

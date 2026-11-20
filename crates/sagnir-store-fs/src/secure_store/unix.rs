@@ -2,7 +2,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::io;
 use std::os::unix::fs::MetadataExt;
-use std::path::{Component, Path};
+use std::path::{Component, Path, PathBuf};
 
 use rustix::fd::{AsFd, OwnedFd};
 use rustix::fs::{
@@ -16,6 +16,8 @@ const OWNER_DIR: Mode = Mode::RUSR.union(Mode::WUSR).union(Mode::XUSR);
 const OWNER_FILE: Mode = Mode::RUSR.union(Mode::WUSR);
 
 pub(crate) struct SecureStore {
+    canonical_root: PathBuf,
+    root_id: FileId,
     root: OwnedFd,
     dir: OwnedFd,
     store_id: FileId,
@@ -28,22 +30,42 @@ struct FileId {
 }
 
 impl SecureStore {
-    pub(crate) fn open(root: &Path) -> io::Result<Self> {
-        let root = open_absolute_directory(root)?;
+    pub(crate) fn open(path: &Path) -> io::Result<Self> {
+        crate::check_root_path(path)?;
+        let root = openat(
+            CWD,
+            path,
+            OFlags::RDONLY | OFlags::DIRECTORY | OFlags::CLOEXEC,
+            Mode::empty(),
+        )?;
+        Self::open_bound(root, path.canonicalize()?, geteuid().as_raw())
+    }
+
+    fn open_bound(root: OwnedFd, canonical_root: PathBuf, owner: u32) -> io::Result<Self> {
+        crate::check_root_path(&canonical_root)?;
+        verify_owner(&root, owner, "Sagnir initialization root")?;
+        let root_id = file_id(&root)?;
+        verify_root_binding(&canonical_root, root_id)?;
         match mkdirat(&root, STORE_DIR, OWNER_DIR) {
             Ok(()) | Err(rustix::io::Errno::EXIST) => {}
             Err(error) => return Err(error.into()),
         }
 
         let dir = open_directory(&root, STORE_DIR).map_err(|_| unsafe_directory_error())?;
-        verify_owner(&dir, "Sagnir store")?;
+        verify_owner(&dir, owner, "Sagnir store")?;
         let store_id = file_id(&dir)?;
         fchmod(&dir, OWNER_DIR).map_err(io::Error::from)?;
         Ok(Self {
+            canonical_root,
+            root_id,
             root,
             dir,
             store_id,
         })
+    }
+
+    pub(crate) fn into_root_path(self) -> PathBuf {
+        self.canonical_root
     }
 
     pub(crate) fn ensure_directory(&self, store_path: &str) -> io::Result<()> {
@@ -55,7 +77,7 @@ impl SecureStore {
         }
 
         let child = open_directory(&self.dir, name).map_err(|_| unsafe_directory_error())?;
-        verify_owner(&child, "Sagnir store directory")?;
+        verify_owner(&child, geteuid().as_raw(), "Sagnir store directory")?;
         fchmod(&child, OWNER_DIR).map_err(io::Error::from)?;
         self.verify_attached()
     }
@@ -148,6 +170,7 @@ impl SecureStore {
     }
 
     pub(crate) fn verify_attached(&self) -> io::Result<()> {
+        verify_root_binding(&self.canonical_root, self.root_id)?;
         let visible =
             open_directory(&self.root, STORE_DIR).map_err(|_| namespace_changed_error())?;
         if file_id(&visible)? != self.store_id {
@@ -155,6 +178,14 @@ impl SecureStore {
         }
         Ok(())
     }
+}
+
+fn verify_root_binding(path: &Path, expected: FileId) -> io::Result<()> {
+    let visible = open_absolute_directory(path).map_err(|_| namespace_changed_error())?;
+    if file_id(&visible)? != expected {
+        return Err(namespace_changed_error());
+    }
+    Ok(())
 }
 
 fn file_id<Fd: AsFd>(fd: Fd) -> io::Result<FileId> {
@@ -165,9 +196,9 @@ fn file_id<Fd: AsFd>(fd: Fd) -> io::Result<FileId> {
     })
 }
 
-fn verify_owner<Fd: AsFd>(fd: Fd, description: &str) -> io::Result<()> {
+fn verify_owner<Fd: AsFd>(fd: Fd, owner: u32, description: &str) -> io::Result<()> {
     let stat = fstat(fd).map_err(io::Error::from)?;
-    if stat.st_uid != geteuid().as_raw() {
+    if stat.st_uid != owner {
         return Err(io::Error::new(
             io::ErrorKind::PermissionDenied,
             format!("refusing to initialize a {description} owned by another user"),
@@ -257,6 +288,53 @@ fn namespace_changed_error() -> io::Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn admission_requires_same_directory_at_both_paths() -> io::Result<()> {
+        let fixture = crate::tests::TempRoot::new("root-admission")?;
+        let other = fixture.path().join("other");
+        fs::create_dir(&other)?;
+        let supplied = open_absolute_directory(&fixture.path().canonicalize()?)?;
+        assert!(
+            SecureStore::open_bound(supplied, other.canonicalize()?, geteuid().as_raw()).is_err()
+        );
+        assert!(!fixture.path().join(STORE_DIR).exists());
+        assert!(!other.join(STORE_DIR).exists());
+        Ok(())
+    }
+
+    #[test]
+    fn root_owner_is_checked_before_creating_store() -> io::Result<()> {
+        let fixture = crate::tests::TempRoot::new("owner-admission")?;
+        let path = fixture.path().canonicalize()?;
+        let supplied = open_absolute_directory(&path)?;
+        let different_owner = fstat(&supplied)?.st_uid ^ 1;
+        let result = SecureStore::open_bound(supplied, path, different_owner);
+        assert!(matches!(result, Err(e) if e.kind() == io::ErrorKind::PermissionDenied));
+        assert!(!fixture.path().join(STORE_DIR).exists());
+        Ok(())
+    }
+
+    #[test]
+    fn final_attachment_requires_original_project_root() -> io::Result<()> {
+        let fixture = crate::tests::TempRoot::new("final-root-binding")?;
+        let project = fixture.path().join("project");
+        fs::create_dir(&project)?;
+        let store = SecureStore::open(&project)?;
+        let mut calls = 0;
+        let result = store.finish_with(|_| {
+            calls += 1;
+            if calls == 2 {
+                fs::rename(&project, fixture.path().join("saved"))?;
+                fs::create_dir(&project)?;
+            }
+            Ok(())
+        });
+        assert_eq!(calls, 2);
+        assert!(result.is_err());
+        assert!(fs::read_dir(project)?.next().is_none());
+        Ok(())
+    }
 
     #[test]
     fn final_sync_orders_store_before_parent_and_propagates_failure() -> io::Result<()> {

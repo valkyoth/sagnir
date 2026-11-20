@@ -3,6 +3,23 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 #[test]
+fn stable_root_alias_reports_the_bound_canonical_directory() -> std::io::Result<()> {
+    let fixture = TempRoot::new("stable-alias")?;
+    let project = fixture.path().join("project");
+    let alias = fixture.path().join("alias");
+    fs::create_dir(&project)?;
+    std::os::unix::fs::symlink(&project, &alias)?;
+    let (status, path) = super::initialize(&alias)?;
+    assert_eq!(status, super::StoreInitStatus::Created);
+    assert_eq!(path, project.canonicalize()?);
+    assert_eq!(
+        super::initialize(&project)?.0,
+        super::StoreInitStatus::AlreadyInitialized
+    );
+    Ok(())
+}
+
+#[test]
 fn open_store_rejects_namespace_replacement() -> std::io::Result<()> {
     let root = TempRoot::new("store-namespace-replacement")?;
     let store = super::SecureStore::open(root.path())?;

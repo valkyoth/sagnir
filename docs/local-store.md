@@ -6,6 +6,11 @@ validates it, and performs all writes through retained directory handles.
 The returned path is for display. The library exposes no raw metadata writer.
 Unix success requires syncing the completed store and then its parent under
 the initialization lock. Retry repeats both syncs after metadata validation.
+Unix admission opens the supplied project directory before resolving its
+canonical path and requires effective-user ownership. Attachment checks
+reopen that canonical path without following symlinks and compare directory
+identities, including after the final parent sync. A later rename can still
+invalidate the display path after initialization returns.
 
 Status: planning document
 

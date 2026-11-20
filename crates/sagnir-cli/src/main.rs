@@ -3,26 +3,33 @@
 
 use std::env;
 use std::ffi::OsString;
+use std::io::{self, Write};
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
+    run().unwrap_or(ExitCode::FAILURE)
+}
+
+fn run() -> io::Result<ExitCode> {
     let args = match decode_args(env::args_os().skip(1)) {
         Ok(args) => args,
         Err(()) => {
-            eprintln!("saga: argument is not valid Unicode");
-            return ExitCode::from(2);
+            writeln!(io::stderr().lock(), "saga: argument is not valid Unicode")?;
+            return Ok(ExitCode::from(2));
         }
     };
     let output = sagnir_cli::dispatch(args);
 
-    print!("{}", output.stdout);
-    eprint!("{}", output.stderr);
-
-    if output.code == 0 {
-        ExitCode::SUCCESS
-    } else {
-        ExitCode::from(output.code)
+    let mut stdout = io::stdout().lock();
+    if let Err(error) = stdout
+        .write_all(output.stdout.as_bytes())
+        .and_then(|()| stdout.flush())
+        && error.kind() != io::ErrorKind::BrokenPipe
+    {
+        return Err(error);
     }
+    io::stderr().lock().write_all(output.stderr.as_bytes())?;
+    Ok(ExitCode::from(output.code))
 }
 
 fn decode_args<I>(args: I) -> Result<Vec<String>, ()>

@@ -58,6 +58,14 @@ if rg -n '^[[:space:]]*uses: [^[:space:]]+@' .github/workflows --glob '*.yml' --
 fi
 
 if [ -f Cargo.lock ]; then
+    for config in deny.toml fuzz/deny.toml; do
+        cache=$(awk '/^\[/ { advisories = ($0 == "[advisories]") }
+            advisories && /^db-path[[:space:]]*=/ { print }' "$config")
+        if [ "$cache" != 'db-path = ".cargo-deny-advisory-dbs"' ]; then
+            echo "$config must use the repository-local advisory database" >&2
+            exit 1
+        fi
+    done
     crypto_crate_pattern='name = "(aes-gcm|argon2|chacha20poly1305|ed25519-dalek|hmac|hkdf|ml-dsa|pbkdf2|password-hash|ring|scrypt|sha2)"'
     if rg "$crypto_crate_pattern" Cargo.lock >/dev/null 2>&1; then
         rg 'name = "subtle"' Cargo.lock >/dev/null 2>&1 || {
