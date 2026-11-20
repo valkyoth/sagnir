@@ -1,5 +1,12 @@
 # Sagnir Local Store
 
+In v0.10.1, `sagnir-store` owns the portable formats and `sagnir-store-fs`
+owns initialization for local callers. Its public initializer accepts a root,
+validates it, and performs all writes through retained directory handles.
+The returned path is for display. The library exposes no raw metadata writer.
+Unix success requires syncing the completed store and then its parent under
+the initialization lock. Retry repeats both syncs after metadata validation.
+
 Status: planning document
 
 A Sagnir project stores local state under `.saga/`.

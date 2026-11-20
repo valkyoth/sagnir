@@ -37,4 +37,13 @@ if [ -f Cargo.toml ] && ! grep -q '^resolver = "3"$' Cargo.toml; then
     exit 1
 fi
 
+store_graph=$(cargo tree --locked -p sagnir-store-fs --all-features --target all \
+    --edges normal,build --prefix none --format '{p}')
+printf '%s\n' "$store_graph" | awk '
+    / \(\// && $1 !~ /^(sagnir-core|sagnir-store|sagnir-store-fs)$/ {
+        print "unexpected local dependency in the filesystem store:", $1
+        exit 1
+    }
+'
+
 echo "modularity policy: ok"

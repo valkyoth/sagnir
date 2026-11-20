@@ -77,14 +77,14 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "sagnir-codec"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "sagnir-core",
 ]
 
 [[package]]
 name = "sagnir-core"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "subtle",
 ]
@@ -102,7 +102,7 @@ dependencies = [
 
 [[package]]
 name = "sagnir-object"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "sagnir-codec",
  "sagnir-core",
@@ -110,7 +110,7 @@ dependencies = [
 
 [[package]]
 name = "sagnir-worktree"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "sagnir-core",
 ]

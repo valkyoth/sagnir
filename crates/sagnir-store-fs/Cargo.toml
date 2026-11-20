@@ -1,0 +1,19 @@
+[package]
+name = "sagnir-store-fs"
+description = "Handle-relative filesystem operations for Sagnir stores."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+sagnir-store = { path = "../sagnir-store", version = "0.10.1" }
+sagnir-core = { path = "../sagnir-core", version = "0.10.1" }
+getrandom = { version = "0.4.3", default-features = false }
+
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1.1.6", features = ["fs", "process"] }
+
+[lints]
+workspace = true

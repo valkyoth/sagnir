@@ -28,7 +28,7 @@ Before adding a third-party crate:
 5. Run `cargo deny check` and `cargo audit`.
 
 Current third-party dependencies are kept narrow. `getrandom` is admitted only
-at the CLI filesystem boundary to obtain cross-platform operating-system
+in the shared filesystem store to obtain cross-platform operating-system
 entropy for realm IDs. `rustix` is admitted only on Unix targets so local-store
 initialization can use safe handle-relative filesystem operations. `subtle`
 provides timing-hardened equality and `sanitization` provides the project's

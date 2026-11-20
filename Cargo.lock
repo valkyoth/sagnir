@@ -68,14 +68,16 @@ dependencies = [
 
 [[package]]
 name = "sagad"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "sagnir",
+ "sagnir-cli",
+ "sagnir-store-fs",
 ]
 
 [[package]]
 name = "sagnir"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "sagnir-change",
  "sagnir-codec",
@@ -93,37 +95,36 @@ dependencies = [
 
 [[package]]
 name = "sagnir-change"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "sagnir-core",
 ]
 
 [[package]]
 name = "sagnir-cli"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
- "getrandom",
- "rustix",
  "sagnir",
+ "sagnir-store-fs",
 ]
 
 [[package]]
 name = "sagnir-codec"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "sagnir-core",
 ]
 
 [[package]]
 name = "sagnir-core"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "subtle",
 ]
 
 [[package]]
 name = "sagnir-crypto"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "sagnir-core",
  "sanitization",
@@ -131,14 +132,14 @@ dependencies = [
 
 [[package]]
 name = "sagnir-fact"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "sagnir-core",
 ]
 
 [[package]]
 name = "sagnir-object"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "sagnir-codec",
  "sagnir-core",
@@ -146,14 +147,14 @@ dependencies = [
 
 [[package]]
 name = "sagnir-policy"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "sagnir-core",
 ]
 
 [[package]]
 name = "sagnir-proof"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "sagnir-core",
  "sagnir-policy",
@@ -161,28 +162,38 @@ dependencies = [
 
 [[package]]
 name = "sagnir-store"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "sagnir-core",
 ]
 
 [[package]]
+name = "sagnir-store-fs"
+version = "0.10.1"
+dependencies = [
+ "getrandom",
+ "rustix",
+ "sagnir-core",
+ "sagnir-store",
+]
+
+[[package]]
 name = "sagnir-sync"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "sagnir-core",
 ]
 
 [[package]]
 name = "sagnir-worktree"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "sagnir-core",
 ]
 
 [[package]]
 name = "sagnir-world"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "sagnir-core",
 ]
@@ -216,4 +227,4 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.10.0"
+version = "0.10.1"

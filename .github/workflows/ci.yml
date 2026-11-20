@@ -79,5 +79,5 @@ jobs:
       - name: Install Rust toolchain
         run: rustup show
 
-      - name: Test portable CLI boundary
-        run: cargo test -p sagnir-cli
+      - name: Test portable store and frontend parity
+        run: cargo test -p sagnir-store-fs -p sagnir-cli -p sagad

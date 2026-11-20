@@ -4,6 +4,10 @@ All notable Sagnir changes are recorded here.
 
 ## Unreleased
 
+- v0.10.1 moves stateful initialization into `sagnir-store-fs` and adds
+  local `sagad init`. Unix initialization now syncs the retained store and
+  parent directories before success, including on an idempotent retry.
+
 - Updated Rust to 1.100.0, including both container builders. Refreshed both
   Cargo lockfiles and migrated signature clearing to the `sanitization` 2.2.0
   fixed-array wipe API. CI now pins checkout v7.0.1, cargo-deny 0.22.0, and

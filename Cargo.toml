@@ -5,6 +5,7 @@ members = [
     "crates/sagnir-codec",
     "crates/sagnir-object",
     "crates/sagnir-store",
+    "crates/sagnir-store-fs",
     "crates/sagnir-worktree",
     "crates/sagnir-change",
     "crates/sagnir-world",
@@ -20,7 +21,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.10.0"
+version = "0.10.1"
 edition = "2024"
 rust-version = "1.100.0"
 license = "EUPL-1.2"

@@ -1,7 +1,7 @@
 use std::io::{self, Read, Write};
 
-use sagnir::core::{ID_BYTES, RealmId};
-use sagnir::store::{
+use sagnir_core::{ID_BYTES, RealmId};
+use sagnir_store::{
     CONFIG_FILE, CONFIG_FILE_MAX, CONFIG_TEMP_FILE, REALM_FILE, REALM_FILE_MAX, REALM_TEMP_FILE,
     RealmConfig, RealmMetadata, parse_config_toml, parse_realm_toml, write_config_toml,
     write_realm_toml,
@@ -130,7 +130,7 @@ fn random_realm_bytes() -> io::Result<[u8; ID_BYTES]> {
     ))
 }
 
-fn metadata_error(error: sagnir::store::StoreMetadataError) -> io::Error {
+fn metadata_error(error: sagnir_store::StoreMetadataError) -> io::Error {
     invalid_data(&error.to_string())
 }
 

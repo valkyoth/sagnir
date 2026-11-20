@@ -8,11 +8,15 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-sagnir = { path = "../sagnir", version = "0.10.0" }
+sagnir-store-fs = { path = "../sagnir-store-fs", version = "0.10.1" }
+sagnir = { path = "../sagnir", version = "0.10.1" }
 
 [[bin]]
 name = "sagad"
 path = "src/main.rs"
+
+[dev-dependencies]
+sagnir-cli = { path = "../sagnir-cli", version = "0.10.1" }
 
 [lints]
 workspace = true

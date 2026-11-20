@@ -14,10 +14,10 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4.13"
-sagnir-codec = { path = "../crates/sagnir-codec", version = "0.10.0" }
-sagnir-core = { path = "../crates/sagnir-core", version = "0.10.0" }
-sagnir-object = { path = "../crates/sagnir-object", version = "0.10.0" }
-sagnir-worktree = { path = "../crates/sagnir-worktree", version = "0.10.0" }
+sagnir-codec = { path = "../crates/sagnir-codec", version = "0.10.1" }
+sagnir-core = { path = "../crates/sagnir-core", version = "0.10.1" }
+sagnir-object = { path = "../crates/sagnir-object", version = "0.10.1" }
+sagnir-worktree = { path = "../crates/sagnir-worktree", version = "0.10.1" }
 
 [[bin]]
 name = "object_header_parse"

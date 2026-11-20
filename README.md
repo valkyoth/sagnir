@@ -157,13 +157,14 @@ scripts/podman_smoke.sh
 Run the current release gate:
 
 ```bash
-scripts/release_0_10_gate.sh
+scripts/release_0_10_1_gate.sh
 ```
 
 ## Current Release Line
 
-The repository is past `v0.9.0` and is currently working through `v0.10.0`, the
-realm identity and bounded local configuration baseline.
+`v0.10.1` is the shared filesystem store milestone. On Unix, `saga init`
+and the explicit local `sagad init` command use the same initializer. It
+syncs both the store and its parent before reporting success.
 
 Current release discipline:
 

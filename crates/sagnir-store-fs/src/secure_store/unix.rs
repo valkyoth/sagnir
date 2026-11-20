@@ -10,7 +10,7 @@ use rustix::fs::{
 };
 use rustix::process::geteuid;
 
-use sagnir::store::STORE_DIR;
+use sagnir_store::STORE_DIR;
 
 const OWNER_DIR: Mode = Mode::RUSR.union(Mode::WUSR).union(Mode::XUSR);
 const OWNER_FILE: Mode = Mode::RUSR.union(Mode::WUSR);
@@ -85,7 +85,7 @@ impl SecureStore {
         } else {
             OFlags::RDONLY
         };
-        let flags = access | OFlags::NOFOLLOW | OFlags::CLOEXEC;
+        let flags = access | OFlags::NONBLOCK | OFlags::NOFOLLOW | OFlags::CLOEXEC;
         let fd = match openat(&self.dir, name, flags, Mode::empty()) {
             Ok(fd) => fd,
             Err(rustix::io::Errno::NOENT) => return Ok(None),
@@ -133,6 +133,17 @@ impl SecureStore {
         }
         self.verify_attached()?;
         fsync(&self.dir).map_err(io::Error::from)?;
+        self.verify_attached()
+    }
+
+    pub(crate) fn finish_initialization(&self) -> io::Result<()> {
+        self.finish_with(|fd| Ok(fsync(fd)?))
+    }
+
+    fn finish_with(&self, mut sync: impl FnMut(&OwnedFd) -> io::Result<()>) -> io::Result<()> {
+        self.verify_attached()?;
+        sync(&self.dir)?;
+        sync(&self.root)?;
         self.verify_attached()
     }
 
@@ -241,4 +252,28 @@ fn unsafe_directory_error() -> io::Error {
 
 fn namespace_changed_error() -> io::Error {
     io::Error::other("Sagnir store namespace changed during initialization")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn final_sync_orders_store_before_parent_and_propagates_failure() -> io::Result<()> {
+        let root = crate::tests::TempRoot::new("parent-sync")?;
+        let store = SecureStore::open(root.path())?;
+        let parent = fs::File::open(root.path())?;
+        let child = fs::File::open(root.path().join(STORE_DIR))?;
+        let mut calls = Vec::new();
+        let result = store.finish_with(|fd| {
+            calls.push(file_id(fd)?);
+            if calls.len() == 2 {
+                return Err(io::Error::other("injected parent sync failure"));
+            }
+            Ok(())
+        });
+        assert!(result.is_err());
+        assert_eq!(calls, [file_id(&child)?, file_id(&parent)?]);
+        store.finish_initialization()
+    }
 }

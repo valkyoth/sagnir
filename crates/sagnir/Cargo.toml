@@ -9,18 +9,18 @@ repository.workspace = true
 readme.workspace = true
 
 [dependencies]
-sagnir-change = { path = "../sagnir-change", version = "0.10.0" }
-sagnir-codec = { path = "../sagnir-codec", version = "0.10.0" }
-sagnir-core = { path = "../sagnir-core", version = "0.10.0" }
-sagnir-crypto = { path = "../sagnir-crypto", version = "0.10.0" }
-sagnir-fact = { path = "../sagnir-fact", version = "0.10.0" }
-sagnir-object = { path = "../sagnir-object", version = "0.10.0" }
-sagnir-policy = { path = "../sagnir-policy", version = "0.10.0" }
-sagnir-proof = { path = "../sagnir-proof", version = "0.10.0" }
-sagnir-store = { path = "../sagnir-store", version = "0.10.0" }
-sagnir-sync = { path = "../sagnir-sync", version = "0.10.0" }
-sagnir-worktree = { path = "../sagnir-worktree", version = "0.10.0" }
-sagnir-world = { path = "../sagnir-world", version = "0.10.0" }
+sagnir-change = { path = "../sagnir-change", version = "0.10.1" }
+sagnir-codec = { path = "../sagnir-codec", version = "0.10.1" }
+sagnir-core = { path = "../sagnir-core", version = "0.10.1" }
+sagnir-crypto = { path = "../sagnir-crypto", version = "0.10.1" }
+sagnir-fact = { path = "../sagnir-fact", version = "0.10.1" }
+sagnir-object = { path = "../sagnir-object", version = "0.10.1" }
+sagnir-policy = { path = "../sagnir-policy", version = "0.10.1" }
+sagnir-proof = { path = "../sagnir-proof", version = "0.10.1" }
+sagnir-store = { path = "../sagnir-store", version = "0.10.1" }
+sagnir-sync = { path = "../sagnir-sync", version = "0.10.1" }
+sagnir-worktree = { path = "../sagnir-worktree", version = "0.10.1" }
+sagnir-world = { path = "../sagnir-world", version = "0.10.1" }
 
 [lib]
 path = "src/lib.rs"

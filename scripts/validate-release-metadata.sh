@@ -40,6 +40,7 @@ scripts/validate-release-notes.sh 0.7.0
 scripts/validate-release-notes.sh 0.8.0
 scripts/validate-release-notes.sh 0.9.0
 scripts/validate-release-notes.sh 0.10.0
+scripts/validate-release-notes.sh 0.10.1
 scripts/validate-pentest-report.sh v0.1.0
 scripts/validate-pentest-report.sh v0.2.0
 scripts/validate-pentest-report.sh v0.3.0

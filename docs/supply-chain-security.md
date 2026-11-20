@@ -57,7 +57,7 @@ production feature graphs. Health checks may use guarantees exposed by an
 admitted operating-system or hardware interface, but Sagnir must not claim to
 estimate source entropy from software output.
 
-`rustix` is admitted only for the Unix CLI initialization boundary. It provides
+`rustix` is admitted only for Unix initialization in `sagnir-store-fs`. It provides
 safe handle-relative filesystem wrappers without allowing unsafe code in
 Sagnir or admitting a larger capability stack.
 

@@ -1,6 +1,4 @@
-use super::{
-    FORMAT_FILE_CONTENT, FORMAT_TEMP_FILE, INIT_DIRECTORIES, INIT_LOCK_FILE, INIT_LOCK_PREFIX,
-};
+use sagnir::store::{FORMAT_FILE_CONTENT, FORMAT_TEMP_FILE, INIT_DIRECTORIES, INIT_LOCK_FILE};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -259,7 +257,7 @@ fn init_recovers_from_malformed_stale_init_lock() -> std::io::Result<()> {
 fn init_recovers_from_unlocked_pid_marker() -> std::io::Result<()> {
     let root = TempRoot::new("unlocked-pid-marker")?;
     create_dir(root.path().join(".saga"))?;
-    let lock = format!("{INIT_LOCK_PREFIX}{}\n", u32::MAX);
+    let lock = format!("sagnir-init-lock-v1\npid={}\n", u32::MAX);
     write_file(root.path().join(INIT_LOCK_FILE), lock.as_bytes())?;
 
     let output = crate::dispatch_at(["init"], root.path());
@@ -273,8 +271,9 @@ fn init_recovers_from_unlocked_pid_marker() -> std::io::Result<()> {
 #[test]
 fn init_refuses_an_active_operating_system_lock() -> std::io::Result<()> {
     let root = TempRoot::new("active-os-lock")?;
-    let store = super::SecureStore::open(root.path())?;
-    let lock = super::InitLock::acquire(&store)?;
+    assert_eq!(crate::dispatch_at(["init"], root.path()).code, 0);
+    let lock = fs::File::open(root.path().join(INIT_LOCK_FILE))?;
+    lock.try_lock()?;
 
     let blocked = crate::dispatch_at(["init"], root.path());
 

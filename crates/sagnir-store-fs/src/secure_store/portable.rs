@@ -29,7 +29,7 @@ impl SecureStore {
         Err(unsupported())
     }
 
-    pub(crate) fn verify_attached(&self) -> io::Result<()> {
+    pub(crate) fn finish_initialization(&self) -> io::Result<()> {
         Err(unsupported())
     }
 }
@@ -46,13 +46,12 @@ mod tests {
     use std::fs;
     use std::io;
 
-    use sagnir::store::STORE_DIR;
+    use sagnir_store::STORE_DIR;
 
     #[test]
     fn stateful_initialization_fails_closed_without_writing() -> io::Result<()> {
         let root =
             std::env::temp_dir().join(format!("sagnir-portable-init-test-{}", std::process::id()));
-        let _ = fs::remove_dir_all(&root);
         fs::create_dir(&root)?;
 
         let result = super::SecureStore::open(&root);
